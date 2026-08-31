@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+// 症例区分
+enum CaseType {
+  SIMULATION      // シミュレーション用
+  ROUTINE_COMMON  // 実習常時利用（共通プール）
+  ROUTINE_PATIENT // 実習常時利用（実患者ベース）
+}
+
+// 時間進行方式
+enum TimeProgressMode {
+  REALTIME // 実時間進行（実習常時利用ツール）
+  MANUAL   // 学習者が手動で進行（シミュレーション用ツール）
+}
+
+// 複数学生の共有設定
+enum SharingMode {
+  SOLO // 単一学生専用
+  TEAM // チームで共有
+}
+
+// 検査結果の取得タイミング
+enum ResultTiming {
+  IMMEDIATE // 即時型
+  DELAYED   // 遅延型
+}
+
+enum CaseStatus {
+  DRAFT      // 下書き
+  ACTIVE     // 公開・進行中
+  SIMULATING // 演習中（シミュレーション実施中）
+  CLOSED     // 終了
+}
+
+enum OrderType {
+  LAB        // 検査
+  MEDICATION // 処方
+  INJECTION  // 注射・点滴
+  GENERAL    // 一般指示
+}
+
+enum OrderStatus {
+  ORDERED          // オーダー済
+  RESULT_PENDING   // 結果待ち
+  RESULT_AVAILABLE // 結果あり
+  ADMINISTERED     // 実施済
+  ACTIVE           // 有効（一般指示など）
+  DISCONTINUED     // 中止
+}
+
+model User {
+  id           String   @id @default(cuid())
+  loginId      String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  affiliation  String? // 例: 消化器内科ローテーション / 消化器内科 指導医
+  grade        String? // 例: 医学部5年
+  createdAt    DateTime @default(now())
+
+  sessions         Session[]
+  createdCases     Case[]            @relation("CaseCreator")
+  assignments      CaseAssignment[]
+  soapNotes        SoapNote[]
+  orders           Order[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  diseaseTemplates DiseaseTemplate[] @relation("TemplateCreator")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Case {
+  id               String            @id @default(cuid())
+  caseCode         String            @unique // P-1042, SIM-07 等の表示ID
+  title            String            // 症例名
+  caseType         CaseType
+  status           CaseStatus        @default(DRAFT)
+  timeProgressMode TimeProgressMode
+  sharingMode      SharingMode       @default(SOLO)
+  resultTiming     ResultTiming      @default(IMMEDIATE)
+  simNowAt         DateTime? // MANUAL（シミュレーション）症例の仮想時計。学習者が手動で進行させる
+
+  patientName   String
+  patientAge    Int
+  patientGender String
+  ward          String?
+  bed           String?
+
+  visibilityScope String? // 公開範囲の説明
+
+  diseaseTemplateId String?
+  diseaseTemplate   DiseaseTemplate? @relation(fields: [diseaseTemplateId], references: [id])
+  physiologyParams  String? // JSON文字列: 初期値・変化パラメータ（体温初期値・改善速度・SpO2初期値・重症度 等）
+  imagingPattern    String? // 画像所見の出し分けキー（例: infiltrate_mild/moderate/severe）
+
+  createdByUserId String
+  createdBy       User      @relation("CaseCreator", fields: [createdByUserId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  publishedAt     DateTime?
+
+  assignments   CaseAssignment[]
+  problems      Problem[]
+  soapNotes     SoapNote[]
+  orders        Order[]
+  vitals        Vital[]
+  notifications Notification[]
+}
+
+model CaseAssignment {
+  id         String   @id @default(cuid())
+  caseId     String
+  case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+
+  @@unique([caseId, studentId])
+}
+
+model Problem {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  label     String
+  isPrimary Boolean  @default(false)
+  status    String   @default("active")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model SoapNote {
+  id           String   @id @default(cuid())
+  caseId       String
+  case         Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  authorUserId String
+  author       User     @relation(fields: [authorUserId], references: [id])
+  subjective   String   @default("")
+  objective    String   @default("")
+  assessment   String   @default("")
+  plan         String   @default("")
+  createdAt    DateTime @default(now())
+}
+
+model DrugMaster {
+  id           String  @id @default(cuid())
+  hotCode      String  @unique
+  name         String
+  category     String?
+  defaultDose  String?
+  unit         String?
+  route        String?
+  isInjectable Boolean @default(false) // true: 注射・点滴オーダーの対象 / false: 処方オーダーの対象
+  orders       Order[]
+}
+
+model LabItemMaster {
+  id           String  @id @default(cuid())
+  code         String  @unique
+  name         String
+  category     String // 大分類（例: 検体・生理検査／画像検査）
+  subcategory  String? // 中分類（例: 血算／生化学／単純写真／CT）。トグル一覧の入れ子グループ化に使用
+  unit         String?
+  sampleResult String? // 定性的な模擬結果文（画像所見・培養結果など、数値化しない項目用）
+  sampleValues String? // JSON配列（LabValue[]）。数値項目の既定値。病態テンプレート対象外/未設定の症例でのフォールバックに使用
+  orders       Order[]
+}
+
+// 用法テンプレート（例: 分3　朝昼夕）。処方・注射オーダーの用法欄で入力候補として使う。
+// 今後、管理者マスター画面から追加・編集できるよう独立テーブルにしてある。
+model UsageTemplate {
+  id        String @id @default(cuid())
+  label     String @unique
+  sortOrder Int    @default(0)
+}
+
+model DiseaseTemplate {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  name            String
+  description     String?
+  isCommon        Boolean  @default(true)
+  defaultParams   String // JSON文字列
+  createdByUserId String?
+  createdBy       User?    @relation("TemplateCreator", fields: [createdByUserId], references: [id])
+  createdAt       DateTime @default(now())
+
+  cases Case[]
+}
+
+model Order {
+  id              String         @id @default(cuid())
+  caseId          String
+  case            Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  orderedByUserId String
+  orderedBy       User           @relation(fields: [orderedByUserId], references: [id])
+  orderType       OrderType
+  label           String // 表示名（マスター名 or 一般指示の内容）
+  detail          String? // JSON文字列（用量・経路・カテゴリ・補足テキスト等）
+  labItemId       String?
+  labItem         LabItemMaster? @relation(fields: [labItemId], references: [id])
+  drugId          String?
+  drug            DrugMaster?    @relation(fields: [drugId], references: [id])
+  status          OrderStatus    @default(ORDERED)
+  orderedAt       DateTime       @default(now())
+  resultReadyAt   DateTime?
+  resultText      String?
+  resultValues    String? // JSON配列（LabValue[]）。数値項目の構造化結果。H/L判定・色分け表示に使用
+  batchId         String? // 一括確定（カートまとめ発行）で同時に作成されたオーダーをまとめる識別子
+}
+
+model Vital {
+  id          String   @id @default(cuid())
+  caseId      String
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  recordedAt  DateTime @default(now())
+  temperature Float?
+  systolicBp  Int?
+  diastolicBp Int?
+  pulse       Int?
+  spo2        Int?
+  respRate    Int?
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caseId    String?
+  case      Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  targetType String?
+  targetId   String?
+  detail     String?
+  createdAt  DateTime @default(now())
+}
