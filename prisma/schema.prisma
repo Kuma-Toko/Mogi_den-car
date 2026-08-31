@@ -163,15 +163,34 @@ model SoapNote {
 }
 
 model DrugMaster {
-  id           String  @id @default(cuid())
-  hotCode      String  @unique
-  name         String
-  category     String?
-  defaultDose  String?
-  unit         String?
-  route        String?
-  isInjectable Boolean @default(false) // true: 注射・点滴オーダーの対象 / false: 処方オーダーの対象
-  orders       Order[]
+  id             String      @id @default(cuid())
+  hotCode        String      @unique
+  name           String
+  normalizedName String      @default("") // normalizeDrugName(name)。検索時にaliasesと同じ土俵で比較するためのキー
+  category       String?
+  defaultDose    String?
+  unit           String?
+  route          String?
+  isInjectable   Boolean     @default(false) // true: 注射・点滴オーダーの対象 / false: 処方オーダーの対象
+  orders         Order[]
+  aliases        DrugAlias[]
+
+  @@index([normalizedName])
+}
+
+// 薬剤の別名(略称・俗称・表記ゆれ)。1つの別名が複数薬剤を指してよい(検索時は候補を複数返す)。
+model DrugAlias {
+  id             String     @id @default(cuid())
+  drugMasterId   String
+  drugMaster     DrugMaster @relation(fields: [drugMasterId], references: [id], onDelete: Cascade)
+  aliasText      String // 表示用の別名そのまま(例: "生食", "タゾピペ")
+  normalizedText String // normalizeDrugName(aliasText)。検索時の比較に使う
+  aliasType      String? // 任意分類: "略称" / "俗称" / "旧称" / "表記ゆれ" など
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([drugMasterId, aliasText])
+  @@index([normalizedText])
 }
 
 model LabItemMaster {
@@ -226,7 +245,8 @@ model Order {
   resultReadyAt   DateTime?
   resultText      String?
   resultValues    String? // JSON配列（LabValue[]）。数値項目の構造化結果。H/L判定・色分け表示に使用
-  batchId         String? // 一括確定（カートまとめ発行）で同時に作成されたオーダーをまとめる識別子
+  rpGroupId       String? // Rp単位でまとめるための識別子。同じRpに含まれる複数薬剤オーダーが共有する
+  rpLabel         String? // 表示用のRp番号（例: "Rp.1"）
 }
 
 model Vital {

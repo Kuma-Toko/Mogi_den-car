@@ -2,19 +2,34 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatJaDateTime } from "@/lib/format";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { createDrug, deleteDrug, updateDrug } from "./actions";
+import { addDrugAlias, createDrug, deleteDrug, deleteDrugAlias, updateDrug } from "./actions";
 
 const COLS = "1fr 1.4fr 0.9fr 1fr 0.7fr 0.9fr 0.9fr auto";
+
+const LIST_LIMIT = 200;
 
 export default async function AdminDrugsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; q?: string }>;
 }) {
   await requireAdmin();
-  const { error } = await searchParams;
+  const { error, q } = await searchParams;
+  const query = q?.trim() ?? "";
 
-  const drugs = await db.drugMaster.findMany({ orderBy: { name: "asc" } });
+  const where = query
+    ? { OR: [{ name: { contains: query } }, { hotCode: { contains: query } }] }
+    : {};
+
+  const [totalCount, drugs] = await Promise.all([
+    db.drugMaster.count({ where }),
+    db.drugMaster.findMany({
+      where,
+      orderBy: { name: "asc" },
+      take: LIST_LIMIT,
+      include: { aliases: { orderBy: { createdAt: "asc" } } },
+    }),
+  ]);
 
   return (
     <>
@@ -30,7 +45,24 @@ export default async function AdminDrugsPage({
         )}
 
         <div className="card">
-          <div className="card-h">登録済み薬剤（{drugs.length}件）</div>
+          <div className="card-h">
+            登録済み薬剤（全{totalCount.toLocaleString()}件中{" "}
+            {Math.min(drugs.length, LIST_LIMIT).toLocaleString()}件を表示）
+          </div>
+          <div className="card-b">
+            <form method="get" style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <input
+                type="text"
+                name="q"
+                defaultValue={query}
+                placeholder="薬剤名またはHOTコードで検索"
+                style={{ flex: 1 }}
+              />
+              <button type="submit" className="btn">
+                検索
+              </button>
+            </form>
+          </div>
           <div className="mrow-wrap">
             <div className="mrow head" style={{ gridTemplateColumns: COLS }}>
               <div>HOTコード</div>
@@ -43,30 +75,49 @@ export default async function AdminDrugsPage({
               <div></div>
             </div>
             {drugs.map((d) => (
-              <form key={d.id} className="mrow" style={{ gridTemplateColumns: COLS }} action={updateDrug.bind(null, d.id)}>
-                <input name="hotCode" defaultValue={d.hotCode} required />
-                <input name="name" defaultValue={d.name} required />
-                <input name="category" defaultValue={d.category ?? ""} />
-                <input name="defaultDose" defaultValue={d.defaultDose ?? ""} />
-                <input name="unit" defaultValue={d.unit ?? ""} />
-                <input name="route" defaultValue={d.route ?? ""} />
-                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
-                  <input type="checkbox" name="isInjectable" defaultChecked={d.isInjectable} />
-                  注射・点滴
-                </label>
-                <div className="actions">
-                  <button type="submit" className="btn">
-                    更新
-                  </button>
-                  <ConfirmButton
-                    formAction={deleteDrug.bind(null, d.id)}
-                    confirmText={`「${d.name}」を削除しますか？`}
-                    className="btn danger"
-                  >
-                    削除
-                  </ConfirmButton>
+              <div key={d.id} className="mrow-group">
+                <form className="mrow" style={{ gridTemplateColumns: COLS }} action={updateDrug.bind(null, d.id)}>
+                  <input name="hotCode" defaultValue={d.hotCode} required />
+                  <input name="name" defaultValue={d.name} required />
+                  <input name="category" defaultValue={d.category ?? ""} />
+                  <input name="defaultDose" defaultValue={d.defaultDose ?? ""} />
+                  <input name="unit" defaultValue={d.unit ?? ""} />
+                  <input name="route" defaultValue={d.route ?? ""} />
+                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
+                    <input type="checkbox" name="isInjectable" defaultChecked={d.isInjectable} />
+                    注射・点滴
+                  </label>
+                  <div className="actions">
+                    <button type="submit" className="btn">
+                      更新
+                    </button>
+                    <ConfirmButton
+                      formAction={deleteDrug.bind(null, d.id)}
+                      confirmText={`「${d.name}」を削除しますか？`}
+                      className="btn danger"
+                    >
+                      削除
+                    </ConfirmButton>
+                  </div>
+                </form>
+                <div className="alias-row">
+                  <span className="alias-row-label">別名:</span>
+                  {d.aliases.map((a) => (
+                    <form key={a.id} action={deleteDrugAlias.bind(null, a.id)} className="alias-chip">
+                      <span>{a.aliasText}</span>
+                      <button type="submit" className="alias-chip-remove" aria-label={`「${a.aliasText}」を削除`}>
+                        ×
+                      </button>
+                    </form>
+                  ))}
+                  <form action={addDrugAlias.bind(null, d.id)} className="alias-add-form">
+                    <input name="aliasText" placeholder="別名を追加(例: 生食)" />
+                    <button type="submit" className="btn">
+                      追加
+                    </button>
+                  </form>
                 </div>
-              </form>
+              </div>
             ))}
           </div>
         </div>

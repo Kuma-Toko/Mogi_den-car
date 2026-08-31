@@ -22,12 +22,26 @@ function parseValues(json: string | null): LabValue[] | null {
   }
 }
 
-// 一括確定オーダーの同時発行分（batchId）ごとにまとめる。batchId未設定（移行前データ）の行は個別グループとして扱う。
-function groupByBatch(orders: LabOrder[]): LabOrder[][] {
+type ImagingDetail = { chiefComplaint?: string; findings?: string; purpose?: string; needsInterpretation?: boolean };
+
+function parseImaging(detail: string | null): ImagingDetail | null {
+  if (!detail) return null;
+  try {
+    const parsed = JSON.parse(detail) as ImagingDetail;
+    if (!parsed.chiefComplaint && !parsed.findings && !parsed.purpose && parsed.needsInterpretation === undefined) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+// 表示上の日付・時刻（分単位）が同じオーダーをまとめる。同じタイミングで別々に発行した
+// オーダーも、画面に表示される日時が一致していれば同じグループとして見えるようにする。
+function groupByDisplayedTime(orders: LabOrder[]): LabOrder[][] {
   const groups = new Map<string, LabOrder[]>();
   const keys: string[] = [];
   for (const o of orders) {
-    const key = o.batchId ?? `single-${o.id}`;
+    const key = formatJaDateTimeShort(o.orderedAt);
     if (!groups.has(key)) {
       groups.set(key, []);
       keys.push(key);
@@ -39,7 +53,7 @@ function groupByBatch(orders: LabOrder[]): LabOrder[][] {
 
 export async function ResultsTab({ caseId }: { caseId: string }) {
   const labOrders = await loadLabOrders(caseId);
-  const batches = groupByBatch(labOrders);
+  const batches = groupByDisplayedTime(labOrders);
 
   return (
     <div className="card">
@@ -63,9 +77,10 @@ export async function ResultsTab({ caseId }: { caseId: string }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {batch.map((o) => {
+                  {batch.flatMap((o) => {
                     const values = parseValues(o.resultValues);
-                    return (
+                    const imaging = parseImaging(o.detail);
+                    const rows = [
                       <tr key={o.id}>
                         <td>{o.label}</td>
                         <td>{[o.labItem?.category, o.labItem?.subcategory].filter(Boolean).join(" / ") || "—"}</td>
@@ -90,8 +105,23 @@ export async function ResultsTab({ caseId }: { caseId: string }) {
                             (o.resultText ?? "—")
                           )}
                         </td>
-                      </tr>
-                    );
+                      </tr>,
+                    ];
+                    if (imaging) {
+                      rows.push(
+                        <tr key={`${o.id}-imaging`}>
+                          <td colSpan={4} className="imaging-detail-cell">
+                            <div className="imaging-detail">
+                              {imaging.chiefComplaint && <span>主訴：{imaging.chiefComplaint}</span>}
+                              {imaging.purpose && <span>目的：{imaging.purpose}</span>}
+                              <span>読影依頼：{imaging.needsInterpretation ? "あり" : "なし"}</span>
+                              {imaging.findings && <div>臨床所見：{imaging.findings}</div>}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return rows;
                   })}
                 </tbody>
               </table>

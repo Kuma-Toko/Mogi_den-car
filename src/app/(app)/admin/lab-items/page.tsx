@@ -86,7 +86,7 @@ export default async function AdminLabItemsPage({
             <form action={createLabItem} className="form-grid">
               <div className="field">
                 <label htmlFor="code">コード</label>
-                <input id="code" name="code" required placeholder="例: LAB-008" />
+                <input id="code" name="code" required placeholder="例: C3002（JLAC11測定物コード等）" />
               </div>
               <div className="field">
                 <label htmlFor="name">項目名</label>

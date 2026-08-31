@@ -10,25 +10,26 @@ import { GeneralOrderDialog } from "./GeneralOrderDialog";
 type LabItem = { id: string; name: string; category: string; subcategory: string | null };
 type UsageTemplate = { id: string; label: string };
 
-function cartItemLabel(item: CartItem): string {
+function cartItemLabel(item: Extract<CartItem, { kind: "LAB" | "GENERAL" }>): string {
   if (item.kind === "LAB") return item.label;
-  if (item.kind === "GENERAL") {
-    const primary = item.selection || item.comment;
-    return primary ? `${item.category}：${primary}` : item.category;
-  }
-  const secondary = item.kind === "INJECTION" ? item.rate : item.usage;
-  const detail = [item.dosage, secondary].filter(Boolean).join("　");
-  return detail ? `${item.label}　${detail}` : item.label;
+  const primary = item.selection || item.comment;
+  return primary ? `${item.category}：${primary}` : item.category;
 }
 
-function cartItemSub(item: CartItem): string {
+function cartItemSub(item: Extract<CartItem, { kind: "LAB" | "GENERAL" }>): string {
   if (item.kind === "LAB") return orderTypeLabel.LAB;
-  if (item.kind === "GENERAL") {
-    const subComment = item.selection ? item.comment : "";
-    return subComment ? `${orderTypeLabel.GENERAL}　${subComment}` : orderTypeLabel.GENERAL;
+  const subComment = item.selection ? item.comment : "";
+  return subComment ? `${orderTypeLabel.GENERAL}　${subComment}` : orderTypeLabel.GENERAL;
+}
+
+// カート内での同種Rp（処方Rp／注射Rp）の何番目かを、その種類のRp登場順から求める
+function rpNumberFor(cart: CartItem[], index: number): number {
+  const kind = cart[index].kind;
+  let n = 0;
+  for (let i = 0; i <= index; i++) {
+    if (cart[i].kind === kind) n++;
   }
-  const base = orderTypeLabel[item.kind];
-  return item.comment ? `${base}　${item.comment}` : base;
+  return n;
 }
 
 export function OrderCard({
@@ -89,17 +90,44 @@ export function OrderCard({
           <div className="empty-note">上のボタンからオーダーを追加してください。</div>
         ) : (
           <>
-            {cart.map((item, i) => (
-              <div className="order-item" key={i}>
-                <div>
-                  <div className="name">{cartItemLabel(item)}</div>
-                  <div className="sub">{cartItemSub(item)}</div>
+            {cart.map((item, i) => {
+              if (item.kind === "MEDICATION_RP" || item.kind === "INJECTION_RP") {
+                const rpNumber = rpNumberFor(cart, i);
+                const typeLabel = orderTypeLabel[item.kind === "INJECTION_RP" ? "INJECTION" : "MEDICATION"];
+                const shared = item.kind === "INJECTION_RP" ? item.rate : item.instruction;
+                return (
+                  <div className="order-item rp-cart-item" key={i}>
+                    <div>
+                      <div className="name">
+                        Rp.{rpNumber}（{typeLabel}）
+                      </div>
+                      {item.drugs.map((d, di) => (
+                        <div className="sub" key={di}>
+                          {[d.label, d.count, d.note].filter(Boolean).join("　")}
+                        </div>
+                      ))}
+                      {(shared || item.comment) && (
+                        <div className="sub">{[shared, item.comment].filter(Boolean).join("　/　")}</div>
+                      )}
+                    </div>
+                    <button type="button" className="btn ghost" onClick={() => removeFromCart(i)}>
+                      ✕
+                    </button>
+                  </div>
+                );
+              }
+              return (
+                <div className="order-item" key={i}>
+                  <div>
+                    <div className="name">{cartItemLabel(item)}</div>
+                    <div className="sub">{cartItemSub(item)}</div>
+                  </div>
+                  <button type="button" className="btn ghost" onClick={() => removeFromCart(i)}>
+                    ✕
+                  </button>
                 </div>
-                <button type="button" className="btn ghost" onClick={() => removeFromCart(i)}>
-                  ✕
-                </button>
-              </div>
-            ))}
+              );
+            })}
             <button
               type="button"
               className="btn primary"

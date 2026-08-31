@@ -617,6 +617,57 @@ tr.row:hover td {
   font-size: 11px;
   color: var(--ink-soft);
 }
+.mrow-group {
+  border-bottom: 1px solid var(--line-soft);
+}
+.mrow-group .mrow {
+  border-bottom: none;
+}
+.alias-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 10px;
+  min-width: 640px;
+}
+.alias-row-label {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.alias-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--line-soft);
+}
+.alias-chip-remove {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+.alias-chip-remove:hover {
+  color: var(--ink);
+}
+.alias-add-form {
+  display: flex;
+  gap: 6px;
+}
+.alias-add-form input {
+  font-size: 11px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: inherit;
+}
 
 /* order dialog */
 dialog.order-dialog {
@@ -631,7 +682,7 @@ dialog.order-dialog {
   color: var(--ink);
 }
 dialog.order-dialog.order-dialog-lg {
-  width: 800px;
+  width: 920px;
 }
 dialog.order-dialog::backdrop {
   background: rgba(20, 30, 30, 0.45);
@@ -664,18 +715,20 @@ dialog.order-dialog::backdrop {
 }
 
 .chip-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px 10px;
 }
 .chip-toggle {
   font-size: 12px;
-  padding: 7px 14px;
+  padding: 6px 12px;
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: 6px;
   background: var(--panel);
   cursor: pointer;
   color: var(--ink);
+  text-align: left;
+  line-height: 1.3;
 }
 .chip-toggle.on {
   background: var(--teal);
@@ -684,6 +737,36 @@ dialog.order-dialog::backdrop {
   font-weight: 700;
 }
 
+.lab-tab-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.lab-tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.lab-tab.active {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+.lab-tab-count {
+  font-size: 10.5px;
+  opacity: 0.75;
+}
 .lab-group-category {
   font-size: 12.5px;
   font-weight: 700;
@@ -723,6 +806,10 @@ dialog.order-dialog::backdrop {
   background: var(--teal-tint);
 }
 .drug-search-row .cat {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.alias-hint {
   font-size: 11px;
   color: var(--ink-soft);
 }
@@ -777,4 +864,115 @@ dialog.order-dialog::backdrop {
 }
 .lab-flag-l {
   color: var(--blue);
+}
+
+/* Rp（処方・注射のまとめ）構築中リスト：ダイアログ内で薬剤を追加していく途中の表示 */
+.rp-draft-list {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  background: var(--teal-tint);
+}
+.rp-draft-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--teal-dark);
+  margin-bottom: 8px;
+}
+.rp-draft-row {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.rp-draft-row:last-child {
+  margin-bottom: 0;
+}
+.rp-draft-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.rp-draft-name .route {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-soft);
+  margin-left: 8px;
+}
+.rp-draft-fields {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.rp-draft-fields input,
+.rp-draft-fields select {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  background: #fff;
+}
+
+/* Rp：カート内・オーダー履歴でのまとめ表示 */
+.rp-block {
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.rp-block:last-child {
+  margin-bottom: 0;
+}
+.rp-block-h {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+.rp-drug-item {
+  padding-left: 10px;
+}
+.rp-drug-item .order-item {
+  padding: 4px 0;
+  border-bottom: none;
+}
+.rp-drug-note {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin: -2px 0 4px;
+}
+.rp-instruction {
+  font-size: 11px;
+  color: var(--ink-soft);
+  padding: 2px 0 2px 10px;
+}
+.rp-cart-item .sub {
+  margin-top: 2px;
+}
+
+/* 画像検査オーダーの依頼情報フォーム */
+.imaging-context {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.imaging-context-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.imaging-detail-cell {
+  background: var(--teal-tint);
+  padding: 8px 10px;
+}
+.imaging-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 11px;
+  color: var(--ink-soft);
 }

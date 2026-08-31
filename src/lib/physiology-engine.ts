@@ -39,8 +39,17 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
       perSeverity: { temperature: 3.4, systolicBp: -22, diastolicBp: -14, pulse: 48, spo2: -14, respRate: 13 },
     },
     labPatterns: {
-      "LAB-003": {
-        // CRP
+      "2A010": {
+        // 白血球数（WBC）
+        kind: "values",
+        patterns: {
+          mild: [{ label: "WBC", value: 9800, unit: "/μL" }],
+          moderate: [{ label: "WBC", value: 14200, unit: "/μL", note: "好中球優位" }],
+          severe: [{ label: "WBC", value: 19800, unit: "/μL", note: "好中球優位・核左方移動" }],
+        },
+      },
+      "5C070": {
+        // C反応性蛋白（CRP）
         kind: "values",
         patterns: {
           mild: [{ label: "CRP", value: 1.2, unit: "mg/dL" }],
@@ -48,7 +57,7 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           severe: [{ label: "CRP", value: 22.4, unit: "mg/dL" }],
         },
       },
-      "LAB-004": {
+      "MB-001": {
         // 血液培養（2セット）
         kind: "text",
         patterns: {
@@ -57,7 +66,7 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           severe: "グラム陰性桿菌を検出、同定検査中（菌血症の可能性）",
         },
       },
-      "LAB-005": {
+      "IMG-001": {
         // 胸部X線
         kind: "text",
         patterns: {
@@ -75,8 +84,8 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
       perSeverity: { temperature: 0.8, systolicBp: 10, diastolicBp: 6, pulse: 32, spo2: -17, respRate: 14 },
     },
     labPatterns: {
-      "LAB-006": {
-        // BNP
+      H8039: {
+        // ヒト脳性Na利尿ペプチド（BNP）
         kind: "values",
         patterns: {
           mild: [{ label: "BNP", value: 180, unit: "pg/mL" }],
@@ -84,7 +93,7 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           severe: [{ label: "BNP", value: 1450, unit: "pg/mL" }],
         },
       },
-      "LAB-005": {
+      "IMG-001": {
         // 胸部X線
         kind: "text",
         patterns: {
@@ -102,25 +111,31 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
       perSeverity: { temperature: 1.0, systolicBp: -32, diastolicBp: -18, pulse: 44, spo2: -4, respRate: 6 },
     },
     labPatterns: {
-      "LAB-002": {
-        // 生化学一般
+      "3C015": {
+        // クレアチニン（Cr）
         kind: "values",
         patterns: {
-          mild: [
-            { label: "Cr", value: 1.1, unit: "mg/dL" },
-            { label: "BUN", value: 22, unit: "mg/dL" },
-            { label: "Na", value: 142, unit: "mEq/L" },
-          ],
-          moderate: [
-            { label: "Cr", value: 1.6, unit: "mg/dL" },
-            { label: "BUN", value: 38, unit: "mg/dL" },
-            { label: "Na", value: 148, unit: "mEq/L" },
-          ],
-          severe: [
-            { label: "Cr", value: 2.4, unit: "mg/dL" },
-            { label: "BUN", value: 55, unit: "mg/dL" },
-            { label: "Na", value: 152, unit: "mEq/L" },
-          ],
+          mild: [{ label: "Cr", value: 1.1, unit: "mg/dL" }],
+          moderate: [{ label: "Cr", value: 1.6, unit: "mg/dL" }],
+          severe: [{ label: "Cr", value: 2.4, unit: "mg/dL" }],
+        },
+      },
+      "3C025": {
+        // 尿素窒素（BUN）
+        kind: "values",
+        patterns: {
+          mild: [{ label: "BUN", value: 22, unit: "mg/dL" }],
+          moderate: [{ label: "BUN", value: 38, unit: "mg/dL" }],
+          severe: [{ label: "BUN", value: 55, unit: "mg/dL" }],
+        },
+      },
+      "3H010": {
+        // ナトリウム（Na）
+        kind: "values",
+        patterns: {
+          mild: [{ label: "Na", value: 142, unit: "mEq/L" }],
+          moderate: [{ label: "Na", value: 148, unit: "mEq/L" }],
+          severe: [{ label: "Na", value: 152, unit: "mEq/L" }],
         },
       },
     },

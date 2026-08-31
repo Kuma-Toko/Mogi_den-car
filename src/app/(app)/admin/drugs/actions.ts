@@ -5,11 +5,14 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { normalizeDrugName } from "@/lib/drugName";
 
 function readFields(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
   return {
     hotCode: String(formData.get("hotCode") ?? "").trim(),
-    name: String(formData.get("name") ?? "").trim(),
+    name,
+    normalizedName: normalizeDrugName(name),
     category: String(formData.get("category") ?? "").trim() || null,
     defaultDose: String(formData.get("defaultDose") ?? "").trim() || null,
     unit: String(formData.get("unit") ?? "").trim() || null,
@@ -36,6 +39,32 @@ export async function updateDrug(id: string, formData: FormData) {
 
   await db.drugMaster.update({ where: { id }, data: fields });
   await logAudit({ userId: user.id, action: "master_drug_update", targetType: "DrugMaster", targetId: id });
+
+  revalidatePath("/admin/drugs");
+}
+
+export async function addDrugAlias(drugMasterId: string, formData: FormData) {
+  const user = await requireAdmin();
+  const aliasText = String(formData.get("aliasText") ?? "").trim();
+  if (!aliasText) return;
+
+  const existing = await db.drugAlias.findUnique({
+    where: { drugMasterId_aliasText: { drugMasterId, aliasText } },
+  });
+  if (existing) return; // 同一薬剤への同一別名の重複登録は黙って無視する
+
+  const created = await db.drugAlias.create({
+    data: { drugMasterId, aliasText, normalizedText: normalizeDrugName(aliasText) },
+  });
+  await logAudit({ userId: user.id, action: "drug_alias_create", targetType: "DrugAlias", targetId: created.id });
+
+  revalidatePath("/admin/drugs");
+}
+
+export async function deleteDrugAlias(id: string) {
+  const user = await requireAdmin();
+  await db.drugAlias.delete({ where: { id } });
+  await logAudit({ userId: user.id, action: "drug_alias_delete", targetType: "DrugAlias", targetId: id });
 
   revalidatePath("/admin/drugs");
 }

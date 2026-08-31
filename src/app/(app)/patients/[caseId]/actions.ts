@@ -3,6 +3,7 @@
 import { refresh, revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireCaseAccess } from "@/lib/case-access";
+import { normalizeDrugName } from "@/lib/drugName";
 import { logAudit } from "@/lib/audit";
 import { computeResultReadyAt, reconcileCase, resolveLabResult } from "@/lib/engine";
 import { getCaseClockNow } from "@/lib/physiology-engine";
@@ -33,10 +34,19 @@ export async function addSoapNote(caseId: string, formData: FormData) {
   revalidatePath(`/patients/${caseId}`);
 }
 
+export type RpDrugLine = { drugId: string; label: string; note: string; count: string };
+
+export type ImagingContext = {
+  chiefComplaint: string;
+  findings: string;
+  purpose: string;
+  needsInterpretation: boolean;
+};
+
 export type CartItem =
-  | { kind: "LAB"; labItemId: string; label: string }
-  | { kind: "MEDICATION"; drugId: string; label: string; dosage: string; usage: string; comment: string }
-  | { kind: "INJECTION"; drugId: string; label: string; dosage: string; rate: string; comment: string }
+  | { kind: "LAB"; labItemId: string; label: string; imaging?: ImagingContext }
+  | { kind: "MEDICATION_RP"; drugs: RpDrugLine[]; instruction: string; comment: string }
+  | { kind: "INJECTION_RP"; drugs: RpDrugLine[]; rate: string; comment: string }
   | { kind: "GENERAL"; category: string; selection: string; comment: string };
 
 export type DrugSearchResult = {
@@ -45,28 +55,74 @@ export type DrugSearchResult = {
   category: string | null;
   defaultDose: string | null;
   route: string | null;
+  matchedAlias: string | null; // 別名(alias)経由でヒットした場合、その別名の表示テキスト
 };
 
-function isDrugItem(item: CartItem): item is Extract<CartItem, { kind: "MEDICATION" | "INJECTION" }> {
-  return item.kind === "MEDICATION" || item.kind === "INJECTION";
-}
+const DRUG_SEARCH_LIMIT = 30;
 
 // 薬剤名の部分一致検索。プルダウンの代わりにダイアログ内の自由記述欄から呼び出す。
 // 薬剤数が今後大幅に増える想定のため、一覧を丸ごと渡さずEnter押下時にサーバー側で検索する。
+// 正式名称の完全一致・部分一致だけでなく、略称・俗称・表記ゆれ(DrugAlias)経由でも
+// ヒットするよう、name/aliasText双方を同じnormalizeDrugName()で正規化して比較する。
+//
+// alias一致を常に先頭に出す: 例えば「生食」は「テルモ生食」等、名前に文字列として
+// 既に含まれる商品が50件以上あるため、名前一致と同じ並びに混ぜるとalias側で
+// 拾いたかった「生理食塩液」がtake件数の外に押し出されてしまう。
 export async function searchDrugs(caseId: string, isInjectable: boolean, query: string): Promise<DrugSearchResult[]> {
   await requireCaseAccess(caseId);
   const q = query.trim();
   if (!q) return [];
+  const normalized = normalizeDrugName(q);
 
-  return db.drugMaster.findMany({
-    where: {
-      isInjectable,
-      OR: [{ name: { contains: q } }, { hotCode: { contains: q } }],
-    },
-    orderBy: { name: "asc" },
-    take: 30,
-    select: { id: true, name: true, category: true, defaultDose: true, route: true },
-  });
+  const aliasMatches = normalized
+    ? await db.drugMaster.findMany({
+        where: { isInjectable, aliases: { some: { normalizedText: { contains: normalized } } } },
+        orderBy: { name: "asc" },
+        take: DRUG_SEARCH_LIMIT,
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          defaultDose: true,
+          route: true,
+          aliases: { where: { normalizedText: { contains: normalized } }, select: { aliasText: true }, take: 1 },
+        },
+      })
+    : [];
+
+  const remaining = DRUG_SEARCH_LIMIT - aliasMatches.length;
+  const nameMatches =
+    remaining > 0
+      ? await db.drugMaster.findMany({
+          where: {
+            isInjectable,
+            id: { notIn: aliasMatches.map((d) => d.id) },
+            OR: [{ hotCode: { contains: q } }, ...(normalized ? [{ normalizedName: { contains: normalized } }] : [])],
+          },
+          orderBy: { name: "asc" },
+          take: remaining,
+          select: { id: true, name: true, category: true, defaultDose: true, route: true },
+        })
+      : [];
+
+  return [
+    ...aliasMatches.map((r) => ({
+      id: r.id,
+      name: r.name,
+      category: r.category,
+      defaultDose: r.defaultDose,
+      route: r.route,
+      matchedAlias: r.aliases[0]?.aliasText ?? null,
+    })),
+    ...nameMatches.map((r) => ({
+      id: r.id,
+      name: r.name,
+      category: r.category,
+      defaultDose: r.defaultDose,
+      route: r.route,
+      matchedAlias: null,
+    })),
+  ];
 }
 
 // 検査・処方・注射・一般指示をまとめて一括発行する。学生はダイアログでカートに項目を積んでから
@@ -90,7 +146,9 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
   });
 
   const labItemIds = items.filter((i) => i.kind === "LAB").map((i) => i.labItemId);
-  const drugIds = items.filter(isDrugItem).map((i) => i.drugId);
+  const drugIds = items.flatMap((i) =>
+    i.kind === "MEDICATION_RP" || i.kind === "INJECTION_RP" ? i.drugs.map((d) => d.drugId) : []
+  );
   const [labItems, drugs] = await Promise.all([
     labItemIds.length ? db.labItemMaster.findMany({ where: { id: { in: labItemIds } } }) : Promise.resolve([]),
     drugIds.length ? db.drugMaster.findMany({ where: { id: { in: drugIds } } }) : Promise.resolve([]),
@@ -98,9 +156,8 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
   const labItemMap = new Map(labItems.map((l) => [l.id, l]));
   const drugMap = new Map(drugs.map((d) => [d.id, d]));
 
-  // 同じ確定操作で発行された項目をまとめて識別できるように、バッチ単位で共通のIDを振る（検査結果のまとめ表示に使用）
-  const batchId = crypto.randomUUID();
   let immediateResultCount = 0;
+  const rpCounters = { MEDICATION: 0, INJECTION: 0 };
 
   await db.$transaction(async (tx) => {
     for (const item of items) {
@@ -111,6 +168,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
         const result = immediate
           ? resolveLabResult(caseRecord, treatmentOrders, caseRecord.diseaseTemplate?.key, labItem, resultReadyAt)
           : null;
+        const imaging = item.imaging;
 
         await tx.order.create({
           data: {
@@ -119,12 +177,19 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
             orderType: "LAB",
             label: labItem.name,
             labItemId: labItem.id,
+            detail: imaging
+              ? JSON.stringify({
+                  chiefComplaint: imaging.chiefComplaint || undefined,
+                  findings: imaging.findings || undefined,
+                  purpose: imaging.purpose || undefined,
+                  needsInterpretation: imaging.needsInterpretation,
+                })
+              : null,
             status: immediate ? "RESULT_AVAILABLE" : "RESULT_PENDING",
             orderedAt,
             resultReadyAt,
             resultText: result?.text ?? null,
             resultValues: result?.values ? JSON.stringify(result.values) : null,
-            batchId,
           },
         });
         if (immediate) {
@@ -133,50 +198,78 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
             data: { userId: user.id, caseId, message: `${labItem.name} の結果が出ました。` },
           });
         }
-      } else if (item.kind === "MEDICATION") {
-        const drug = drugMap.get(item.drugId);
-        if (!drug) continue;
-
-        const dosage = item.dosage.trim() || drug.defaultDose || "";
-        const usage = item.usage.trim();
+      } else if (item.kind === "MEDICATION_RP") {
+        if (item.drugs.length === 0) continue;
+        const rpGroupId = crypto.randomUUID();
+        const rpLabel = `Rp.${++rpCounters.MEDICATION}`;
+        const instruction = item.instruction.trim();
         const comment = item.comment.trim();
-        const label = [drug.name, dosage, usage].filter(Boolean).join("　");
 
-        await tx.order.create({
-          data: {
-            caseId,
-            orderedByUserId: user.id,
-            orderType: "MEDICATION",
-            label,
-            drugId: drug.id,
-            detail: JSON.stringify({ route: drug.route, usage: usage || undefined, comment: comment || undefined }),
-            status: "ADMINISTERED",
-            orderedAt,
-            batchId,
-          },
-        });
-      } else if (item.kind === "INJECTION") {
-        const drug = drugMap.get(item.drugId);
-        if (!drug) continue;
+        for (const line of item.drugs) {
+          const drug = drugMap.get(line.drugId);
+          if (!drug) continue;
 
-        const dosage = item.dosage.trim() || drug.defaultDose || "";
+          const count = line.count.trim();
+          const note = line.note.trim();
+          const label = [drug.name, count].filter(Boolean).join("　");
+
+          await tx.order.create({
+            data: {
+              caseId,
+              orderedByUserId: user.id,
+              orderType: "MEDICATION",
+              label,
+              drugId: drug.id,
+              rpGroupId,
+              rpLabel,
+              detail: JSON.stringify({
+                route: drug.route,
+                count: count || undefined,
+                note: note || undefined,
+                instruction: instruction || undefined,
+                comment: comment || undefined,
+              }),
+              status: "ADMINISTERED",
+              orderedAt,
+            },
+          });
+        }
+      } else if (item.kind === "INJECTION_RP") {
+        if (item.drugs.length === 0) continue;
+        const rpGroupId = crypto.randomUUID();
+        const rpLabel = `Rp.${++rpCounters.INJECTION}`;
         const rate = item.rate.trim();
         const comment = item.comment.trim();
-        const label = [drug.name, dosage, rate].filter(Boolean).join("　");
 
-        await tx.order.create({
-          data: {
-            caseId,
-            orderedByUserId: user.id,
-            orderType: "INJECTION",
-            label,
-            drugId: drug.id,
-            detail: JSON.stringify({ route: drug.route, rate: rate || undefined, comment: comment || undefined }),
-            status: "ADMINISTERED",
-            orderedAt,
-            batchId,
-          },
-        });
+        for (const line of item.drugs) {
+          const drug = drugMap.get(line.drugId);
+          if (!drug) continue;
+
+          const count = line.count.trim();
+          const note = line.note.trim();
+          const label = [drug.name, count].filter(Boolean).join("　");
+
+          await tx.order.create({
+            data: {
+              caseId,
+              orderedByUserId: user.id,
+              orderType: "INJECTION",
+              label,
+              drugId: drug.id,
+              rpGroupId,
+              rpLabel,
+              detail: JSON.stringify({
+                route: drug.route,
+                count: count || undefined,
+                note: note || undefined,
+                rate: rate || undefined,
+                comment: comment || undefined,
+              }),
+              status: "ADMINISTERED",
+              orderedAt,
+            },
+          });
+        }
       } else if (item.kind === "GENERAL") {
         if (!item.category) continue;
         const selection = item.selection.trim();
@@ -195,7 +288,6 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
             detail: subComment ? JSON.stringify({ comment: subComment }) : null,
             status: "ACTIVE",
             orderedAt,
-            batchId,
           },
         });
       }
