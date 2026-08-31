@@ -12,6 +12,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:import-hot": "tsx prisma/import-hot-master.ts",
     "db:seed-aliases": "tsx prisma/seed-drug-aliases.ts",
+    "db:migrate-turso": "tsx prisma/apply-turso-migrations.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {
