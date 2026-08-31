@@ -16,6 +16,7 @@ const folders = readdirSync(migrationsDir, { withFileTypes: true })
   .sort();
 
 const client = createClient({ url });
+const host = new URL(url).host;
 
 async function main() {
   for (const folder of folders) {
@@ -24,7 +25,7 @@ async function main() {
     console.log(`Applying ${folder}...`);
     await client.executeMultiple(sql);
   }
-  console.log(`Done. Applied ${folders.length} migration(s) to ${new URL(url).host}.`);
+  console.log(`Done. Applied ${folders.length} migration(s) to ${host}.`);
 }
 
 main()
