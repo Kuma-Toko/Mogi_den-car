@@ -4,11 +4,14 @@ import { useState } from "react";
 import { orderTypeLabel } from "@/lib/labels";
 import { submitOrderBatch, type CartItem } from "./actions";
 import { LabOrderDialog } from "./LabOrderDialog";
+import { ImagingOrderDialog } from "./ImagingOrderDialog";
 import { DrugOrderDialog } from "./DrugOrderDialog";
 import { GeneralOrderDialog } from "./GeneralOrderDialog";
 
 type LabItem = { id: string; name: string; category: string; subcategory: string | null };
 type UsageTemplate = { id: string; label: string };
+
+const IMAGING_CATEGORY = "画像検査";
 
 function cartItemLabel(item: Extract<CartItem, { kind: "LAB" | "GENERAL" }>): string {
   if (item.kind === "LAB") return item.label;
@@ -17,7 +20,7 @@ function cartItemLabel(item: Extract<CartItem, { kind: "LAB" | "GENERAL" }>): st
 }
 
 function cartItemSub(item: Extract<CartItem, { kind: "LAB" | "GENERAL" }>): string {
-  if (item.kind === "LAB") return orderTypeLabel.LAB;
+  if (item.kind === "LAB") return item.imaging ? orderTypeLabel.IMAGING : orderTypeLabel.LAB;
   const subComment = item.selection ? item.comment : "";
   return subComment ? `${orderTypeLabel.GENERAL}　${subComment}` : orderTypeLabel.GENERAL;
 }
@@ -45,8 +48,12 @@ export function OrderCard({
 }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const nonImagingLabItems = labItems.filter((l) => l.category !== IMAGING_CATEGORY);
+  const imagingItems = labItems.filter((l) => l.category === IMAGING_CATEGORY);
 
   function addToCart(item: CartItem | CartItem[]) {
+    setError(null);
     setCart((prev) => [...prev, ...(Array.isArray(item) ? item : [item])]);
   }
 
@@ -57,9 +64,12 @@ export function OrderCard({
   async function confirmOrders() {
     if (cart.length === 0 || submitting) return;
     setSubmitting(true);
+    setError(null);
     try {
       await submitOrderBatch(caseId, cart);
       setCart([]);
+    } catch {
+      setError("オーダーの送信に失敗しました。時間をおいて再度お試しください。");
     } finally {
       setSubmitting(false);
     }
@@ -77,7 +87,8 @@ export function OrderCard({
         </div>
 
         <div className="order-types">
-          <LabOrderDialog labItems={labItems} onAdd={addToCart} />
+          <LabOrderDialog labItems={nonImagingLabItems} onAdd={addToCart} />
+          <ImagingOrderDialog imagingItems={imagingItems} onAdd={addToCart} />
           <DrugOrderDialog caseId={caseId} orderType="MEDICATION" usageTemplates={usageTemplates} onAdd={addToCart} />
           <DrugOrderDialog caseId={caseId} orderType="INJECTION" usageTemplates={usageTemplates} onAdd={addToCart} />
           <GeneralOrderDialog onAdd={addToCart} />
@@ -128,6 +139,11 @@ export function OrderCard({
                 </div>
               );
             })}
+            {error && (
+              <div className="banner-error" style={{ marginTop: 10 }}>
+                {error}
+              </div>
+            )}
             <button
               type="button"
               className="btn primary"

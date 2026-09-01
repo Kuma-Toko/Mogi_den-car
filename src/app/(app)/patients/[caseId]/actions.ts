@@ -41,6 +41,7 @@ export type ImagingContext = {
   findings: string;
   purpose: string;
   needsInterpretation: boolean;
+  mriSequences?: string[];
 };
 
 export type CartItem =
@@ -174,7 +175,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
           data: {
             caseId,
             orderedByUserId: user.id,
-            orderType: "LAB",
+            orderType: imaging ? "IMAGING" : "LAB",
             label: labItem.name,
             labItemId: labItem.id,
             detail: imaging
@@ -183,6 +184,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
                   findings: imaging.findings || undefined,
                   purpose: imaging.purpose || undefined,
                   needsInterpretation: imaging.needsInterpretation,
+                  mriSequences: imaging.mriSequences && imaging.mriSequences.length > 0 ? imaging.mriSequences : undefined,
                 })
               : null,
             status: immediate ? "RESULT_AVAILABLE" : "RESULT_PENDING",

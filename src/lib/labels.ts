@@ -14,6 +14,7 @@ export const caseTypeLabel: Record<CaseType, string> = {
 
 export const orderTypeLabel: Record<OrderType, string> = {
   LAB: "検査",
+  IMAGING: "画像検査",
   MEDICATION: "処方",
   INJECTION: "注射・点滴",
   GENERAL: "一般指示",
@@ -21,6 +22,7 @@ export const orderTypeLabel: Record<OrderType, string> = {
 
 export const orderTypeOrderLabel: Record<OrderType, string> = {
   LAB: "検査オーダー",
+  IMAGING: "画像検査オーダー",
   MEDICATION: "処方オーダー",
   INJECTION: "注射オーダー",
   GENERAL: "一般指示オーダー",

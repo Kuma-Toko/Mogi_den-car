@@ -46,6 +46,7 @@ enum CaseStatus {
 
 enum OrderType {
   LAB        // 検査
+  IMAGING    // 画像検査
   MEDICATION // 処方
   INJECTION  // 注射・点滴
   GENERAL    // 一般指示

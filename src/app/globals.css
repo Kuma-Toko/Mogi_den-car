@@ -14,6 +14,8 @@
   --red-tint: #f7e9e7;
   --blue: #2b5b8c;
   --blue-tint: #e8eff6;
+  --purple: #6b4e82;
+  --purple-tint: #efe8f2;
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Hiragino Sans", sans-serif;
 }
 
@@ -864,6 +866,37 @@ dialog.order-dialog::backdrop {
 }
 .lab-flag-l {
   color: var(--blue);
+}
+.lab-ref-range {
+  color: var(--ink-soft);
+  font-size: 11px;
+  margin-left: 3px;
+}
+
+.trend-chip-count {
+  opacity: 0.75;
+  font-size: 10.5px;
+  margin-left: 2px;
+}
+.trend-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 14px;
+}
+.trend-item-h {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.trend-item-name {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.trend-item-unit {
+  font-size: 11px;
+  color: var(--ink-soft);
 }
 
 /* Rp（処方・注射のまとめ）構築中リスト：ダイアログ内で薬剤を追加していく途中の表示 */

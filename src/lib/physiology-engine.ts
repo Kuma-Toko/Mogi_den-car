@@ -75,6 +75,15 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           severe: "両側肺野に広範な浸潤影を認め、一部に無気肺を疑う所見あり。",
         },
       },
+      "IMG-CT-007": {
+        // 胸部CT（単純）
+        kind: "text",
+        patterns: {
+          mild: "スリガラス影を軽度に認めるが、明らかな浸潤影は指摘できない。",
+          moderate: "右下葉主体に浸潤影とair bronchogramを認める。",
+          severe: "両側多葉にわたる広範な浸潤影を認め、一部に膿瘍形成・胸水貯留を疑う。",
+        },
+      },
     },
   },
   heart_failure: {
@@ -100,6 +109,15 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           mild: "軽度の肺うっ血を疑う所見。心胸郭比はやや拡大。",
           moderate: "肺うっ血像と胸水貯留を認める。心胸郭比拡大。",
           severe: "著明な肺うっ血、両側胸水、心拡大を認める。",
+        },
+      },
+      "IMG-US-001": {
+        // 心エコー（経胸壁）
+        kind: "text",
+        patterns: {
+          mild: "左室駆出率は軽度低下（LVEF 45%）。びまん性壁運動低下を軽度に認める。",
+          moderate: "左室駆出率は中等度低下（LVEF 35%）。びまん性壁運動低下を認め、軽度の機能性僧帽弁逆流を伴う。",
+          severe: "左室駆出率は高度低下（LVEF 25%）。著明なびまん性壁運動低下と中等度以上の機能性僧帽弁逆流を認める。下大静脈は拡張し呼吸性変動を欠く。",
         },
       },
     },

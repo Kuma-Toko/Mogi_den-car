@@ -1,15 +1,14 @@
 import { db } from "@/lib/db";
 import { formatJaDateTimeShort } from "@/lib/format";
-import { orderStatusBadgeClass, orderStatusLabel } from "@/lib/labels";
-import { getLabFlag, type LabValue } from "@/lib/lab-reference-ranges";
+import type { LabValue } from "@/lib/lab-reference-ranges";
+import { ResultsView, type ImagingDetail, type ResultBatch, type TrendSeries } from "./ResultsView";
 
 type LabOrder = Awaited<ReturnType<typeof loadLabOrders>>[number];
 
 function loadLabOrders(caseId: string) {
   return db.order.findMany({
-    where: { caseId, orderType: "LAB" },
+    where: { caseId, orderType: { in: ["LAB", "IMAGING"] } },
     orderBy: { orderedAt: "desc" },
-    include: { labItem: true },
   });
 }
 
@@ -21,8 +20,6 @@ function parseValues(json: string | null): LabValue[] | null {
     return null;
   }
 }
-
-type ImagingDetail = { chiefComplaint?: string; findings?: string; purpose?: string; needsInterpretation?: boolean };
 
 function parseImaging(detail: string | null): ImagingDetail | null {
   if (!detail) return null;
@@ -51,84 +48,43 @@ function groupByDisplayedTime(orders: LabOrder[]): LabOrder[][] {
   return keys.map((k) => groups.get(k)!);
 }
 
+// 検査値ラベルごとに、結果が判明した時刻順（古い→新しい）で値を集めて時系列データにする。
+function buildTrendSeries(orders: LabOrder[]): TrendSeries[] {
+  const chronological = [...orders].reverse();
+  const map = new Map<string, TrendSeries>();
+  for (const o of chronological) {
+    const values = parseValues(o.resultValues);
+    if (!values) continue;
+    const time = formatJaDateTimeShort(o.resultReadyAt ?? o.orderedAt);
+    for (const v of values) {
+      let series = map.get(v.label);
+      if (!series) {
+        series = { label: v.label, unit: v.unit, points: [] };
+        map.set(v.label, series);
+      }
+      series.points.push({ time, value: v.value });
+    }
+  }
+  return [...map.values()].sort((a, b) => b.points.length - a.points.length || a.label.localeCompare(b.label, "ja"));
+}
+
 export async function ResultsTab({ caseId }: { caseId: string }) {
   const labOrders = await loadLabOrders(caseId);
   const batches = groupByDisplayedTime(labOrders);
+  const trendSeries = buildTrendSeries(labOrders);
 
-  return (
-    <div className="card">
-      <div className="card-h">検査結果</div>
-      <div className="card-b">
-        {labOrders.length === 0 ? (
-          <div className="empty-note">検査オーダーはまだありません。</div>
-        ) : (
-          batches.map((batch) => (
-            <div className="result-batch" key={batch[0].id}>
-              <div className="result-batch-h">
-                {formatJaDateTimeShort(batch[0].orderedAt)}　オーダー（{batch.length}件）
-              </div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>項目</th>
-                    <th>カテゴリ</th>
-                    <th>状態</th>
-                    <th>結果</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {batch.flatMap((o) => {
-                    const values = parseValues(o.resultValues);
-                    const imaging = parseImaging(o.detail);
-                    const rows = [
-                      <tr key={o.id}>
-                        <td>{o.label}</td>
-                        <td>{[o.labItem?.category, o.labItem?.subcategory].filter(Boolean).join(" / ") || "—"}</td>
-                        <td>
-                          <span className={`badge ${orderStatusBadgeClass[o.status]}`}>{orderStatusLabel[o.status]}</span>
-                        </td>
-                        <td>
-                          {values && values.length > 0 ? (
-                            <div className="lab-values">
-                              {values.map((v, i) => {
-                                const flag = getLabFlag(v.label, v.value);
-                                return (
-                                  <span className="lab-value" key={i}>
-                                    {v.label} {v.value.toLocaleString("ja-JP")}
-                                    {v.unit}
-                                    {flag && <span className={`lab-flag lab-flag-${flag.toLowerCase()}`}>{flag}</span>}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            (o.resultText ?? "—")
-                          )}
-                        </td>
-                      </tr>,
-                    ];
-                    if (imaging) {
-                      rows.push(
-                        <tr key={`${o.id}-imaging`}>
-                          <td colSpan={4} className="imaging-detail-cell">
-                            <div className="imaging-detail">
-                              {imaging.chiefComplaint && <span>主訴：{imaging.chiefComplaint}</span>}
-                              {imaging.purpose && <span>目的：{imaging.purpose}</span>}
-                              <span>読影依頼：{imaging.needsInterpretation ? "あり" : "なし"}</span>
-                              {imaging.findings && <div>臨床所見：{imaging.findings}</div>}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    }
-                    return rows;
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
+  const serializedBatches: ResultBatch[] = batches.map((batch) => ({
+    key: batch[0].id,
+    heading: `${formatJaDateTimeShort(batch[0].orderedAt)}　オーダー（${batch.length}件）`,
+    rows: batch.map((o) => ({
+      id: o.id,
+      label: o.label,
+      status: o.status,
+      values: parseValues(o.resultValues),
+      resultText: o.resultText,
+      imaging: parseImaging(o.detail),
+    })),
+  }));
+
+  return <ResultsView batches={serializedBatches} trendSeries={trendSeries} />;
 }
