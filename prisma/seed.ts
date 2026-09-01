@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import bcrypt from "bcryptjs";
+import { normalizeDrugName } from "../src/lib/drugName";
 
 const adapter = new PrismaLibSql({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" });
 const db = new PrismaClient({ adapter });
@@ -59,7 +60,8 @@ async function main() {
     { hotCode: "HOT-100007", name: "アジスロマイシン錠 250mg", category: "抗菌薬", defaultDose: "2錠", unit: "錠", route: "内服", isInjectable: false },
   ];
   for (const d of drugs) {
-    await db.drugMaster.upsert({ where: { hotCode: d.hotCode }, update: d, create: d });
+    const data = { ...d, normalizedName: normalizeDrugName(d.name) };
+    await db.drugMaster.upsert({ where: { hotCode: d.hotCode }, update: data, create: data });
   }
 
   // JLAC11（日本臨床検査医学会 検査項目分類コード）の17桁コードリストを測定物単位で集約し、
