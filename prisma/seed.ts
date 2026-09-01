@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import bcrypt from "bcryptjs";
 import { normalizeDrugName } from "../src/lib/drugName";
+import type { AmbulanceDetail, ReferralDetail } from "../src/app/(app)/patients/[caseId]/actions";
 
 const adapter = new PrismaLibSql({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" });
 const db = new PrismaClient({ adapter });
@@ -715,6 +716,21 @@ async function main() {
     problems: ["急性虫垂炎 疑い"],
   });
 
+  const caseP1051 = await ensureCase({
+    caseCode: "P-1051",
+    title: "脳梗塞疑い（クリニックより紹介搬送）72歳女性",
+    caseType: "ROUTINE_PATIENT",
+    status: "ACTIVE",
+    timeProgressMode: "REALTIME",
+    resultTiming: "IMMEDIATE",
+    patientName: "模擬 悦子",
+    patientAge: 72,
+    patientGender: "女性",
+    ward: "4階東",
+    bed: "402",
+    problems: ["脳梗塞疑い（心原性塞栓症疑い）", "発作性心房細動"],
+  });
+
   await ensureCase({
     caseCode: "P-2001",
     title: "急性膵炎 60歳男性（症例プール）",
@@ -730,7 +746,7 @@ async function main() {
     problems: ["急性膵炎"],
   });
 
-  for (const c of [caseP1042, caseP1039, caseP1035, caseP1028, caseSim07]) {
+  for (const c of [caseP1042, caseP1039, caseP1035, caseP1028, caseSim07, caseP1051]) {
     await db.caseAssignment.upsert({
       where: { caseId_studentId: { caseId: c.id, studentId: student1.id } },
       update: {},
@@ -738,12 +754,13 @@ async function main() {
     });
   }
 
-  const existingSoap = await db.soapNote.findFirst({ where: { caseId: caseP1042.id } });
+  const existingSoap = await db.karteEntry.findFirst({ where: { caseId: caseP1042.id } });
   if (!existingSoap) {
-    await db.soapNote.create({
+    await db.karteEntry.create({
       data: {
         caseId: caseP1042.id,
         authorUserId: student1.id,
+        entryType: "SOAP",
         subjective: "発熱・咳嗽が3日前より持続。昨日より息切れを自覚。",
         objective: "体温38.9℃ SpO2 92%(室内気) 右下肺野にcoarse crackles",
         assessment: "",
@@ -804,6 +821,133 @@ async function main() {
       await db.vital.create({
         data: {
           caseId: caseP1042.id,
+          recordedAt,
+          temperature: r.temperature,
+          systolicBp: r.systolicBp,
+          diastolicBp: r.diastolicBp,
+          pulse: r.pulse,
+          spo2: r.spo2,
+          respRate: r.respRate,
+        },
+      });
+    }
+  }
+
+  // 模擬症例: 紹介状・救急搬送記録・SOAP記録を組み合わせた複数様式カルテのサンプル。
+  const existingKarteP1051 = await db.karteEntry.count({ where: { caseId: caseP1051.id } });
+  if (existingKarteP1051 === 0) {
+    const day0 = new Date();
+    day0.setHours(0, 0, 0, 0);
+
+    const referralAt = new Date(day0);
+    referralAt.setHours(9, 10);
+    const ambulanceAt = new Date(day0);
+    ambulanceAt.setHours(9, 45);
+    const admissionSoapAt = new Date(day0);
+    admissionSoapAt.setHours(10, 0);
+    const followUpSoapAt = new Date(day0);
+    followUpSoapAt.setDate(followUpSoapAt.getDate() + 1);
+    followUpSoapAt.setHours(8, 30);
+
+    const referralDetail: ReferralDetail = {
+      destination: "○○大学病院 脳神経内科 御中",
+      referringDoctor: "医療法人△△会　△△内科クリニック　院長　△△ △△",
+      diagnosis: "脳梗塞疑い",
+      purpose: "精査加療のお願い",
+      presentIllness:
+        "本日8時50分頃、自宅にて朝食中に右上下肢の脱力とろれつが回らないことに家族が気付き、直後に当院を受診されました。症状の急速な出現から脳血管障害が疑われ、緊急の精査加療が必要と判断し救急搬送にて紹介いたします。",
+      pastHistory: "高血圧症、発作性心房細動（△△病院循環器内科通院中、ワルファリン内服中）",
+      medications: "ワルファリンカリウム錠1mg　2錠　分1（夕食後）／アムロジピン錠5mg　1錠　分1（朝食後）",
+      physicalFindings:
+        "意識清明、血圧168/94mmHg、脈拍92/分（不整）、右上下肢の筋力低下（MMT 2/5程度）、構音障害あり、右顔面神経麻痺を認める。",
+      testFindings: "当院にて頭部CT施行、明らかな出血性病変は認めず。心電図で心房細動を確認。",
+      notes:
+        "抗凝固薬（ワルファリン）内服中のため、血栓溶解療法の適応につきましては貴院にてご判断をお願いいたします。お薬手帳を持参させております。",
+    };
+
+    const ambulanceDetail: AmbulanceDetail = {
+      agencyName: "○○市消防局　△△救急隊",
+      callReceivedAt: "9時16分",
+      sceneArrivalAt: "9時20分（△△内科クリニック）",
+      hospitalArrivalAt: "9時45分（○○大学病院 救急外来）",
+      chiefComplaint: "右上下肢脱力、構音障害",
+      onsetSituation:
+        "本日8時50分頃、自宅で朝食中に突然発症。家族が異変に気付き、徒歩3分のかかりつけクリニックを受診したところ脳卒中疑いのため救急要請となった。",
+      consciousness: "JCS I-1（清明だが軽度の反応緩慢）",
+      vitalsOnScene: "血圧172/96mmHg　脈拍96/分（不整）　SpO2 96%（室内気）　呼吸数18/分　体温36.4℃",
+      pastHistory: "高血圧症、発作性心房細動（ワルファリン内服中）",
+      treatmentEnRoute: "酸素投与（経鼻カニューラ2L/分）、心電図モニター装着、静脈路確保、血糖測定（128mg/dL）",
+      receivingDepartment: "救急科・脳神経内科",
+      notes: "紹介元クリニックより紹介状およびお薬手帳を預かり、患者とともに搬送。搬送中バイタル変化なし。",
+    };
+
+    await db.karteEntry.create({
+      data: {
+        caseId: caseP1051.id,
+        authorUserId: teacher1.id,
+        entryType: "REFERRAL",
+        title: `${referralDetail.destination}　宛`,
+        detail: JSON.stringify(referralDetail),
+        createdAt: referralAt,
+      },
+    });
+
+    await db.karteEntry.create({
+      data: {
+        caseId: caseP1051.id,
+        authorUserId: teacher1.id,
+        entryType: "AMBULANCE",
+        title: ambulanceDetail.agencyName,
+        detail: JSON.stringify(ambulanceDetail),
+        createdAt: ambulanceAt,
+      },
+    });
+
+    await db.karteEntry.create({
+      data: {
+        caseId: caseP1051.id,
+        authorUserId: student1.id,
+        entryType: "SOAP",
+        subjective:
+          "本人は軽度の呂律困難のため詳細な問診は困難。家族によれば8時50分頃に突然の右上下肢脱力とろれつが回らない症状が出現とのこと。頭痛・嘔気は認めない。",
+        objective:
+          "意識清明、血圧166/92mmHg、脈拍94/分（不整）、SpO2 97%（室内気）。右上下肢MMT 2/5、右顔面神経麻痺あり、構音障害あり。NIHSS 9点。頭部CTにて明らかな出血性病変なし。心電図で心房細動確認。",
+        assessment: "心原性脳塞栓症疑い（発作性心房細動、抗凝固薬内服中）。発症から搬入まで約55分。",
+        plan: "頭部MRI/MRAを施行し血栓溶解療法・血管内治療の適応を検討。脳神経内科にコンサルト。抗凝固薬内服歴を踏まえ出血リスクを慎重に評価。",
+        createdAt: admissionSoapAt,
+      },
+    });
+
+    await db.karteEntry.create({
+      data: {
+        caseId: caseP1051.id,
+        authorUserId: student1.id,
+        entryType: "SOAP",
+        subjective: "呂律障害はやや改善したと本人より訴えあり。右上肢の動かしにくさは持続。",
+        objective:
+          "体温36.8℃、血圧142/84mmHg、脈拍88/分（不整）。右上肢MMT 3/5に改善、右下肢MMT 4/5。NIHSS 5点に改善。頭部MRIにて左中大脳動脈領域に急性期梗塞巣を確認。",
+        assessment: "心原性脳塞栓症（左MCA領域）。症状はやや改善傾向。",
+        plan: "リハビリテーション科に依頼し早期離床・嚥下評価を開始。抗凝固療法の再開時期を脳神経内科・循環器内科と相談。",
+        createdAt: followUpSoapAt,
+      },
+    });
+  }
+
+  const existingVitalsP1051 = await db.vital.count({ where: { caseId: caseP1051.id } });
+  if (existingVitalsP1051 === 0) {
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    const rows = [
+      { h: 9, m: 45, temperature: 36.6, systolicBp: 168, diastolicBp: 92, pulse: 94, spo2: 97, respRate: 20 },
+      { h: 14, m: 0, temperature: 37.0, systolicBp: 150, diastolicBp: 86, pulse: 90, spo2: 97, respRate: 18 },
+      { h: 20, m: 0, temperature: 36.9, systolicBp: 144, diastolicBp: 84, pulse: 88, spo2: 98, respRate: 18 },
+    ];
+    for (const r of rows) {
+      const recordedAt = new Date(base);
+      recordedAt.setHours(r.h, r.m);
+      await db.vital.create({
+        data: {
+          caseId: caseP1051.id,
           recordedAt,
           temperature: r.temperature,
           systolicBp: r.systolicBp,

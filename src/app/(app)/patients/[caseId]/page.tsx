@@ -3,7 +3,8 @@ import { requireCaseAccess } from "@/lib/case-access";
 import { reconcileCase } from "@/lib/engine";
 import { db } from "@/lib/db";
 import { SummaryTab } from "./SummaryTab";
-import { SoapTab } from "./SoapTab";
+import { KarteTab } from "./KarteTab";
+import { KarteEntryTab } from "./KarteEntryTab";
 import { OrdersTab } from "./OrdersTab";
 import { ResultsTab } from "./ResultsTab";
 import { VitalsTab } from "./VitalsTab";
@@ -11,7 +12,8 @@ import { SimTimeControl } from "./SimTimeControl";
 
 const TABS = [
   { key: "summary", label: "サマリ" },
-  { key: "soap", label: "カルテ記載" },
+  { key: "karte", label: "カルテ" },
+  { key: "karte-entry", label: "カルテ記載" },
   { key: "orders", label: "オーダー" },
   { key: "results", label: "検査結果" },
   { key: "vitals", label: "バイタル・経過" },
@@ -71,7 +73,8 @@ export default async function CaseDetailPage({
         </div>
 
         {tab === "summary" && <SummaryTab caseId={caseId} />}
-        {tab === "soap" && <SoapTab caseId={caseId} />}
+        {tab === "karte" && <KarteTab caseId={caseId} />}
+        {tab === "karte-entry" && <KarteEntryTab caseId={caseId} />}
         {tab === "orders" && <OrdersTab caseId={caseId} />}
         {tab === "results" && <ResultsTab caseId={caseId} />}
         {tab === "vitals" && <VitalsTab caseId={caseId} />}

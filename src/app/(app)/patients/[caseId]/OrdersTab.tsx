@@ -38,7 +38,7 @@ function groupOrders(orders: OrderRow[]): OrderRow[][] {
 
 export async function OrdersTab({ caseId }: { caseId: string }) {
   const [labItems, usageTemplates, orders, caseRecord] = await Promise.all([
-    db.labItemMaster.findMany({ orderBy: [{ category: "asc" }, { subcategory: "asc" }, { name: "asc" }] }),
+    db.labItemMaster.findMany({ orderBy: { sortOrder: "asc" } }),
     db.usageTemplate.findMany({ orderBy: { sortOrder: "asc" } }),
     loadOrders(caseId),
     db.case.findUnique({ where: { id: caseId } }),

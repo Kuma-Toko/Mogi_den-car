@@ -322,6 +322,46 @@ tr.row:hover td {
   }
 }
 
+.karte-entry {
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.karte-entry:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.karte-entry-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.karte-detail {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+}
+.karte-detail-row {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.karte-detail-row:last-child {
+  border-bottom: none;
+}
+.karte-detail-row dt {
+  color: var(--ink-soft);
+  font-weight: 700;
+  font-size: 11px;
+}
+.karte-detail-row dd {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 .soap-row {
   display: grid;
   grid-template-columns: 26px 1fr;

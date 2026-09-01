@@ -1,4 +1,4 @@
-import type { CaseType, OrderStatus, OrderType, Role } from "@prisma/client";
+import type { CaseType, KarteEntryType, OrderStatus, OrderType, Role } from "@prisma/client";
 
 export const roleLabel: Record<Role, string> = {
   STUDENT: "学生",
@@ -10,6 +10,20 @@ export const caseTypeLabel: Record<CaseType, string> = {
   SIMULATION: "シミュレーション用",
   ROUTINE_COMMON: "実習常時利用（共通プール）",
   ROUTINE_PATIENT: "実習常時利用（実患者ベース）",
+};
+
+export const karteEntryTypeLabel: Record<KarteEntryType, string> = {
+  SOAP: "SOAP",
+  NARRATIVE: "フリー記載",
+  REFERRAL: "紹介状（診療情報提供書）",
+  AMBULANCE: "救急搬送記録",
+};
+
+export const karteEntryTypeBadgeClass: Record<KarteEntryType, string> = {
+  SOAP: "teal",
+  NARRATIVE: "blue",
+  REFERRAL: "amber",
+  AMBULANCE: "red",
 };
 
 export const orderTypeLabel: Record<OrderType, string> = {
@@ -49,6 +63,7 @@ export const orderStatusBadgeClass: Record<OrderStatus, string> = {
 export const auditActionLabel: Record<string, string> = {
   login: "ログイン",
   soap_save: "SOAP記載を保存",
+  karte_entry_save: "カルテ記載を保存",
   order_create: "オーダーを発行",
   advance_sim_time: "シミュレーション時間を進行",
   case_join: "症例プールに参加",

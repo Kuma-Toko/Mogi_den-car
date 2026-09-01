@@ -44,6 +44,14 @@ enum CaseStatus {
   CLOSED     // 終了
 }
 
+// カルテ記載の様式区分
+enum KarteEntryType {
+  SOAP      // SOAP形式
+  NARRATIVE // フリー記載（経過記録・退院時サマリ等の自由記述）
+  REFERRAL  // 紹介状（診療情報提供書）
+  AMBULANCE // 救急搬送記録
+}
+
 enum OrderType {
   LAB        // 検査
   IMAGING    // 画像検査
@@ -74,7 +82,7 @@ model User {
   sessions         Session[]
   createdCases     Case[]            @relation("CaseCreator")
   assignments      CaseAssignment[]
-  soapNotes        SoapNote[]
+  karteEntries     KarteEntry[]
   orders           Order[]
   notifications    Notification[]
   auditLogs        AuditLog[]
@@ -122,7 +130,7 @@ model Case {
 
   assignments   CaseAssignment[]
   problems      Problem[]
-  soapNotes     SoapNote[]
+  karteEntries  KarteEntry[]
   orders        Order[]
   vitals        Vital[]
   notifications Notification[]
@@ -150,17 +158,25 @@ model Problem {
   createdAt DateTime @default(now())
 }
 
-model SoapNote {
-  id           String   @id @default(cuid())
+// カルテ記載1件分。様式（entryType）によって使用するフィールドが異なる：
+// - SOAP: subjective/objective/assessment/plan
+// - NARRATIVE: narrative（自由記述本文）
+// - REFERRAL/AMBULANCE: title（一覧表示用の見出し）＋ detail（様式ごとの構造化項目をJSON文字列で保持）
+model KarteEntry {
+  id           String         @id @default(cuid())
   caseId       String
-  case         Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  case         Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
   authorUserId String
-  author       User     @relation(fields: [authorUserId], references: [id])
-  subjective   String   @default("")
-  objective    String   @default("")
-  assessment   String   @default("")
-  plan         String   @default("")
-  createdAt    DateTime @default(now())
+  author       User           @relation(fields: [authorUserId], references: [id])
+  entryType    KarteEntryType @default(SOAP)
+  title        String? // REFERRAL/AMBULANCE等で一覧表示に使う見出し（例: 紹介先医療機関名）
+  subjective   String         @default("")
+  objective    String         @default("")
+  assessment   String         @default("")
+  plan         String         @default("")
+  narrative    String         @default("") // NARRATIVE用の自由記述本文
+  detail       String? // JSON文字列。REFERRAL/AMBULANCEの構造化項目
+  createdAt    DateTime       @default(now())
 }
 
 model DrugMaster {
@@ -203,6 +219,7 @@ model LabItemMaster {
   unit         String?
   sampleResult String? // 定性的な模擬結果文（画像所見・培養結果など、数値化しない項目用）
   sampleValues String? // JSON配列（LabValue[]）。数値項目の既定値。病態テンプレート対象外/未設定の症例でのフォールバックに使用
+  sortOrder    Int     @default(0) // オーダー画面での表示順（昇順）。同値の場合は元の並びを維持
   orders       Order[]
 }
 

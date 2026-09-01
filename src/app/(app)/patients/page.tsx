@@ -16,7 +16,7 @@ export default async function PatientsPage() {
     include: {
       problems: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1 },
       orders: { orderBy: { orderedAt: "desc" }, take: 20 },
-      soapNotes: { orderBy: { createdAt: "desc" }, take: 1 },
+      karteEntries: { orderBy: { createdAt: "desc" }, take: 1 },
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -50,7 +50,7 @@ export default async function PatientsPage() {
   }
 
   function lastUpdated(c: (typeof cases)[number]) {
-    const dates = [c.updatedAt, ...c.orders.map((o) => o.orderedAt), ...c.soapNotes.map((s) => s.createdAt)];
+    const dates = [c.updatedAt, ...c.orders.map((o) => o.orderedAt), ...c.karteEntries.map((s) => s.createdAt)];
     const latest = dates.reduce((a, b) => (b > a ? b : a));
     return c.timeProgressMode === "MANUAL" ? "手動進行" : formatRelative(latest);
   }

@@ -8,27 +8,121 @@ import { logAudit } from "@/lib/audit";
 import { computeResultReadyAt, reconcileCase, resolveLabResult } from "@/lib/engine";
 import { getCaseClockNow } from "@/lib/physiology-engine";
 
-export async function addSoapNote(caseId: string, formData: FormData) {
+// 紹介状（診療情報提供書）の構造化項目。KarteEntry.detailにJSON文字列として保存する。
+export type ReferralDetail = {
+  destination: string; // 紹介先医療機関・診療科
+  referringDoctor: string; // 紹介元の医師名・医療機関名
+  diagnosis: string; // 傷病名
+  purpose: string; // 紹介目的
+  presentIllness: string; // 現病歴
+  pastHistory: string; // 既往歴
+  medications: string; // 現在の処方・内服薬
+  physicalFindings: string; // 身体所見
+  testFindings: string; // 検査所見
+  notes: string; // 備考
+};
+
+// 救急搬送記録の構造化項目。KarteEntry.detailにJSON文字列として保存する。
+export type AmbulanceDetail = {
+  agencyName: string; // 搬送機関（消防局・救急隊名）
+  callReceivedAt: string; // 覚知時刻
+  sceneArrivalAt: string; // 現場到着時刻
+  hospitalArrivalAt: string; // 病院到着時刻
+  chiefComplaint: string; // 主訴
+  onsetSituation: string; // 発症状況
+  consciousness: string; // 意識レベル
+  vitalsOnScene: string; // 現場観察時バイタル
+  pastHistory: string; // 既往歴・内服薬
+  treatmentEnRoute: string; // 搬送中の処置
+  receivingDepartment: string; // 受入診療科
+  notes: string; // 特記事項
+};
+
+const REFERRAL_FIELDS: (keyof ReferralDetail)[] = [
+  "destination",
+  "referringDoctor",
+  "diagnosis",
+  "purpose",
+  "presentIllness",
+  "pastHistory",
+  "medications",
+  "physicalFindings",
+  "testFindings",
+  "notes",
+];
+
+const AMBULANCE_FIELDS: (keyof AmbulanceDetail)[] = [
+  "agencyName",
+  "callReceivedAt",
+  "sceneArrivalAt",
+  "hospitalArrivalAt",
+  "chiefComplaint",
+  "onsetSituation",
+  "consciousness",
+  "vitalsOnScene",
+  "pastHistory",
+  "treatmentEnRoute",
+  "receivingDepartment",
+  "notes",
+];
+
+function formString(formData: FormData, key: string): string {
+  return String(formData.get(key) ?? "").trim();
+}
+
+export async function addKarteEntry(caseId: string, formData: FormData) {
   const { user, case: caseRecord } = await requireCaseAccess(caseId);
 
-  const subjective = String(formData.get("subjective") ?? "").trim();
-  const objective = String(formData.get("objective") ?? "").trim();
-  const assessment = String(formData.get("assessment") ?? "").trim();
-  const plan = String(formData.get("plan") ?? "").trim();
-  if (!subjective && !objective && !assessment && !plan) return;
+  const entryTypeRaw = String(formData.get("entryType") ?? "SOAP");
+  const entryType = (["SOAP", "NARRATIVE", "REFERRAL", "AMBULANCE"] as const).includes(entryTypeRaw as never)
+    ? (entryTypeRaw as "SOAP" | "NARRATIVE" | "REFERRAL" | "AMBULANCE")
+    : "SOAP";
 
   // シミュレーション症例では記載時刻もシミュレーション時計に合わせる（実時刻とズレて表示されないように）
   const createdAt = getCaseClockNow(caseRecord);
-  const note = await db.soapNote.create({
-    data: { caseId, authorUserId: user.id, subjective, objective, assessment, plan, createdAt },
-  });
+  const base = { caseId, authorUserId: user.id, entryType, createdAt };
+
+  let entryId: string;
+
+  if (entryType === "SOAP") {
+    const subjective = formString(formData, "subjective");
+    const objective = formString(formData, "objective");
+    const assessment = formString(formData, "assessment");
+    const plan = formString(formData, "plan");
+    if (!subjective && !objective && !assessment && !plan) return;
+
+    const note = await db.karteEntry.create({ data: { ...base, subjective, objective, assessment, plan } });
+    entryId = note.id;
+  } else if (entryType === "NARRATIVE") {
+    const title = formString(formData, "title");
+    const narrative = formString(formData, "narrative");
+    if (!narrative) return;
+
+    const note = await db.karteEntry.create({ data: { ...base, title: title || null, narrative } });
+    entryId = note.id;
+  } else if (entryType === "REFERRAL") {
+    const fields = Object.fromEntries(REFERRAL_FIELDS.map((key) => [key, formString(formData, key)])) as ReferralDetail;
+    if (Object.values(fields).every((v) => !v)) return;
+
+    const title = fields.destination ? `${fields.destination}　宛` : "紹介状（診療情報提供書）";
+    const note = await db.karteEntry.create({ data: { ...base, title, detail: JSON.stringify(fields) } });
+    entryId = note.id;
+  } else {
+    const fields = Object.fromEntries(AMBULANCE_FIELDS.map((key) => [key, formString(formData, key)])) as AmbulanceDetail;
+    if (Object.values(fields).every((v) => !v)) return;
+
+    const title = fields.agencyName || "救急搬送記録";
+    const note = await db.karteEntry.create({ data: { ...base, title, detail: JSON.stringify(fields) } });
+    entryId = note.id;
+  }
+
   await db.case.update({ where: { id: caseId }, data: { updatedAt: new Date() } });
   await logAudit({
     userId: user.id,
-    action: "soap_save",
+    action: "karte_entry_save",
     targetType: "Case",
     targetId: caseId,
-    detail: { noteId: note.id },
+    detail: { entryId, entryType },
   });
 
   revalidatePath(`/patients/${caseId}`);
