@@ -14,6 +14,8 @@
     "db:seed-aliases": "tsx prisma/seed-drug-aliases.ts",
     "db:migrate-turso": "tsx prisma/apply-turso-migrations.ts",
     "db:sync-drugs-turso": "tsx prisma/sync-drug-catalog-to-turso.ts",
+    "db:diagnose-turso": "tsx prisma/diagnose-turso.ts",
+    "db:repair-drugmaster-schema": "tsx prisma/repair-drugmaster-schema.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {

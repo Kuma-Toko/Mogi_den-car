@@ -39,6 +39,27 @@ async function getAppliedNames(): Promise<Set<string>> {
 // それ以外のエラーは本当の異常として中断する。
 const ALREADY_APPLIED_PATTERNS = [/already exists/i, /duplicate column name/i];
 
+// 2026-09-01の事故: RedefineTables形式(SQLiteのテーブル再構築によるALTER)は、
+// 「既に追跡テーブル導入前の時点で適用済み」でもエラーなく再実行できてしまい、
+// マイグレーション作成時点より後に追加された列を静かに消してしまう
+// (DrugMaster.normalizedName消失・isInjectable全リセットの原因)。
+// これを防ぐため、RedefineTables形式のマイグレーションは実行前に
+// 「再構築後のテーブルが期待する列を、実DBの対象テーブルが既に全て持っているか」を
+// 確認し、既に満たしていれば実行せずスキップする(実行しても安全な場合のみ実行する)。
+function extractRedefineTarget(sql: string): { table: string; columns: string[] } | null {
+  const match = sql.match(/CREATE TABLE "new_(\w+)" \(([\s\S]*?)\n\);/);
+  if (!match) return null;
+  const [, table, body] = match;
+  const columns = [...body.matchAll(/^\s*"(\w+)"/gm)].map((m) => m[1]);
+  return { table, columns };
+}
+
+async function tableAlreadySatisfies(table: string, expectedColumns: string[]): Promise<boolean> {
+  const res = await client.execute(`PRAGMA table_info("${table}")`);
+  const liveColumns = new Set(res.rows.map((r) => r.name as string));
+  return expectedColumns.every((c) => liveColumns.has(c));
+}
+
 async function main() {
   await ensureTrackingTable();
   const applied = await getAppliedNames();
@@ -51,6 +72,21 @@ async function main() {
 
     const sqlPath = path.join(migrationsDir, folder, "migration.sql");
     const sql = readFileSync(sqlPath, "utf-8");
+
+    if (sql.includes("-- RedefineTables")) {
+      const target = extractRedefineTarget(sql);
+      if (target && (await tableAlreadySatisfies(target.table, target.columns))) {
+        console.log(
+          `Skipping ${folder} (RedefineTable target "${target.table}" already has all expected columns; running it would risk dropping newer columns).`
+        );
+        await client.execute({
+          sql: `INSERT INTO "_custom_migrations" ("name") VALUES (?)`,
+          args: [folder],
+        });
+        continue;
+      }
+    }
+
     console.log(`Applying ${folder}...`);
     try {
       await client.executeMultiple(sql);
