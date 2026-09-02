@@ -152,6 +152,7 @@ export type DrugSearchResult = {
   defaultDose: string | null;
   route: string | null;
   matchedAlias: string | null; // 別名(alias)経由でヒットした場合、その別名の表示テキスト
+  majorCategories: string[]; // 薬効大分類(DrugCategoryMaster経由、複数付与されうる)
 };
 
 const DRUG_SEARCH_LIMIT = 30;
@@ -182,6 +183,7 @@ export async function searchDrugs(caseId: string, isInjectable: boolean, query: 
           defaultDose: true,
           route: true,
           aliases: { where: { normalizedText: { contains: normalized } }, select: { aliasText: true }, take: 1 },
+          categoryLinks: { select: { category: { select: { majorCategory: true } } } },
         },
       })
     : [];
@@ -197,7 +199,14 @@ export async function searchDrugs(caseId: string, isInjectable: boolean, query: 
           },
           orderBy: { name: "asc" },
           take: remaining,
-          select: { id: true, name: true, category: true, defaultDose: true, route: true },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            defaultDose: true,
+            route: true,
+            categoryLinks: { select: { category: { select: { majorCategory: true } } } },
+          },
         })
       : [];
 
@@ -209,6 +218,7 @@ export async function searchDrugs(caseId: string, isInjectable: boolean, query: 
       defaultDose: r.defaultDose,
       route: r.route,
       matchedAlias: r.aliases[0]?.aliasText ?? null,
+      majorCategories: r.categoryLinks.map((l) => l.category.majorCategory),
     })),
     ...nameMatches.map((r) => ({
       id: r.id,
@@ -217,6 +227,7 @@ export async function searchDrugs(caseId: string, isInjectable: boolean, query: 
       defaultDose: r.defaultDose,
       route: r.route,
       matchedAlias: null,
+      majorCategories: r.categoryLinks.map((l) => l.category.majorCategory),
     })),
   ];
 }

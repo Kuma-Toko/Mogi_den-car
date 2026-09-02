@@ -169,6 +169,11 @@ export function DrugOrderDialog({
                         {d.matchedAlias && <span className="alias-hint"> (「{d.matchedAlias}」で一致)</span>}
                       </span>
                       <span className="drug-search-row-right">
+                        {d.majorCategories.map((c) => (
+                          <span key={c} className="cat-tag">
+                            {c}
+                          </span>
+                        ))}
                         {d.category && <span className="cat">{d.category}</span>}
                         <a
                           className="insert-link"
