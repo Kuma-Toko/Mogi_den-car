@@ -32,6 +32,7 @@ export const orderTypeLabel: Record<OrderType, string> = {
   MEDICATION: "処方",
   INJECTION: "注射・点滴",
   GENERAL: "一般指示",
+  PROCEDURE: "処置・手術",
 };
 
 export const orderTypeOrderLabel: Record<OrderType, string> = {
@@ -40,6 +41,7 @@ export const orderTypeOrderLabel: Record<OrderType, string> = {
   MEDICATION: "処方オーダー",
   INJECTION: "注射オーダー",
   GENERAL: "一般指示オーダー",
+  PROCEDURE: "処置・手術オーダー",
 };
 
 export const orderStatusLabel: Record<OrderStatus, string> = {

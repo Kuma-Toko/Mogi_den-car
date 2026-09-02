@@ -142,7 +142,8 @@ export type CartItem =
   | { kind: "LAB"; labItemId: string; label: string; imaging?: ImagingContext }
   | { kind: "MEDICATION_RP"; drugs: RpDrugLine[]; instruction: string; comment: string }
   | { kind: "INJECTION_RP"; drugs: RpDrugLine[]; rate: string; comment: string }
-  | { kind: "GENERAL"; category: string; selection: string; comment: string };
+  | { kind: "GENERAL"; category: string; selection: string; comment: string }
+  | { kind: "PROCEDURE"; category: string; selection: string; comment: string };
 
 export type DrugSearchResult = {
   id: string;
@@ -236,8 +237,14 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
   const resultReadyAt = computeResultReadyAt(caseRecord.resultTiming, orderedAt);
 
   const treatmentOrders = await db.order.findMany({
-    where: { caseId, orderType: { in: ["MEDICATION", "INJECTION"] } },
-    select: { orderedAt: true, orderType: true, drug: { select: { category: true } } },
+    where: { caseId, orderType: { in: ["MEDICATION", "INJECTION", "PROCEDURE"] } },
+    select: {
+      orderedAt: true,
+      orderType: true,
+      label: true,
+      detail: true,
+      drug: { select: { categoryLinks: { select: { category: { select: { majorCategory: true } } } } } },
+    },
   });
 
   const labItemIds = items.filter((i) => i.kind === "LAB").map((i) => i.labItemId);
@@ -371,9 +378,14 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
         const selection = item.selection.trim();
         const comment = item.comment.trim();
         const primary = selection || comment;
-        // プルダウン選択（安静度・食事）がある場合は選択値をラベルに、補足コメントは別枠（sub行）に出す。
+        // プルダウン選択（安静度・食事など）がある場合は選択値をラベルに、補足コメントは別枠（sub行）に出す。
         // 選択肢のないカテゴリ（清潔・清拭／活動・リハビリ）は従来どおりコメントがそのままラベルになる。
         const subComment = selection ? comment : "";
+        // category/selectionは表示用のcomment（あれば）に加えて常にdetailへ残す。
+        // 病態モデル側（酸素投与のSpO2上乗せ判定）がカテゴリ・選択値をラベル文字列に頼らず参照できるようにするため。
+        const detail: { category: string; selection?: string; comment?: string } = { category: item.category };
+        if (selection) detail.selection = selection;
+        if (subComment) detail.comment = subComment;
 
         await tx.order.create({
           data: {
@@ -381,8 +393,30 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
             orderedByUserId: user.id,
             orderType: "GENERAL",
             label: primary ? `${item.category}：${primary}` : item.category,
-            detail: subComment ? JSON.stringify({ comment: subComment }) : null,
+            detail: JSON.stringify(detail),
             status: "ACTIVE",
+            orderedAt,
+          },
+        });
+      } else if (item.kind === "PROCEDURE") {
+        if (!item.category) continue;
+        const selection = item.selection.trim();
+        const comment = item.comment.trim();
+        const primary = selection || comment;
+        // 一般指示と同様、プルダウン選択（処置）がある場合は選択値をラベルに、補足コメントは別枠に出す。
+        // 手術は選択肢を持たず、術式名をそのまま自由記述で入力する。
+        const subComment = selection ? comment : "";
+
+        await tx.order.create({
+          data: {
+            caseId,
+            orderedByUserId: user.id,
+            orderType: "PROCEDURE",
+            label: primary ? `${item.category}：${primary}` : item.category,
+            detail: subComment ? JSON.stringify({ comment: subComment }) : null,
+            // 一般指示（継続する指示）とは異なり、処置・手術は実施した行為の記録なので
+            // 注射・点滴と同じくADMINISTERED（実施済）で登録する。
+            status: "ADMINISTERED",
             orderedAt,
           },
         });

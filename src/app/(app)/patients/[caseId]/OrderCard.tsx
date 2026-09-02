@@ -7,22 +7,24 @@ import { LabOrderDialog } from "./LabOrderDialog";
 import { ImagingOrderDialog } from "./ImagingOrderDialog";
 import { DrugOrderDialog } from "./DrugOrderDialog";
 import { GeneralOrderDialog } from "./GeneralOrderDialog";
+import { ProcedureOrderDialog } from "./ProcedureOrderDialog";
 
 type LabItem = { id: string; name: string; category: string; subcategory: string | null };
 type UsageTemplate = { id: string; label: string };
 
 const IMAGING_CATEGORY = "画像検査";
 
-function cartItemLabel(item: Extract<CartItem, { kind: "LAB" | "GENERAL" }>): string {
+function cartItemLabel(item: Extract<CartItem, { kind: "LAB" | "GENERAL" | "PROCEDURE" }>): string {
   if (item.kind === "LAB") return item.label;
   const primary = item.selection || item.comment;
   return primary ? `${item.category}：${primary}` : item.category;
 }
 
-function cartItemSub(item: Extract<CartItem, { kind: "LAB" | "GENERAL" }>): string {
+function cartItemSub(item: Extract<CartItem, { kind: "LAB" | "GENERAL" | "PROCEDURE" }>): string {
   if (item.kind === "LAB") return item.imaging ? orderTypeLabel.IMAGING : orderTypeLabel.LAB;
+  const typeLabel = orderTypeLabel[item.kind];
   const subComment = item.selection ? item.comment : "";
-  return subComment ? `${orderTypeLabel.GENERAL}　${subComment}` : orderTypeLabel.GENERAL;
+  return subComment ? `${typeLabel}　${subComment}` : typeLabel;
 }
 
 // カート内での同種Rp（処方Rp／注射Rp）の何番目かを、その種類のRp登場順から求める
@@ -92,6 +94,7 @@ export function OrderCard({
           <DrugOrderDialog caseId={caseId} orderType="MEDICATION" usageTemplates={usageTemplates} onAdd={addToCart} />
           <DrugOrderDialog caseId={caseId} orderType="INJECTION" usageTemplates={usageTemplates} onAdd={addToCart} />
           <GeneralOrderDialog onAdd={addToCart} />
+          <ProcedureOrderDialog onAdd={addToCart} />
         </div>
 
         <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, margin: "14px 0 6px" }}>

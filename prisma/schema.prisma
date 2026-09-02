@@ -58,6 +58,7 @@ enum OrderType {
   MEDICATION // 処方
   INJECTION  // 注射・点滴
   GENERAL    // 一般指示
+  PROCEDURE  // 処置・手術
 }
 
 enum OrderStatus {
@@ -191,8 +192,36 @@ model DrugMaster {
   isInjectable   Boolean     @default(false) // true: 注射・点滴オーダーの対象 / false: 処方オーダーの対象
   orders         Order[]
   aliases        DrugAlias[]
+  categoryLinks  DrugCategoryLink[]
 
   @@index([normalizedName])
+}
+
+// 薬効カテゴリの辞書(大分類+系統のペア)。表記ゆれをここ1箇所で管理するため、
+// DrugMasterには直接文字列を持たせずDrugCategoryLink経由で多対多に紐付ける。
+model DrugCategoryMaster {
+  id            String   @id @default(cuid())
+  majorCategory String // 大分類(例: 抗菌薬)
+  subCategory   String? // 系統(例: セフェム系(第3世代))。大分類のみの場合はnull
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  links DrugCategoryLink[]
+
+  @@unique([majorCategory, subCategory])
+}
+
+// 薬剤とカテゴリの多対多リンク。1薬剤が複数カテゴリ(例: 配合剤)に属してよい。
+model DrugCategoryLink {
+  id           String             @id @default(cuid())
+  drugMasterId String
+  drugMaster   DrugMaster         @relation(fields: [drugMasterId], references: [id], onDelete: Cascade)
+  categoryId   String
+  category     DrugCategoryMaster @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt    DateTime           @default(now())
+
+  @@unique([drugMasterId, categoryId])
+  @@index([categoryId])
 }
 
 // 薬剤の別名(略称・俗称・表記ゆれ)。1つの別名が複数薬剤を指してよい(検索時は候補を複数返す)。

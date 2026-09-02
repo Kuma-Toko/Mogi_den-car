@@ -12,6 +12,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:import-hot": "tsx prisma/import-hot-master.ts",
     "db:seed-aliases": "tsx prisma/seed-drug-aliases.ts",
+    "db:import-drug-categories": "tsx prisma/import-drug-categories.ts",
     "db:migrate-turso": "tsx prisma/apply-turso-migrations.ts",
     "db:sync-drugs-turso": "tsx prisma/sync-drug-catalog-to-turso.ts",
     "db:diagnose-turso": "tsx prisma/diagnose-turso.ts",

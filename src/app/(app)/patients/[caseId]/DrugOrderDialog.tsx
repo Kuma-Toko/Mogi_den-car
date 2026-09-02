@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { OrderType } from "@prisma/client";
 import { orderTypeLabel } from "@/lib/labels";
+import { packageInsertSearchUrl } from "@/lib/packageInsert";
 import { searchDrugs, type CartItem, type DrugSearchResult, type RpDrugLine } from "./actions";
 
 const DOSE_UNITS = ["T", "mg", "g", "mL", "単位", "包"];
@@ -167,7 +168,18 @@ export function DrugOrderDialog({
                         {d.name}
                         {d.matchedAlias && <span className="alias-hint"> (「{d.matchedAlias}」で一致)</span>}
                       </span>
-                      <span className="cat">{d.category ?? ""}</span>
+                      <span className="drug-search-row-right">
+                        {d.category && <span className="cat">{d.category}</span>}
+                        <a
+                          className="insert-link"
+                          href={packageInsertSearchUrl(d.name)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          添付文書 ↗
+                        </a>
+                      </span>
                     </div>
                   ))
                 )}
@@ -182,6 +194,15 @@ export function DrugOrderDialog({
                     <div className="rp-draft-name">
                       {l.label}
                       {l.route && <span className="route">{l.route}</span>}
+                      <a
+                        className="insert-link"
+                        href={packageInsertSearchUrl(l.label)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        添付文書 ↗
+                      </a>
                     </div>
                     <div className="rp-draft-fields">
                       <input

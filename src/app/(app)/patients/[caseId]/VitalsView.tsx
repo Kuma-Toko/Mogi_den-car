@@ -1,6 +1,11 @@
+"use client";
+
+import { useState } from "react";
+
 export type VitalRow = {
   id: string;
   time: string;
+  timestamp: number;
   temperature: number | null;
   systolicBp: number | null;
   diastolicBp: number | null;
@@ -23,8 +28,10 @@ const LEGEND_HEIGHT = 24;
 const LABEL_STRIP = 18;
 const CHART_HEIGHT = LEGEND_HEIGHT + PLOT_HEIGHT + LABEL_STRIP;
 const INNER_PAD = 14;
-const MAX_X_LABELS = 10;
 const TICK_LEN = 4;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const WEEK_MS = 7 * DAY_MS;
 
 type SeriesDef = {
   key: VitalKey;
@@ -100,15 +107,15 @@ function scaleY(value: number, domainMin: number, domainMax: number): number {
   return LEGEND_HEIGHT + PLOT_HEIGHT - INNER_PAD - ratio * (PLOT_HEIGHT - INNER_PAD * 2);
 }
 
-function xAt(i: number, n: number): number {
-  if (n <= 1) return PAD_LEFT + (CHART_WIDTH - PAD_LEFT - PAD_RIGHT) / 2;
-  return PAD_LEFT + (i / (n - 1)) * (CHART_WIDTH - PAD_LEFT - PAD_RIGHT);
-}
-
-function buildLine(values: (number | null)[], domainMin: number, domainMax: number): string {
-  const n = values.length;
+function buildLine(
+  timestamps: number[],
+  values: (number | null)[],
+  domainMin: number,
+  domainMax: number,
+  xAtTime: (ts: number) => number
+): string {
   return values
-    .map((v, i) => (v === null ? null : `${xAt(i, n).toFixed(1)},${scaleY(v, domainMin, domainMax).toFixed(1)}`))
+    .map((v, i) => (v === null ? null : `${xAtTime(timestamps[i]).toFixed(1)},${scaleY(v, domainMin, domainMax).toFixed(1)}`))
     .filter((p): p is string => p !== null)
     .join(" ");
 }
@@ -117,19 +124,42 @@ function formatTick(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function labeledIndices(n: number): number[] {
-  if (n === 0) return [];
-  const maxLabels = Math.max(2, Math.min(MAX_X_LABELS, Math.floor((CHART_WIDTH - PAD_LEFT - PAD_RIGHT) / 54)));
-  const step = Math.max(1, Math.ceil(n / maxLabels));
-  const set = new Set<number>();
-  for (let i = 0; i < n; i += step) set.add(i);
-  set.add(n - 1);
-  return [...set].sort((a, b) => a - b);
+function startOfDay(ts: number): number {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
 }
 
-function CombinedVitalsChart({ times, values }: { times: string[]; values: Record<VitalKey, (number | null)[]> }) {
-  const n = times.length;
-  const xLabels = labeledIndices(n);
+function formatDayLabel(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+// Default view: the most recent week (7 calendar days) that contains data.
+function computeInitialWindowStart(vitals: VitalRow[]): number {
+  const latestTs = vitals[vitals.length - 1].timestamp;
+  return startOfDay(latestTs) + DAY_MS - WEEK_MS;
+}
+
+function CombinedVitalsChart({ vitals, windowStart }: { vitals: VitalRow[]; windowStart: number }) {
+  const windowEnd = windowStart + WEEK_MS;
+  const visible = vitals.filter((v) => v.timestamp >= windowStart && v.timestamp <= windowEnd);
+  const timestamps = visible.map((v) => v.timestamp);
+  const values: Record<VitalKey, (number | null)[]> = {
+    temperature: visible.map((v) => v.temperature),
+    systolicBp: visible.map((v) => v.systolicBp),
+    diastolicBp: visible.map((v) => v.diastolicBp),
+    pulse: visible.map((v) => v.pulse),
+    spo2: visible.map((v) => v.spo2),
+    respRate: visible.map((v) => v.respRate),
+  };
+
+  // Fixed calendar scale: exactly one week always spans the plot width,
+  // regardless of how many (or how few) points fall inside it.
+  const plotWidth = CHART_WIDTH - PAD_LEFT - PAD_RIGHT;
+  const xAtTime = (ts: number) => PAD_LEFT + ((ts - windowStart) / WEEK_MS) * plotWidth;
+  const dayTicks = Array.from({ length: 8 }, (_, i) => windowStart + i * DAY_MS);
+
   const legendItems = AXES.flatMap((a) => a.series);
   const legendItemW = CHART_WIDTH / legendItems.length;
   const plotTop = LEGEND_HEIGHT;
@@ -151,9 +181,9 @@ function CombinedVitalsChart({ times, values }: { times: string[]; values: Recor
           );
         })}
 
-        {/* vertical time gridlines */}
-        {xLabels.map((i) => (
-          <line key={`vg-${i}`} x1={xAt(i, n)} y1={plotTop} x2={xAt(i, n)} y2={plotBottom} stroke="var(--line-soft)" strokeWidth="1" />
+        {/* day gridlines */}
+        {dayTicks.map((ts, i) => (
+          <line key={`vg-${i}`} x1={xAtTime(ts)} y1={plotTop} x2={xAtTime(ts)} y2={plotBottom} stroke="var(--line-soft)" strokeWidth="1" />
         ))}
 
         {/* plot baseline */}
@@ -217,7 +247,7 @@ function CombinedVitalsChart({ times, values }: { times: string[]; values: Recor
         {AXES.map((axis) =>
           axis.series.map((s) => {
             const vals = values[s.key];
-            const points = buildLine(vals, axis.domain[0], axis.domain[1]);
+            const points = buildLine(timestamps, vals, axis.domain[0], axis.domain[1], xAtTime);
             return (
               <g key={s.key}>
                 {points && (
@@ -225,7 +255,7 @@ function CombinedVitalsChart({ times, values }: { times: string[]; values: Recor
                 )}
                 {vals.map((v, i) =>
                   v === null ? null : (
-                    <circle key={i} cx={xAt(i, n)} cy={scaleY(v, axis.domain[0], axis.domain[1])} r="2.2" fill={s.color} />
+                    <circle key={i} cx={xAtTime(timestamps[i])} cy={scaleY(v, axis.domain[0], axis.domain[1])} r="2.2" fill={s.color} />
                   )
                 )}
               </g>
@@ -233,12 +263,12 @@ function CombinedVitalsChart({ times, values }: { times: string[]; values: Recor
           })
         )}
 
-        {/* x-axis time labels */}
-        {xLabels.map((i) => {
-          const anchor = i === 0 ? "start" : i === n - 1 ? "end" : "middle";
+        {/* day boundary labels */}
+        {dayTicks.map((ts, i) => {
+          const anchor = i === 0 ? "start" : i === dayTicks.length - 1 ? "end" : "middle";
           return (
-            <text key={`xl-${i}`} x={xAt(i, n)} y={plotBottom + 13} fontSize="9" fill="var(--ink-soft)" textAnchor={anchor}>
-              {times[i]}
+            <text key={`xl-${i}`} x={xAtTime(ts)} y={plotBottom + 13} fontSize="9" fill="var(--ink-soft)" textAnchor={anchor}>
+              {formatDayLabel(ts)}
             </text>
           );
         })}
@@ -248,25 +278,49 @@ function CombinedVitalsChart({ times, values }: { times: string[]; values: Recor
 }
 
 export function VitalsView({ vitals }: { vitals: VitalRow[] }) {
-  const times = vitals.map((v) => v.time);
-  const values: Record<VitalKey, (number | null)[]> = {
-    temperature: vitals.map((v) => v.temperature),
-    systolicBp: vitals.map((v) => v.systolicBp),
-    diastolicBp: vitals.map((v) => v.diastolicBp),
-    pulse: vitals.map((v) => v.pulse),
-    spo2: vitals.map((v) => v.spo2),
-    respRate: vitals.map((v) => v.respRate),
-  };
+  const hasVitals = vitals.length > 0;
+  const [windowStart, setWindowStart] = useState<number>(() => (hasVitals ? computeInitialWindowStart(vitals) : 0));
+
+  const earliestDayStart = hasVitals ? startOfDay(vitals[0].timestamp) : 0;
+  const latestDayEnd = hasVitals ? startOfDay(vitals[vitals.length - 1].timestamp) + DAY_MS : 0;
+  const canGoPrev = hasVitals && windowStart > earliestDayStart;
+  const canGoNext = hasVitals && windowStart + WEEK_MS < latestDayEnd;
+  const rangeLabel = `${formatDayLabel(windowStart)} 〜 ${formatDayLabel(windowStart + WEEK_MS - DAY_MS)}`;
 
   return (
     <div className="card">
-      <div className="card-h">バイタルサイン推移</div>
+      <div className="card-h">
+        バイタルサイン推移
+        {hasVitals && (
+          <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 400 }}>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ fontSize: 11, opacity: canGoPrev ? 1 : 0.35, cursor: canGoPrev ? "pointer" : "default" }}
+              disabled={!canGoPrev}
+              onClick={() => setWindowStart((w) => w - WEEK_MS)}
+            >
+              ← 前週
+            </button>
+            <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>{rangeLabel}</span>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ fontSize: 11, opacity: canGoNext ? 1 : 0.35, cursor: canGoNext ? "pointer" : "default" }}
+              disabled={!canGoNext}
+              onClick={() => setWindowStart((w) => w + WEEK_MS)}
+            >
+              次週 →
+            </button>
+          </span>
+        )}
+      </div>
       <div className="card-b">
-        {vitals.length === 0 ? (
+        {!hasVitals ? (
           <div className="empty-note">バイタルの記録はまだありません。</div>
         ) : (
           <>
-            <CombinedVitalsChart times={times} values={values} />
+            <CombinedVitalsChart vitals={vitals} windowStart={windowStart} />
             <table style={{ marginTop: 14 }}>
               <thead>
                 <tr>

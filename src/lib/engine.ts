@@ -4,6 +4,7 @@ import type { Case, DiseaseTemplate, LabItemMaster, OrderType } from "@prisma/cl
 import {
   computeCaseSeverityAtTime,
   computeVitalsForSeverity,
+  findActiveOxygenBoost,
   getCaseClockNow,
   getTemplateConfig,
   resolveDynamicLab,
@@ -22,7 +23,9 @@ type CaseForEngine = Pick<Case, "id" | "createdAt" | "physiologyParams" | "timeP
 type TreatmentOrderWithDrug = {
   orderedAt: Date;
   orderType: OrderType;
-  drug: { category: string | null } | null;
+  label: string;
+  detail: string | null;
+  drug: { categoryLinks: { category: { majorCategory: string } }[] } | null;
 };
 
 export function computeResultReadyAt(resultTiming: "IMMEDIATE" | "DELAYED", now = new Date()): Date {
@@ -64,10 +67,18 @@ async function loadCaseForEngine(caseId: string): Promise<CaseForEngine | null> 
   return db.case.findUnique({ where: { id: caseId }, include: { diseaseTemplate: true } });
 }
 
+// MEDICATION/INJECTION（薬剤治療判定）・PROCEDURE（処置・手術治療判定）・GENERAL（酸素投与のSpO2上乗せ判定）
+// をまとめて取得する。判定に使わないオーダー種別（LAB/IMAGING）は含めない。
 async function loadTreatmentOrders(caseId: string): Promise<TreatmentOrderWithDrug[]> {
   return db.order.findMany({
-    where: { caseId, orderType: { in: ["MEDICATION", "INJECTION"] } },
-    select: { orderedAt: true, orderType: true, drug: { select: { category: true } } },
+    where: { caseId, orderType: { in: ["MEDICATION", "INJECTION", "PROCEDURE", "GENERAL"] } },
+    select: {
+      orderedAt: true,
+      orderType: true,
+      label: true,
+      detail: true,
+      drug: { select: { categoryLinks: { select: { category: { select: { majorCategory: true } } } } } },
+    },
   });
 }
 
@@ -137,7 +148,8 @@ export async function reconcileCaseVitals(caseId: string): Promise<void> {
   for (const at of points) {
     const severity = computeCaseSeverityAtTime(caseRecord, treatmentOrders, templateKey, at);
     if (severity === null) continue;
-    const vitals = computeVitalsForSeverity(templateKey, severity);
+    const oxygenBoost = findActiveOxygenBoost(treatmentOrders, at);
+    const vitals = computeVitalsForSeverity(templateKey, severity, oxygenBoost);
     if (!vitals) continue;
     await db.vital.create({ data: { caseId, recordedAt: at, ...vitals } });
   }

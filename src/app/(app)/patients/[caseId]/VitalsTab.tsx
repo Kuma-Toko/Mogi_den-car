@@ -8,6 +8,7 @@ export async function VitalsTab({ caseId }: { caseId: string }) {
   const rows = vitals.map((v) => ({
     id: v.id,
     time: formatJaDateTimeShort(v.recordedAt),
+    timestamp: v.recordedAt.getTime(),
     temperature: v.temperature,
     systolicBp: v.systolicBp,
     diastolicBp: v.diastolicBp,

@@ -1,7 +1,10 @@
 import { db } from "@/lib/db";
 import { formatJaDateTimeShort } from "@/lib/format";
 import { orderStatusBadgeClass, orderStatusLabel, orderTypeLabel } from "@/lib/labels";
+import { packageInsertSearchUrl } from "@/lib/packageInsert";
 import { OrderCard } from "./OrderCard";
+
+const DRUG_ORDER_TYPES = new Set(["MEDICATION", "INJECTION"]);
 
 type OrderRow = Awaited<ReturnType<typeof loadOrders>>[number];
 
@@ -71,7 +74,17 @@ export async function OrdersTab({ caseId }: { caseId: string }) {
                       return (
                         <div className="rp-drug-item" key={o.id}>
                           <div className="order-item">
-                            <div className="name">{o.label}</div>
+                            <div className="name">
+                              {o.label}
+                              <a
+                                className="insert-link"
+                                href={packageInsertSearchUrl(o.label)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                添付文書 ↗
+                              </a>
+                            </div>
                             <span className={`badge ${orderStatusBadgeClass[o.status]}`}>{orderStatusLabel[o.status]}</span>
                           </div>
                           {note && <div className="rp-drug-note">{note}</div>}
@@ -89,7 +102,19 @@ export async function OrdersTab({ caseId }: { caseId: string }) {
               return (
                 <div className="order-item" key={first.id}>
                   <div>
-                    <div className="name">{first.label}</div>
+                    <div className="name">
+                      {first.label}
+                      {DRUG_ORDER_TYPES.has(first.orderType) && (
+                        <a
+                          className="insert-link"
+                          href={packageInsertSearchUrl(first.label)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          添付文書 ↗
+                        </a>
+                      )}
+                    </div>
                     <div className="sub">
                       {orderTypeLabel[first.orderType]}　{formatJaDateTimeShort(first.orderedAt)}
                       {comment && <>　/　{comment}</>}

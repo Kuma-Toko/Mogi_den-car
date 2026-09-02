@@ -572,6 +572,72 @@ async function main() {
       description: "腎機能・電解質の推移",
       defaultParams: { initialTempSlider: 40, improvementSpeedSlider: 55, initialSpo2Slider: 25, severitySlider: 40 },
     },
+    {
+      key: "dka",
+      name: "糖尿病性ケトアシドーシス（DKA）",
+      description: "高血糖・アシドーシス・電解質異常の経時変化",
+      defaultParams: { initialTempSlider: 40, improvementSpeedSlider: 35, initialSpo2Slider: 70, severitySlider: 60 },
+    },
+    {
+      key: "acs",
+      name: "急性冠症候群（ACS）",
+      description: "心筋逸脱酵素・循環動態の経時変化",
+      defaultParams: { initialTempSlider: 45, improvementSpeedSlider: 50, initialSpo2Slider: 60, severitySlider: 60 },
+    },
+    {
+      key: "pe",
+      name: "肺血栓塞栓症（PE）",
+      description: "Dダイマー・酸素化・循環動態の経時変化",
+      defaultParams: { initialTempSlider: 45, improvementSpeedSlider: 40, initialSpo2Slider: 35, severitySlider: 60 },
+    },
+    {
+      key: "asthma_copd",
+      name: "気管支喘息発作・COPD増悪",
+      description: "血液ガス・酸素化の経時変化",
+      defaultParams: { initialTempSlider: 45, improvementSpeedSlider: 55, initialSpo2Slider: 40, severitySlider: 55 },
+    },
+    {
+      key: "thyroid_storm",
+      name: "甲状腺クリーゼ",
+      description: "甲状腺ホルモン・頻脈・発熱の経時変化",
+      defaultParams: { initialTempSlider: 85, improvementSpeedSlider: 35, initialSpo2Slider: 75, severitySlider: 65 },
+    },
+    {
+      key: "gi_bleed",
+      name: "消化管出血",
+      description: "貧血進行・循環動態の経時変化",
+      defaultParams: { initialTempSlider: 40, improvementSpeedSlider: 45, initialSpo2Slider: 80, severitySlider: 55 },
+    },
+    {
+      key: "pancreatitis",
+      name: "急性膵炎",
+      description: "膵酵素・カルシウム・循環動態の経時変化",
+      defaultParams: { initialTempSlider: 60, improvementSpeedSlider: 40, initialSpo2Slider: 65, severitySlider: 55 },
+    },
+    {
+      key: "anaphylaxis",
+      name: "アナフィラキシー",
+      description: "急速な循環虚脱・酸素化低下と治療への速い反応",
+      defaultParams: { initialTempSlider: 35, improvementSpeedSlider: 75, initialSpo2Slider: 35, severitySlider: 70 },
+    },
+    {
+      key: "adrenal_crisis",
+      name: "副腎クリーゼ（急性副腎不全）",
+      description: "低血圧・電解質異常の経時変化",
+      defaultParams: { initialTempSlider: 55, improvementSpeedSlider: 40, initialSpo2Slider: 75, severitySlider: 55 },
+    },
+    {
+      key: "arrhythmia",
+      name: "頻脈性不整脈",
+      description: "電解質異常を背景とした頻脈・循環動態の経時変化",
+      defaultParams: { initialTempSlider: 40, improvementSpeedSlider: 45, initialSpo2Slider: 70, severitySlider: 50 },
+    },
+    {
+      key: "appendicitis",
+      name: "急性虫垂炎",
+      description: "薬物治療では改善せず、虫垂切除術のみが治療開始とみなされる外科的治療モデル",
+      defaultParams: { initialTempSlider: 55, improvementSpeedSlider: 70, initialSpo2Slider: 25, severitySlider: 55 },
+    },
   ];
   const templates: Record<string, { id: string }> = {};
   for (const t of templateDefs) {
@@ -712,7 +778,7 @@ async function main() {
     patientName: "（シミュレーション症例）急性腹症",
     patientAge: 42,
     patientGender: "女性",
-    templateKey: "infection",
+    templateKey: "appendicitis",
     problems: ["急性虫垂炎 疑い"],
   });
 

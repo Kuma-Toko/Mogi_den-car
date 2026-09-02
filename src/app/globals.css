@@ -544,11 +544,12 @@ tr.row:hover td {
 }
 .radio2 {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 .radio2 div,
 .radio2 button {
-  flex: 1;
+  flex: 1 1 110px;
   text-align: center;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -846,6 +847,25 @@ dialog.order-dialog::backdrop {
 .drug-search-row:hover {
   border-color: var(--teal);
   background: var(--teal-tint);
+}
+.drug-search-row-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.drug-search-row-right .insert-link {
+  margin-left: 0;
+}
+.insert-link {
+  font-size: 11px;
+  color: var(--teal-dark);
+  text-decoration: none;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+.insert-link:hover {
+  text-decoration: underline;
 }
 .drug-search-row .cat {
   font-size: 11px;
