@@ -14,15 +14,15 @@ enum Role {
 
 // 症例区分
 enum CaseType {
-  SIMULATION      // シミュレーション用
-  ROUTINE_COMMON  // 実習常時利用（共通プール）
+  SIMULATION // シミュレーション用
+  ROUTINE_COMMON // 実習常時利用（共通プール）
   ROUTINE_PATIENT // 実習常時利用（実患者ベース）
 }
 
 // 時間進行方式
 enum TimeProgressMode {
   REALTIME // 実時間進行（実習常時利用ツール）
-  MANUAL   // 学習者が手動で進行（シミュレーション用ツール）
+  MANUAL // 学習者が手動で進行（シミュレーション用ツール）
 }
 
 // 複数学生の共有設定
@@ -34,14 +34,28 @@ enum SharingMode {
 // 検査結果の取得タイミング
 enum ResultTiming {
   IMMEDIATE // 即時型
-  DELAYED   // 遅延型
+  DELAYED // 遅延型
+}
+
+// 病態テンプレートに紐づく「危機シナリオ」発生時、未救命のまま猶予時間を過ぎたときの扱い
+enum CrisisMode {
+  OFF // 危機シナリオを発生させない（従来通り病態モデルのみ）
+  REVERSIBLE // 猶予時間を過ぎても死亡させず、CRITICALのまま留まる（いつでも救命オーダーで脱出可）
+  LETHAL // 猶予時間内に救命オーダーがなければDECEASEDに遷移
+}
+
+// 症例の危機状態
+enum CrisisState {
+  STABLE // 通常の病態モデルに従う
+  CRITICAL // 危機シナリオ発生中（救命オーダー待ち）
+  DECEASED // 死亡（症例凍結）
 }
 
 enum CaseStatus {
-  DRAFT      // 下書き
-  ACTIVE     // 公開・進行中
+  DRAFT // 下書き
+  ACTIVE // 公開・進行中
   SIMULATING // 演習中（シミュレーション実施中）
-  CLOSED     // 終了
+  CLOSED // 終了
 }
 
 // 問診・身体診察AIチャットの発言者区分
@@ -52,28 +66,28 @@ enum EncounterRole {
 
 // カルテ記載の様式区分
 enum KarteEntryType {
-  SOAP      // SOAP形式
+  SOAP // SOAP形式
   NARRATIVE // フリー記載（経過記録・退院時サマリ等の自由記述）
-  REFERRAL  // 紹介状（診療情報提供書）
+  REFERRAL // 紹介状（診療情報提供書）
   AMBULANCE // 救急搬送記録
 }
 
 enum OrderType {
-  LAB        // 検査
-  IMAGING    // 画像検査
+  LAB // 検査
+  IMAGING // 画像検査
   MEDICATION // 処方
-  INJECTION  // 注射・点滴
-  GENERAL    // 一般指示
-  PROCEDURE  // 処置・手術
+  INJECTION // 注射・点滴
+  GENERAL // 一般指示
+  PROCEDURE // 処置・手術
 }
 
 enum OrderStatus {
-  ORDERED          // オーダー済
-  RESULT_PENDING   // 結果待ち
+  ORDERED // オーダー済
+  RESULT_PENDING // 結果待ち
   RESULT_AVAILABLE // 結果あり
-  ADMINISTERED     // 実施済
-  ACTIVE           // 有効（一般指示など）
-  DISCONTINUED     // 中止
+  ADMINISTERED // 実施済
+  ACTIVE // 有効（一般指示など）
+  DISCONTINUED // 中止
 }
 
 model User {
@@ -107,14 +121,14 @@ model Session {
 }
 
 model Case {
-  id               String            @id @default(cuid())
-  caseCode         String            @unique // P-1042, SIM-07 等の表示ID
-  title            String            // 症例名
+  id               String           @id @default(cuid())
+  caseCode         String           @unique // P-1042, SIM-07 等の表示ID
+  title            String // 症例名
   caseType         CaseType
-  status           CaseStatus        @default(DRAFT)
+  status           CaseStatus       @default(DRAFT)
   timeProgressMode TimeProgressMode
-  sharingMode      SharingMode       @default(SOLO)
-  resultTiming     ResultTiming      @default(IMMEDIATE)
+  sharingMode      SharingMode      @default(SOLO)
+  resultTiming     ResultTiming     @default(IMMEDIATE)
   simNowAt         DateTime? // MANUAL（シミュレーション）症例の仮想時計。学習者が手動で進行させる
 
   patientName   String
@@ -129,6 +143,13 @@ model Case {
   diseaseTemplate   DiseaseTemplate? @relation(fields: [diseaseTemplateId], references: [id])
   physiologyParams  String? // JSON文字列: 初期値・変化パラメータ（体温初期値・改善速度・SpO2初期値・重症度 等）
   imagingPattern    String? // 画像所見の出し分けキー（例: infiltrate_mild/moderate/severe）
+
+  crisisMode         CrisisMode  @default(LETHAL) // 危機シナリオ未救命時の扱い。テンプレートにcrisisが未定義なら実質無視される
+  crisisState        CrisisState @default(STABLE)
+  crisisStartedAt    DateTime? // 危機シナリオ発生時刻（猶予時間・救命オーダー判定の起点）
+  // 重症度カーブの起点。通常はcreatedAt相当だが、危機シナリオからの救命成功時にその時刻へリセットされ、
+  // 以降はそこを新たな起点として重症度が再計算される
+  severityBaselineAt DateTime    @default(now())
 
   historyScript String? // 問診AI用の台本。現病歴・既往歴・アレルギー・生活歴等、学生の質問に対する根拠情報
   examScript    String? // 身体診察AI用の台本。視診・触診・打診・聴診など系統別の所見
@@ -204,15 +225,15 @@ model EncounterMessage {
 }
 
 model DrugMaster {
-  id             String      @id @default(cuid())
-  hotCode        String      @unique
+  id             String             @id @default(cuid())
+  hotCode        String             @unique
   name           String
-  normalizedName String      @default("") // normalizeDrugName(name)。検索時にaliasesと同じ土俵で比較するためのキー
+  normalizedName String             @default("") // normalizeDrugName(name)。検索時にaliasesと同じ土俵で比較するためのキー
   category       String?
   defaultDose    String?
   unit           String?
   route          String?
-  isInjectable   Boolean     @default(false) // true: 注射・点滴オーダーの対象 / false: 処方オーダーの対象
+  isInjectable   Boolean            @default(false) // true: 注射・点滴オーダーの対象 / false: 処方オーダーの対象
   orders         Order[]
   aliases        DrugAlias[]
   categoryLinks  DrugCategoryLink[]

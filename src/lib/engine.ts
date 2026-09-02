@@ -4,9 +4,12 @@ import type { Case, DiseaseTemplate, LabItemMaster, OrderType } from "@prisma/cl
 import {
   computeCaseSeverityAtTime,
   computeVitalsForSeverity,
+  evaluateCrisisTriggers,
   findActiveOxygenBoost,
+  findCrisisRescueAt,
   getCaseClockNow,
   getTemplateConfig,
+  parsePhysiologyParams,
   resolveDynamicLab,
 } from "@/lib/physiology-engine";
 import { formatLabValues, type LabValue } from "@/lib/lab-reference-ranges";
@@ -16,7 +19,18 @@ const DELAYED_RESULT_DELAY_MS = 2 * 3_600_000; // 遅延型オーダーの結果
 const SNAPSHOT_INTERVAL_HOURS = 4; // バイタルの自動記録間隔（実時間 or シミュレーション時間）
 const MAX_SNAPSHOTS_PER_RECONCILE = 12; // 一度に生成するバイタル記録の上限（時間を大きく進めた場合の暴走防止）
 
-type CaseForEngine = Pick<Case, "id" | "createdAt" | "physiologyParams" | "timeProgressMode" | "simNowAt"> & {
+type CaseForEngine = Pick<
+  Case,
+  | "id"
+  | "createdAt"
+  | "physiologyParams"
+  | "timeProgressMode"
+  | "simNowAt"
+  | "severityBaselineAt"
+  | "crisisMode"
+  | "crisisState"
+  | "crisisStartedAt"
+> & {
   diseaseTemplate: DiseaseTemplate | null;
 };
 
@@ -37,15 +51,20 @@ export type LabResult = { text: string; values: LabValue[] | null };
 
 // 病態テンプレートに紐づく検査項目なら、その時点の重症度に応じた所見を返す。
 // テンプレート対象外の項目やテンプレート未設定の症例では、マスターの固定値/固定文にフォールバックする。
+// crisisState が STABLE でない（危機シナリオ発生中・死亡後）症例は、通常の重症度カーブでなく
+// 常にsevere階層の所見を返す（危機専用の所見までは作り込まず、既存のsevere値を流用する）。
 export function resolveLabResult(
-  caseRecord: Pick<Case, "createdAt" | "physiologyParams">,
+  caseRecord: Pick<Case, "physiologyParams" | "severityBaselineAt" | "crisisState">,
   treatmentOrders: TreatmentOrderWithDrug[],
   templateKey: string | null | undefined,
   labItem: Pick<LabItemMaster, "code" | "sampleResult" | "sampleValues"> | null,
   atTime: Date
 ): LabResult {
   if (labItem) {
-    const severity = computeCaseSeverityAtTime(caseRecord, treatmentOrders, templateKey, atTime);
+    const severity =
+      caseRecord.crisisState === "STABLE"
+        ? computeCaseSeverityAtTime(caseRecord, treatmentOrders, templateKey, atTime)
+        : 100;
     if (severity !== null) {
       const dynamic = resolveDynamicLab(templateKey, labItem.code, severity);
       if (dynamic) return dynamic;
@@ -86,7 +105,7 @@ async function loadTreatmentOrders(caseId: string): Promise<TreatmentOrderWithDr
 // 「反映時刻を過ぎたか」は症例の時計（REALTIME=実時間 / MANUAL=シミュレーション時間）で判定する。
 export async function reconcileCaseResults(caseId: string): Promise<void> {
   const caseRecord = await loadCaseForEngine(caseId);
-  if (!caseRecord) return;
+  if (!caseRecord || caseRecord.crisisState === "DECEASED") return;
   const clockNow = getCaseClockNow(caseRecord);
 
   const due = await db.order.findMany({
@@ -118,9 +137,10 @@ export async function reconcileCaseResults(caseId: string): Promise<void> {
 // バイタルを一定間隔で自動生成する。テンプレート未設定の症例は対象外（従来どおり静的なデータのまま）。
 export async function reconcileCaseVitals(caseId: string): Promise<void> {
   const caseRecord = await loadCaseForEngine(caseId);
-  if (!caseRecord) return;
+  if (!caseRecord || caseRecord.crisisState === "DECEASED") return;
   const templateKey = caseRecord.diseaseTemplate?.key;
-  if (!templateKey || !getTemplateConfig(templateKey)) return;
+  const config = templateKey ? getTemplateConfig(templateKey) : null;
+  if (!templateKey || !config) return;
 
   const clockNow = getCaseClockNow(caseRecord);
   const lastVital = await db.vital.findFirst({ where: { caseId }, orderBy: { recordedAt: "desc" } });
@@ -145,18 +165,84 @@ export async function reconcileCaseVitals(caseId: string): Promise<void> {
 
   const treatmentOrders = await loadTreatmentOrders(caseId);
 
+  // 危機シナリオ発生中（CRITICAL）は通常の重症度カーブでなく、シナリオ固定の危機バイタルを記録する。
   for (const at of points) {
-    const severity = computeCaseSeverityAtTime(caseRecord, treatmentOrders, templateKey, at);
-    if (severity === null) continue;
-    const oxygenBoost = findActiveOxygenBoost(treatmentOrders, at);
-    const vitals = computeVitalsForSeverity(templateKey, severity, oxygenBoost);
+    const vitals =
+      caseRecord.crisisState === "CRITICAL"
+        ? config.crisis.crisisVitals
+        : (() => {
+            const severity = computeCaseSeverityAtTime(caseRecord, treatmentOrders, templateKey, at);
+            if (severity === null) return null;
+            const oxygenBoost = findActiveOxygenBoost(treatmentOrders, at);
+            return computeVitalsForSeverity(templateKey, severity, oxygenBoost);
+          })();
     if (!vitals) continue;
     await db.vital.create({ data: { caseId, recordedAt: at, ...vitals } });
   }
 }
 
+// 危機シナリオ（急変・死亡モデル）の状態遷移を判定する。
+// STABLE: 発動条件（テンプレートごとのcrisis.triggers）を満たせばCRITICALへ遷移し、対象学生へ通知する。
+// CRITICAL: crisisStartedAt以降に救命オーダー（crisis.rescueActions）があればSTABLEへ復帰
+//   （重症度カーブの起点をこの時刻にリセットし、postRescueSeverityから再開する）。
+//   なければwindowMinutes経過を確認し、crisisMode=LETHALならDECEASEDへ（症例凍結）、
+//   REVERSIBLEなら猶予切れでも死亡させずCRITICALのまま留まる（いつでも救命オーダーで脱出可能）。
+export async function reconcileCaseCrisis(caseId: string): Promise<void> {
+  const caseRecord = await loadCaseForEngine(caseId);
+  if (!caseRecord || caseRecord.crisisState === "DECEASED" || caseRecord.crisisMode === "OFF") return;
+
+  const templateKey = caseRecord.diseaseTemplate?.key;
+  const config = templateKey ? getTemplateConfig(templateKey) : null;
+  if (!templateKey || !config) return;
+
+  const clockNow = getCaseClockNow(caseRecord);
+  const treatmentOrders = await loadTreatmentOrders(caseId);
+
+  if (caseRecord.crisisState === "STABLE") {
+    const severity = computeCaseSeverityAtTime(caseRecord, treatmentOrders, templateKey, clockNow);
+    if (severity === null) return;
+    const oxygenBoost = findActiveOxygenBoost(treatmentOrders, clockNow);
+    if (!evaluateCrisisTriggers(templateKey, config.crisis, severity, oxygenBoost)) return;
+
+    await db.case.update({ where: { id: caseId }, data: { crisisState: "CRITICAL", crisisStartedAt: clockNow } });
+    await notifyAssignedStudents(caseId, `【急変】${config.crisis.name}を疑う状態です。直ちに対応してください。`);
+    return;
+  }
+
+  // CRITICAL
+  const crisisStartedAt = caseRecord.crisisStartedAt ?? clockNow;
+  const rescuedAt = findCrisisRescueAt(treatmentOrders, config.crisis, crisisStartedAt);
+  if (rescuedAt) {
+    const params = parsePhysiologyParams(caseRecord.physiologyParams);
+    await db.case.update({
+      where: { id: caseId },
+      data: {
+        crisisState: "STABLE",
+        crisisStartedAt: null,
+        severityBaselineAt: clockNow,
+        physiologyParams: JSON.stringify({ ...params, severitySlider: config.crisis.postRescueSeverity }),
+      },
+    });
+    await notifyAssignedStudents(caseId, "救命処置が奏功し、状態は安定化しました。");
+    return;
+  }
+
+  const elapsedMinutes = (clockNow.getTime() - crisisStartedAt.getTime()) / 60_000;
+  if (elapsedMinutes >= config.crisis.windowMinutes && caseRecord.crisisMode === "LETHAL") {
+    await db.case.update({ where: { id: caseId }, data: { crisisState: "DECEASED" } });
+    await notifyAssignedStudents(caseId, "【死亡確認】救命処置が間に合わず、患者は死亡しました。");
+  }
+}
+
+async function notifyAssignedStudents(caseId: string, message: string): Promise<void> {
+  const assignments = await db.caseAssignment.findMany({ where: { caseId }, select: { studentId: true } });
+  if (assignments.length === 0) return;
+  await db.notification.createMany({ data: assignments.map((a) => ({ userId: a.studentId, caseId, message })) });
+}
+
 export async function reconcileCase(caseId: string): Promise<void> {
   await reconcileCaseResults(caseId);
+  await reconcileCaseCrisis(caseId);
   await reconcileCaseVitals(caseId);
 }
 

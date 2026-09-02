@@ -239,7 +239,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
   if (!items || items.length === 0) return;
 
   const caseRecord = await db.case.findUnique({ where: { id: caseId }, include: { diseaseTemplate: true } });
-  if (!caseRecord) return;
+  if (!caseRecord || caseRecord.crisisState === "DECEASED") return;
 
   // シミュレーション症例ではオーダー時刻もシミュレーション時計に合わせる。治療開始時刻の判定や
   // バイタルの時系列がこの時刻を基準に計算されるため、実時刻のままだとズレてしまう。

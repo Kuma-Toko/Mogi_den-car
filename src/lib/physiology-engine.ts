@@ -30,13 +30,46 @@ type TreatmentTrigger = {
   procedureKeywords?: string[];
 };
 
+// 危機シナリオ（急変・死亡モデル）の発動条件。severityは重症度そのもの、labはその時点の重症度から
+// 導かれる動的検査所見（resolveDynamicLabの数値項目）、vitalはその時点の重症度から導かれるバイタルを参照する。
+// いずれもテンプレートの通常の重症度カーブ上の値を見るだけで、学生が実際にその検査をオーダーしたかは問わない
+// （＝オーダーの有無に関わらず、患者の「真の」病態として急変しうる）。
+// labトリガーのlabelは、1つの検査項目コードが複数の値を返す（例: 動脈血液ガス分析がpH/pCO2/pO2等を
+// まとめて返す）場合に、そのうちどの値を見るかを指定する。省略時は配列の先頭（values[0]）を見る。
+export type CrisisTrigger =
+  | { type: "severity"; op: ">=" | "<="; value: number }
+  | { type: "lab"; code: string; label?: string; op: ">=" | "<="; value: number }
+  | { type: "vital"; field: keyof VitalPoint; op: ">=" | "<="; value: number };
+
+// 危機シナリオから脱するための救命オーダー。TreatmentTrigger同様、薬剤大分類 or 処置・手術labelの部分一致。
+export type CrisisRescueAction = {
+  label: string;
+  drugCategories?: string[];
+  procedureKeywords?: string[];
+};
+
+export type CrisisScenario = {
+  name: string; // 表示名（例: "心室細動・心停止"）
+  triggers: CrisisTrigger[]; // いずれか1つで発動（OR）
+  windowMinutes: number; // 発動後この時間内に救命オーダーがなければ死亡（crisisMode=LETHALの場合）
+  rescueActions: CrisisRescueAction[]; // いずれか1つのオーダーで危機を脱する
+  crisisVitals: VitalPoint; // 危機発生中（CRITICAL/DECEASED）は通常の重症度カーブでなくこの固定値を表示
+  postRescueSeverity: number; // 救命成功後にリセットする重症度
+};
+
 type TemplateConfig = {
   treatment: TreatmentTrigger;
   vitals: VitalCoefficients;
   // 検査項目コード（LabItemMaster.code）ごとの重症度別所見パターン。
   // 数値化できる項目はvalues（H/L判定・色分け表示の対象）、画像所見・培養結果などの定性的な項目はtextを使う。
   labPatterns: Record<string, PatternSet>;
+  crisis: CrisisScenario;
 };
+
+// 全テンプレート共通の危機シナリオの猶予時間。現実の急変対応時間より大幅に長いが、
+// 症例の進行ペース（実時間 or シミュレーション時間の単位が時間〜日オーダー）に合わせて
+// あえてこの値を採用している（ユーザー指示）。
+export const CRISIS_WINDOW_MINUTES = 480;
 
 const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
   infection: {
@@ -92,6 +125,20 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
         },
       },
     },
+    crisis: {
+      name: "敗血症性ショック・心停止",
+      triggers: [
+        { type: "vital", field: "systolicBp", op: "<=", value: 100 },
+        { type: "lab", code: "5C070", op: ">=", value: 22.4 },
+      ],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [
+        { label: "急速輸液", drugCategories: ["輸液"] },
+        { label: "気管挿管・人工呼吸管理", procedureKeywords: ["気管挿管"] },
+      ],
+      crisisVitals: { temperature: 35.0, systolicBp: 68, diastolicBp: 40, pulse: 138, spo2: 79, respRate: 32 },
+      postRescueSeverity: 55,
+    },
   },
   heart_failure: {
     treatment: { drugCategories: ["利尿薬"] },
@@ -127,6 +174,17 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           severe: "左室駆出率は高度低下（LVEF 25%）。著明なびまん性壁運動低下と中等度以上の機能性僧帽弁逆流を認める。下大静脈は拡張し呼吸性変動を欠く。",
         },
       },
+    },
+    crisis: {
+      name: "心原性ショック・肺水腫増悪",
+      triggers: [{ type: "lab", code: "H8039", op: ">=", value: 1450 }],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [
+        { label: "強心薬投与", drugCategories: ["強心配糖体"] },
+        { label: "気管挿管・人工呼吸管理", procedureKeywords: ["気管挿管"] },
+      ],
+      crisisVitals: { temperature: 36.0, systolicBp: 72, diastolicBp: 48, pulse: 130, spo2: 68, respRate: 34 },
+      postRescueSeverity: 50,
     },
   },
   dehydration: {
@@ -164,6 +222,17 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
         },
       },
     },
+    crisis: {
+      name: "循環血液量減少性ショック",
+      triggers: [
+        { type: "lab", code: "3C015", op: ">=", value: 2.4 },
+        { type: "lab", code: "3H010", op: ">=", value: 152 },
+      ],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [{ label: "急速輸液", drugCategories: ["輸液"] }],
+      crisisVitals: { temperature: 35.5, systolicBp: 62, diastolicBp: 38, pulse: 142, spo2: 90, respRate: 28 },
+      postRescueSeverity: 45,
+    },
   },
   dka: {
     treatment: { drugCategories: ["糖尿病治療薬"] },
@@ -181,13 +250,31 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           severe: [{ label: "Glu", value: 560, unit: "mg/dL" }],
         },
       },
-      "3H050": {
-        // 動脈血pH
+      "3H080": {
+        // 動脈血液ガス分析（代謝性アシドーシス・呼吸性代償）
         kind: "values",
         patterns: {
-          mild: [{ label: "動脈血pH", value: 7.32, unit: "" }],
-          moderate: [{ label: "動脈血pH", value: 7.2, unit: "" }],
-          severe: [{ label: "動脈血pH", value: 7.05, unit: "" }],
+          mild: [
+            { label: "動脈血pH", value: 7.32, unit: "" },
+            { label: "pCO2", value: 30, unit: "mmHg", note: "呼吸性代償" },
+            { label: "pO2", value: 92, unit: "mmHg" },
+            { label: "血漿HCO3", value: 16, unit: "mEq/L" },
+            { label: "BE", value: -8, unit: "mEq/L" },
+          ],
+          moderate: [
+            { label: "動脈血pH", value: 7.2, unit: "" },
+            { label: "pCO2", value: 25, unit: "mmHg", note: "呼吸性代償" },
+            { label: "pO2", value: 90, unit: "mmHg" },
+            { label: "血漿HCO3", value: 10, unit: "mEq/L" },
+            { label: "BE", value: -15, unit: "mEq/L" },
+          ],
+          severe: [
+            { label: "動脈血pH", value: 7.05, unit: "" },
+            { label: "pCO2", value: 18, unit: "mmHg", note: "Kussmaul呼吸" },
+            { label: "pO2", value: 88, unit: "mmHg" },
+            { label: "血漿HCO3", value: 5, unit: "mEq/L" },
+            { label: "BE", value: -22, unit: "mEq/L" },
+          ],
         },
       },
       "3H015": {
@@ -199,15 +286,20 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           severe: [{ label: "K", value: 6.5, unit: "mEq/L" }],
         },
       },
-      "3E010": {
-        // 乳酸
-        kind: "values",
-        patterns: {
-          mild: [{ label: "乳酸", value: 18, unit: "mg/dL" }],
-          moderate: [{ label: "乳酸", value: 30, unit: "mg/dL" }],
-          severe: [{ label: "乳酸", value: 45, unit: "mg/dL" }],
-        },
-      },
+    },
+    crisis: {
+      name: "糖尿病性ケトアシドーシス昏睡",
+      triggers: [
+        { type: "lab", code: "3H080", op: "<=", value: 7.05 },
+        { type: "lab", code: "3H015", op: ">=", value: 6.5 },
+      ],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [
+        { label: "インスリン持続投与", drugCategories: ["糖尿病治療薬"] },
+        { label: "急速輸液・カリウム補正", drugCategories: ["輸液"] },
+      ],
+      crisisVitals: { temperature: 35.8, systolicBp: 78, diastolicBp: 46, pulse: 128, spo2: 92, respRate: 34 },
+      postRescueSeverity: 45,
     },
   },
   acs: {
@@ -254,6 +346,17 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
         },
       },
     },
+    crisis: {
+      name: "心室細動・心停止",
+      triggers: [{ type: "vital", field: "systolicBp", op: "<=", value: 82 }],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [
+        { label: "除細動", procedureKeywords: ["除細動"] },
+        { label: "抗血小板薬強化投与", drugCategories: ["抗血小板薬"] },
+      ],
+      crisisVitals: { temperature: 36.2, systolicBp: 0, diastolicBp: 0, pulse: 0, spo2: 75, respRate: 6 },
+      postRescueSeverity: 55,
+    },
   },
   pe: {
     treatment: { drugCategories: ["抗凝固薬"] },
@@ -290,6 +393,20 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
         },
       },
     },
+    crisis: {
+      name: "肺塞栓・心停止",
+      triggers: [
+        { type: "lab", code: "2B140", op: ">=", value: 9.0 },
+        { type: "vital", field: "spo2", op: "<=", value: 72 },
+      ],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [
+        { label: "血栓溶解・抗凝固強化", drugCategories: ["抗凝固薬"] },
+        { label: "気管挿管・人工呼吸管理", procedureKeywords: ["気管挿管"] },
+      ],
+      crisisVitals: { temperature: 36.0, systolicBp: 58, diastolicBp: 36, pulse: 145, spo2: 65, respRate: 8 },
+      postRescueSeverity: 50,
+    },
   },
   asthma_copd: {
     treatment: { drugCategories: ["気管支拡張薬"] },
@@ -298,33 +415,50 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
       perSeverity: { temperature: 0.2, systolicBp: 2, diastolicBp: 2, pulse: 22, spo2: -20, respRate: 16 },
     },
     labPatterns: {
-      "3H060": {
-        // O2分圧（pO2）
+      "3H080": {
+        // 動脈血液ガス分析（急性増悪・慢性COPDの腎代償を背景とした呼吸性アシドーシス進行）
         kind: "values",
         patterns: {
-          mild: [{ label: "pO2", value: 75, unit: "mmHg" }],
-          moderate: [{ label: "pO2", value: 60, unit: "mmHg" }],
-          severe: [{ label: "pO2", value: 45, unit: "mmHg" }],
+          mild: [
+            { label: "動脈血pH", value: 7.38, unit: "" },
+            { label: "pCO2", value: 36, unit: "mmHg" },
+            { label: "pO2", value: 75, unit: "mmHg" },
+            { label: "O2飽和度", value: 93, unit: "%" },
+            { label: "血漿HCO3", value: 25, unit: "mEq/L" },
+            { label: "BE", value: 1, unit: "mEq/L" },
+          ],
+          moderate: [
+            { label: "動脈血pH", value: 7.32, unit: "" },
+            { label: "pCO2", value: 46, unit: "mmHg", note: "CO2貯留傾向" },
+            { label: "pO2", value: 60, unit: "mmHg" },
+            { label: "O2飽和度", value: 87, unit: "%" },
+            { label: "血漿HCO3", value: 26, unit: "mEq/L" },
+            { label: "BE", value: 2, unit: "mEq/L" },
+          ],
+          severe: [
+            { label: "動脈血pH", value: 7.18, unit: "" },
+            { label: "pCO2", value: 60, unit: "mmHg", note: "CO2貯留" },
+            { label: "pO2", value: 45, unit: "mmHg" },
+            { label: "O2飽和度", value: 78, unit: "%" },
+            { label: "血漿HCO3", value: 28, unit: "mEq/L" },
+            { label: "BE", value: 3, unit: "mEq/L" },
+          ],
         },
       },
-      "3H055": {
-        // 動脈血CO2分圧（pCO2）
-        kind: "values",
-        patterns: {
-          mild: [{ label: "pCO2", value: 36, unit: "mmHg" }],
-          moderate: [{ label: "pCO2", value: 46, unit: "mmHg", note: "CO2貯留傾向" }],
-          severe: [{ label: "pCO2", value: 60, unit: "mmHg", note: "CO2貯留" }],
-        },
-      },
-      "3H065": {
-        // O2飽和度（O2 sat.）
-        kind: "values",
-        patterns: {
-          mild: [{ label: "O2飽和度", value: 93, unit: "%" }],
-          moderate: [{ label: "O2飽和度", value: 87, unit: "%" }],
-          severe: [{ label: "O2飽和度", value: 78, unit: "%" }],
-        },
-      },
+    },
+    crisis: {
+      name: "呼吸不全・心肺停止",
+      triggers: [
+        { type: "lab", code: "3H080", label: "pCO2", op: ">=", value: 60 },
+        { type: "lab", code: "3H080", label: "O2飽和度", op: "<=", value: 78 },
+      ],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [
+        { label: "気管挿管・人工呼吸管理", procedureKeywords: ["気管挿管"] },
+        { label: "気管支拡張薬強化投与", drugCategories: ["気管支拡張薬"] },
+      ],
+      crisisVitals: { temperature: 36.5, systolicBp: 100, diastolicBp: 60, pulse: 130, spo2: 62, respRate: 6 },
+      postRescueSeverity: 45,
     },
   },
   thyroid_storm: {
@@ -362,6 +496,17 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
         },
       },
     },
+    crisis: {
+      name: "甲状腺クリーゼ・多臓器不全",
+      triggers: [
+        { type: "lab", code: "4B015", op: ">=", value: 14.0 },
+        { type: "lab", code: "4B035", op: ">=", value: 6.5 },
+      ],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [{ label: "β遮断薬・抗甲状腺薬強化投与", drugCategories: ["β遮断薬", "甲状腺関連薬"] }],
+      crisisVitals: { temperature: 41.0, systolicBp: 80, diastolicBp: 40, pulse: 168, spo2: 88, respRate: 30 },
+      postRescueSeverity: 50,
+    },
   },
   gi_bleed: {
     treatment: { drugCategories: ["消化性潰瘍治療薬"] },
@@ -397,6 +542,17 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           severe: [{ label: "BUN", value: 60, unit: "mg/dL" }],
         },
       },
+    },
+    crisis: {
+      name: "出血性ショック",
+      triggers: [{ type: "lab", code: "2A030", op: "<=", value: 5.5 }],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [
+        { label: "輸血", drugCategories: ["血液製剤"] },
+        { label: "急速輸液", drugCategories: ["輸液"] },
+      ],
+      crisisVitals: { temperature: 35.6, systolicBp: 58, diastolicBp: 34, pulse: 148, spo2: 90, respRate: 30 },
+      postRescueSeverity: 45,
     },
   },
   pancreatitis: {
@@ -434,6 +590,14 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
         },
       },
     },
+    crisis: {
+      name: "重症急性膵炎・多臓器不全",
+      triggers: [{ type: "lab", code: "3H030", op: "<=", value: 6.8 }],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [{ label: "大量輸液・集中治療", drugCategories: ["輸液"] }],
+      crisisVitals: { temperature: 38.8, systolicBp: 66, diastolicBp: 40, pulse: 136, spo2: 84, respRate: 30 },
+      postRescueSeverity: 50,
+    },
   },
   anaphylaxis: {
     treatment: { drugCategories: ["アドレナリン作動薬", "抗ヒスタミン薬", "副腎皮質ステロイド"] },
@@ -451,6 +615,17 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           severe: [{ label: "IgE", value: 1200, unit: "IU/mL" }],
         },
       },
+    },
+    crisis: {
+      name: "アナフィラキシーショック・心停止",
+      triggers: [{ type: "vital", field: "systolicBp", op: "<=", value: 65 }],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [
+        { label: "アドレナリン筋注", drugCategories: ["アドレナリン作動薬"] },
+        { label: "気管挿管・人工呼吸管理", procedureKeywords: ["気管挿管"] },
+      ],
+      crisisVitals: { temperature: 36.0, systolicBp: 50, diastolicBp: 30, pulse: 150, spo2: 68, respRate: 8 },
+      postRescueSeverity: 40,
     },
   },
   adrenal_crisis: {
@@ -488,6 +663,17 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
         },
       },
     },
+    crisis: {
+      name: "副腎クリーゼ・循環虚脱",
+      triggers: [
+        { type: "lab", code: "4D040", op: "<=", value: 0.5 },
+        { type: "lab", code: "3H010", op: "<=", value: 116 },
+      ],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [{ label: "ステロイド大量投与・輸液", drugCategories: ["副腎皮質ステロイド", "輸液"] }],
+      crisisVitals: { temperature: 35.2, systolicBp: 60, diastolicBp: 36, pulse: 116, spo2: 90, respRate: 24 },
+      postRescueSeverity: 45,
+    },
   },
   arrhythmia: {
     treatment: { drugCategories: ["抗不整脈薬", "β遮断薬"] },
@@ -514,6 +700,21 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           severe: [{ label: "Mg", value: 1.0, unit: "mg/dL" }],
         },
       },
+    },
+    crisis: {
+      name: "致死性不整脈・心停止",
+      triggers: [
+        { type: "lab", code: "3H015", op: "<=", value: 2.3 },
+        { type: "lab", code: "3H025", op: "<=", value: 1.0 },
+      ],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [
+        { label: "除細動", procedureKeywords: ["除細動"] },
+        { label: "抗不整脈薬投与", drugCategories: ["抗不整脈薬"] },
+        { label: "電解質補正", drugCategories: ["輸液"] },
+      ],
+      crisisVitals: { temperature: 36.4, systolicBp: 0, diastolicBp: 0, pulse: 0, spo2: 80, respRate: 4 },
+      postRescueSeverity: 50,
     },
   },
   // 薬物治療では改善しない（虫垂切除術のみが治療開始とみなされる）外科的治療モデル
@@ -560,6 +761,20 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
           severe: "虫垂の腫大・壁不整を認め、周囲に膿瘍形成および遊離ガス像を疑う所見があり、穿孔が疑われる。汎発性の腹水貯留を伴う。",
         },
       },
+    },
+    crisis: {
+      name: "穿孔性虫垂炎・汎発性腹膜炎・敗血症性ショック",
+      triggers: [
+        { type: "lab", code: "2A010", op: ">=", value: 21000 },
+        { type: "lab", code: "5C070", op: ">=", value: 18.5 },
+      ],
+      windowMinutes: CRISIS_WINDOW_MINUTES,
+      rescueActions: [
+        { label: "緊急手術（虫垂切除）", procedureKeywords: ["虫垂切除"] },
+        { label: "広域抗菌薬・急速輸液", drugCategories: ["輸液"] },
+      ],
+      crisisVitals: { temperature: 39.5, systolicBp: 70, diastolicBp: 42, pulse: 140, spo2: 88, respRate: 30 },
+      postRescueSeverity: 50,
     },
   },
 };
@@ -731,8 +946,11 @@ export function resolveDynamicLab(
   return { text: formatLabValues(values), values };
 }
 
+// severityBaselineAtは重症度カーブの起点。通常は症例作成時刻（createdAt相当）だが、
+// 危機シナリオからの救命成功時にその時刻へ更新され、以降はそこを新たな起点として
+// 重症度が再計算される（救命前の治療オーダーはこの新しい起点以降のものだけを見る）。
 export function computeCaseSeverityAtTime(
-  caseRecord: Pick<Case, "createdAt" | "physiologyParams">,
+  caseRecord: Pick<Case, "physiologyParams" | "severityBaselineAt">,
   orders: TreatmentOrder[],
   templateKey: string | null | undefined,
   atTime: Date
@@ -740,13 +958,44 @@ export function computeCaseSeverityAtTime(
   const config = getTemplateConfig(templateKey);
   if (!config) return null;
   const params = parsePhysiologyParams(caseRecord.physiologyParams);
-  const treatmentStartAt = findTreatmentStartAt(orders, config.treatment);
+  const baselineAt = caseRecord.severityBaselineAt;
+  const relevantOrders = orders.filter((o) => o.orderedAt >= baselineAt);
+  const treatmentStartAt = findTreatmentStartAt(relevantOrders, config.treatment);
   return computeSeverityAt({
     baseSeverity: params.severitySlider,
     improvementSpeedSlider: params.improvementSpeedSlider,
-    caseStartAt: caseRecord.createdAt,
+    caseStartAt: baselineAt,
     treatmentStartAt,
     atTime,
   });
+}
+
+function compareOp(value: number, op: ">=" | "<=", threshold: number): boolean {
+  return op === ">=" ? value >= threshold : value <= threshold;
+}
+
+// 危機シナリオの発動条件を判定する。lab/vitalは実際にオーダーされた結果ではなく、
+// その時点の重症度から導かれる「真の」値を参照する（未オーダーでも急変しうる）。
+export function evaluateCrisisTriggers(templateKey: string, scenario: CrisisScenario, severity: number, oxygenBoost: number): boolean {
+  return scenario.triggers.some((trigger) => {
+    if (trigger.type === "severity") return compareOp(severity, trigger.op, trigger.value);
+    if (trigger.type === "vital") {
+      const vitals = computeVitalsForSeverity(templateKey, severity, oxygenBoost);
+      return vitals ? compareOp(vitals[trigger.field], trigger.op, trigger.value) : false;
+    }
+    const dynamic = resolveDynamicLab(templateKey, trigger.code, severity);
+    const entry = trigger.label ? dynamic?.values?.find((v) => v.label === trigger.label) : dynamic?.values?.[0];
+    return typeof entry?.value === "number" && compareOp(entry.value, trigger.op, trigger.value);
+  });
+}
+
+// crisisStartedAt以降のオーダーに、いずれかのrescueActionsに該当するものがあるか（＝救命に成功したか）
+export function findCrisisRescueAt(orders: TreatmentOrder[], scenario: CrisisScenario, crisisStartedAt: Date): Date | null {
+  const eligibleOrders = orders.filter((o) => o.orderedAt >= crisisStartedAt);
+  const combinedTrigger: TreatmentTrigger = {
+    drugCategories: scenario.rescueActions.flatMap((a) => a.drugCategories ?? []),
+    procedureKeywords: scenario.rescueActions.flatMap((a) => a.procedureKeywords ?? []),
+  };
+  return findTreatmentStartAt(eligibleOrders, combinedTrigger);
 }
 

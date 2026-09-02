@@ -21,6 +21,8 @@ const SELECT_OPTIONS: Record<string, string[]> = {
     "気管挿管",
     "中心静脈カテーテル挿入",
     "胃洗浄",
+    "除細動",
+    "心肺蘇生（胸骨圧迫）",
   ],
 };
 
