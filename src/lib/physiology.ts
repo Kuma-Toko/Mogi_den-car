@@ -32,8 +32,3 @@ export function sliderToSeverityLabel(slider: number): string {
   return "重症";
 }
 
-export const IMAGING_PATTERNS = [
-  { key: "mild", label: "浸潤影：軽度パターン" },
-  { key: "moderate", label: "浸潤影：中等度パターン" },
-  { key: "severe", label: "浸潤影：高度パターン" },
-];

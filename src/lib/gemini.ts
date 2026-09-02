@@ -1,5 +1,5 @@
 import "server-only";
-import { ApiError, GoogleGenAI } from "@google/genai";
+import { ApiError, GoogleGenAI, type Content, type GenerateContentConfig, type GenerateContentResponse } from "@google/genai";
 import type { Case, Problem, Vital } from "@prisma/client";
 
 // Flash-Liteはコスト・レート制限最優先のトライアル運用を想定して採用。
@@ -21,6 +21,29 @@ function getClient(): GoogleGenAI {
     client = new GoogleGenAI({ apiKey });
   }
   return client;
+}
+
+// 呼び出し元（問診AI・AI治療評価）で共通のモデルフォールバック付き呼び出し。429（レート制限）のときだけ
+// 次のモデルに切り替え、それ以外のエラーは即座に投げる。
+export async function generateWithFallback(params: {
+  contents: Content[];
+  config: GenerateContentConfig;
+}): Promise<GenerateContentResponse> {
+  const ai = getClient();
+  const models = [process.env.GEMINI_MODEL || DEFAULT_MODEL, ...FALLBACK_MODELS];
+  let lastError: unknown;
+
+  for (const model of models) {
+    try {
+      return await ai.models.generateContent({ model, contents: params.contents, config: params.config });
+    } catch (err) {
+      lastError = err;
+      if (!(err instanceof ApiError && err.status === 429)) throw err;
+      console.warn(`[gemini] ${model} がレート制限に達したため次のモデルに切り替えます`);
+    }
+  }
+
+  throw lastError;
 }
 
 export type EncounterHistoryItem = { role: "STUDENT" | "PATIENT"; content: string };
@@ -73,7 +96,6 @@ export async function generatePatientReply(params: {
 }): Promise<string> {
   const { caseRecord, problems, latestVital, history } = params;
 
-  const ai = getClient();
   const contents = history.map((m) => ({
     role: m.role === "STUDENT" ? ("user" as const) : ("model" as const),
     parts: [{ text: m.content }],
@@ -83,20 +105,7 @@ export async function generatePatientReply(params: {
     temperature: 0.7,
   };
 
-  const models = [process.env.GEMINI_MODEL || DEFAULT_MODEL, ...FALLBACK_MODELS];
-  let lastError: unknown;
-
-  for (const model of models) {
-    try {
-      const response = await ai.models.generateContent({ model, contents, config });
-      const text = response.text?.trim();
-      return text || "（応答を生成できませんでした。もう一度お試しください）";
-    } catch (err) {
-      lastError = err;
-      if (!(err instanceof ApiError && err.status === 429)) throw err;
-      console.warn(`[gemini] ${model} がレート制限に達したため次のモデルに切り替えます`);
-    }
-  }
-
-  throw lastError;
+  const response = await generateWithFallback({ contents, config });
+  const text = response.text?.trim();
+  return text || "（応答を生成できませんでした。もう一度お試しください）";
 }

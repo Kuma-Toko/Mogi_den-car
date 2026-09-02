@@ -44,7 +44,6 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
     examScript: caseRecord.examScript ?? "",
     diseaseTemplateId: caseRecord.diseaseTemplateId,
     resultTiming: caseRecord.resultTiming === "DELAYED" ? "DELAYED" : "IMMEDIATE",
-    imagingPattern: caseRecord.imagingPattern ?? "",
     sharingMode: caseRecord.sharingMode === "TEAM" ? "TEAM" : "SOLO",
     crisisMode: caseRecord.crisisMode,
     physiologyParams: parsePhysiologyParams(caseRecord.physiologyParams),

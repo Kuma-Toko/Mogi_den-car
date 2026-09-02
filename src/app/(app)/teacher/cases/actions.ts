@@ -43,7 +43,6 @@ function readCaseFields(formData: FormData) {
   const problemsRaw = String(formData.get("problems") ?? "");
   const diseaseTemplateId = String(formData.get("diseaseTemplateId") ?? "") || null;
   const resultTiming = String(formData.get("resultTiming") ?? "IMMEDIATE");
-  const imagingPattern = String(formData.get("imagingPattern") ?? "");
   const crisisModeRaw = String(formData.get("crisisMode") ?? "LETHAL");
   const crisisMode = CRISIS_MODES.includes(crisisModeRaw as CrisisMode) ? (crisisModeRaw as CrisisMode) : "LETHAL";
   const sharingMode = String(formData.get("sharingMode") ?? "SOLO");
@@ -76,7 +75,6 @@ function readCaseFields(formData: FormData) {
     problemLabels,
     diseaseTemplateId,
     resultTiming,
-    imagingPattern,
     crisisMode,
     sharingMode,
     assigneeLoginIds,
@@ -117,7 +115,6 @@ export async function createCase(formData: FormData) {
     problemLabels,
     diseaseTemplateId,
     resultTiming,
-    imagingPattern,
     crisisMode,
     sharingMode,
     assigneeLoginIds,
@@ -154,7 +151,6 @@ export async function createCase(formData: FormData) {
         examScript,
         diseaseTemplateId,
         physiologyParams: JSON.stringify(physiologyParams),
-        imagingPattern: imagingPattern || null,
         crisisMode,
         createdByUserId: user.id,
         publishedAt: isPublish ? new Date() : null,
@@ -208,7 +204,6 @@ export async function updateCase(caseId: string, formData: FormData) {
     problemLabels,
     diseaseTemplateId,
     resultTiming,
-    imagingPattern,
     crisisMode,
     sharingMode,
     assigneeLoginIds,
@@ -244,7 +239,6 @@ export async function updateCase(caseId: string, formData: FormData) {
         // update()の生成型はdiseaseTemplateIdを直接受け付けない（create()と異なりネストしたrelation構文が必須）。
         diseaseTemplate: diseaseTemplateId ? { connect: { id: diseaseTemplateId } } : { disconnect: true },
         physiologyParams: JSON.stringify(physiologyParams),
-        imagingPattern: imagingPattern || null,
         crisisMode,
         ...(isPublish
           ? { status: caseRecord.caseType === "SIMULATION" ? "SIMULATING" : "ACTIVE", publishedAt: new Date() }

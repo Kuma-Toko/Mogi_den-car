@@ -688,7 +688,6 @@ async function main() {
         visibilityScope: "消化器内科ローテーション学生",
         diseaseTemplateId: input.templateKey ? templates[input.templateKey]?.id : undefined,
         physiologyParams: input.templateKey ? JSON.stringify(templateDefs.find((t) => t.key === input.templateKey)!.defaultParams) : undefined,
-        imagingPattern: "moderate",
         createdByUserId: teacher1.id,
         publishedAt: input.status === "DRAFT" ? null : new Date(),
       },
