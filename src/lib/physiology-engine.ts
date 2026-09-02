@@ -436,7 +436,7 @@ const TEMPLATE_CONFIG: Record<string, TemplateConfig> = {
     },
   },
   anaphylaxis: {
-    treatment: { drugCategories: ["抗ヒスタミン薬", "副腎皮質ステロイド"] },
+    treatment: { drugCategories: ["アドレナリン作動薬", "抗ヒスタミン薬", "副腎皮質ステロイド"] },
     vitals: {
       base: { temperature: 36.7, systolicBp: 110, diastolicBp: 68, pulse: 100, spo2: 96, respRate: 20 },
       perSeverity: { temperature: -0.3, systolicBp: -52, diastolicBp: -30, pulse: 34, spo2: -22, respRate: 12 },

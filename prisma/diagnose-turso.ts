@@ -88,6 +88,26 @@ async function main() {
   for (const r of karteCols.rows) console.log(`  ${r.name} (${r.type})`);
   const karteCount = await client.execute(`SELECT COUNT(*) as c FROM "KarteEntry"`);
   console.log(`KarteEntry row count: ${karteCount.rows[0].c}`);
+
+  console.log("\n=== DrugCategoryMaster / DrugCategoryLink ===");
+  try {
+    const catCount = await client.execute(`SELECT COUNT(*) as c FROM "DrugCategoryMaster"`);
+    console.log(`DrugCategoryMaster row count: ${catCount.rows[0].c}`);
+    const linkCount = await client.execute(`SELECT COUNT(*) as c FROM "DrugCategoryLink"`);
+    console.log(`DrugCategoryLink row count: ${linkCount.rows[0].c}`);
+  } catch (err) {
+    console.log(`DrugCategoryMaster/Link query failed: ${err instanceof Error ? err.message : err}`);
+  }
+
+  console.log("\n=== DiseaseTemplate ===");
+  try {
+    const tplCount = await client.execute(`SELECT COUNT(*) as c FROM "DiseaseTemplate"`);
+    console.log(`DiseaseTemplate row count: ${tplCount.rows[0].c}`);
+    const keys = await client.execute(`SELECT "key" FROM "DiseaseTemplate" ORDER BY "key"`);
+    console.log(`  keys: ${keys.rows.map((r) => r.key).join(", ")}`);
+  } catch (err) {
+    console.log(`DiseaseTemplate query failed: ${err instanceof Error ? err.message : err}`);
+  }
 }
 
 main()

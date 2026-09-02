@@ -2691,9 +2691,9 @@ cmtgz3h3j022ohgynqkc0n46x	105162904	チウラジール錠50mg		1錠		内服	FALS
 cmtgz3h3j022phgyntiy7ivln	105163601	メルカゾール注10mg		1管		注射・点滴	TRUE		
 cmtgz3h3j022qhgynut3l72ai	105172801	プリモボラン錠5mg		1錠		内服	FALSE		
 cmtgz3h3j022rhgyna1nnmuxi	105178002	プリモボラン・デポー筋注100mg		1管		注射・点滴	TRUE		
-cmtgz3h3j022shgyn1e9trq73	105179702	ボスミン注1mg		1管		注射・点滴	TRUE		
+cmtgz3h3j022shgyn1e9trq73	105179702	ボスミン注1mg		1管		注射・点滴	TRUE	アドレナリン作動薬	
 cmtgz3h3j022thgynk4nmmowq	105180301	ノルアドリナリン注1mg		1管		注射・点滴	TRUE		
-cmtgz3h3j022uhgyn8388xjzd	105181002	ボスミン外用液0.1%		1mL		外用	FALSE		
+cmtgz3h3j022uhgyn8388xjzd	105181002	ボスミン外用液0.1%		1mL		外用	FALSE	アドレナリン作動薬	
 cmtgz3h3j022vhgynb2shd1wj	105182701	コートン錠25mg		1錠		内服	FALSE		
 cmtgz3h3j022whgynz7dx1fix	105183401	コートリル錠10mg		1錠		内服	FALSE		
 cmtgz3h3j022xhgynmesl3yro	105184101	フロリネフ錠0.1mg		1錠		内服	FALSE		
@@ -8741,7 +8741,7 @@ cmtgz3hqq06qqhgynmrpwqxbr	113717003	ハドドリンドライシロップ1%		1g		
 cmtgz3hqq06qrhgynhf12gs2e	113717004	ペリゼリンドライシロップ1%		1g		内服	FALSE		
 cmtgz3hqq06qshgynkeyoqq84	113717005	ドンペリドンDS小児用1%		1g		内服	FALSE	制吐薬・消化管運動改善薬	
 cmtgz3hqq06qthgynvweoub9h	113717006	ドンペリドンドライシロップ1%		1g		内服	FALSE	制吐薬・消化管運動改善薬	
-cmtgz3hqq06quhgynm80496ob	113719401	アドレナリン注0.1%シリンジ		1筒		注射・点滴	TRUE		
+cmtgz3hqq06quhgynm80496ob	113719401	アドレナリン注0.1%シリンジ		1筒		注射・点滴	TRUE	アドレナリン作動薬	
 cmtgz3hqq06qvhgynjm4y7atj	113720004	ポラチール2mg錠		1錠		内服	FALSE		
 cmtgz3hqq06qwhgynnkgvsxws	113720022	ウルゲント錠2mg		1錠		内服	FALSE		
 cmtgz3hqq06qxhgynskb0uma4	113720029	オキシブチニン塩酸塩錠2mg		1錠		内服	FALSE		
@@ -15292,8 +15292,8 @@ cmtgz3ihk0bsrhgynu7k6k7dy	187043501	トリキュラー錠28		28錠)		内服	FALS
 cmtgz3ihk0bsshgyn8r3bl54p	187044201	トライディオール21				内服	FALSE		
 cmtgz3ihk0bsthgynrjyl32z6	187045901	トライディオール28				内服	FALSE		
 cmtgz3ihk0bsuhgynltanwidn	187046602	マーベロン21		10シート		内服	FALSE		
-cmtgz3ihk0bsvhgyngoyeg5ex	187047302	エピペン注射液0.15mg		1筒		注射・点滴	TRUE		
-cmtgz3ihk0bswhgynlnnnp4ct	187048002	エピペン注射液0.3mg		1筒		注射・点滴	TRUE		
+cmtgz3ihk0bsvhgyngoyeg5ex	187047302	エピペン注射液0.15mg		1筒		注射・点滴	TRUE	アドレナリン作動薬	
+cmtgz3ihk0bswhgynlnnnp4ct	187048002	エピペン注射液0.3mg		1筒		注射・点滴	TRUE	アドレナリン作動薬	
 cmtgz3ihk0bsxhgyn8x6918hb	187049701	アセサイド6%消毒液		2剤)		外用	FALSE	消毒薬	
 cmtgz3ihk0bsyhgyni0qgu36e	187050301	スクラビイン4%液		4%		外用	FALSE		
 cmtgz3ihk0bszhgyn5zmdxbqz	187051001	スクラビインS4%液		4%		外用	FALSE		
