@@ -20,6 +20,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@google/genai": "^2.20.0",
     "@libsql/client": "^0.17.4",
     "@prisma/adapter-libsql": "^7.10.0",
     "@prisma/client": "^7.10.0",

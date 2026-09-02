@@ -39,6 +39,8 @@ export async function createCase(formData: FormData) {
   const ward = String(formData.get("ward") ?? "").trim() || null;
   const bed = String(formData.get("bed") ?? "").trim() || null;
   const visibilityScope = String(formData.get("visibilityScope") ?? "").trim() || null;
+  const historyScript = String(formData.get("historyScript") ?? "").trim() || null;
+  const examScript = String(formData.get("examScript") ?? "").trim() || null;
   const problemsRaw = String(formData.get("problems") ?? "");
   const diseaseTemplateId = String(formData.get("diseaseTemplateId") ?? "") || null;
   const resultTiming = String(formData.get("resultTiming") ?? "IMMEDIATE");
@@ -87,6 +89,8 @@ export async function createCase(formData: FormData) {
         ward,
         bed,
         visibilityScope,
+        historyScript,
+        examScript,
         diseaseTemplateId,
         physiologyParams: JSON.stringify(physiologyParams),
         imagingPattern: imagingPattern || null,

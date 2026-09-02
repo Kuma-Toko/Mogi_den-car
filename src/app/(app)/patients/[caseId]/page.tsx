@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { SummaryTab } from "./SummaryTab";
 import { KarteTab } from "./KarteTab";
 import { KarteEntryTab } from "./KarteEntryTab";
+import { EncounterTab } from "./EncounterTab";
+import { EncounterLogPanel } from "./EncounterLogPanel";
 import { OrdersTab } from "./OrdersTab";
 import { ResultsTab } from "./ResultsTab";
 import { VitalsTab } from "./VitalsTab";
@@ -12,6 +14,7 @@ import { SimTimeControl } from "./SimTimeControl";
 
 const TABS = [
   { key: "summary", label: "サマリ" },
+  { key: "encounter", label: "問診・診察" },
   { key: "karte", label: "カルテ" },
   { key: "karte-entry", label: "カルテ記載" },
   { key: "orders", label: "オーダー" },
@@ -74,7 +77,13 @@ export default async function CaseDetailPage({
 
         {tab === "summary" && <SummaryTab caseId={caseId} />}
         {tab === "karte" && <KarteTab caseId={caseId} />}
-        {tab === "karte-entry" && <KarteEntryTab caseId={caseId} />}
+        {tab === "karte-entry" && (
+          <div className="split">
+            <KarteEntryTab caseId={caseId} />
+            <EncounterLogPanel caseId={caseId} />
+          </div>
+        )}
+        {tab === "encounter" && <EncounterTab caseId={caseId} />}
         {tab === "orders" && <OrdersTab caseId={caseId} />}
         {tab === "results" && <ResultsTab caseId={caseId} />}
         {tab === "vitals" && <VitalsTab caseId={caseId} />}

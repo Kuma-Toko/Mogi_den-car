@@ -44,6 +44,12 @@ enum CaseStatus {
   CLOSED     // 終了
 }
 
+// 問診・身体診察AIチャットの発言者区分
+enum EncounterRole {
+  STUDENT // 学生からの質問・診察指示
+  PATIENT // AI（模擬患者役）の応答・所見
+}
+
 // カルテ記載の様式区分
 enum KarteEntryType {
   SOAP      // SOAP形式
@@ -80,14 +86,15 @@ model User {
   grade        String? // 例: 医学部5年
   createdAt    DateTime @default(now())
 
-  sessions         Session[]
-  createdCases     Case[]            @relation("CaseCreator")
-  assignments      CaseAssignment[]
-  karteEntries     KarteEntry[]
-  orders           Order[]
-  notifications    Notification[]
-  auditLogs        AuditLog[]
-  diseaseTemplates DiseaseTemplate[] @relation("TemplateCreator")
+  sessions          Session[]
+  createdCases      Case[]             @relation("CaseCreator")
+  assignments       CaseAssignment[]
+  karteEntries      KarteEntry[]
+  encounterMessages EncounterMessage[]
+  orders            Order[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  diseaseTemplates  DiseaseTemplate[]  @relation("TemplateCreator")
 }
 
 model Session {
@@ -123,18 +130,22 @@ model Case {
   physiologyParams  String? // JSON文字列: 初期値・変化パラメータ（体温初期値・改善速度・SpO2初期値・重症度 等）
   imagingPattern    String? // 画像所見の出し分けキー（例: infiltrate_mild/moderate/severe）
 
+  historyScript String? // 問診AI用の台本。現病歴・既往歴・アレルギー・生活歴等、学生の質問に対する根拠情報
+  examScript    String? // 身体診察AI用の台本。視診・触診・打診・聴診など系統別の所見
+
   createdByUserId String
   createdBy       User      @relation("CaseCreator", fields: [createdByUserId], references: [id])
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   publishedAt     DateTime?
 
-  assignments   CaseAssignment[]
-  problems      Problem[]
-  karteEntries  KarteEntry[]
-  orders        Order[]
-  vitals        Vital[]
-  notifications Notification[]
+  assignments       CaseAssignment[]
+  problems          Problem[]
+  karteEntries      KarteEntry[]
+  encounterMessages EncounterMessage[]
+  orders            Order[]
+  vitals            Vital[]
+  notifications     Notification[]
 }
 
 model CaseAssignment {
@@ -178,6 +189,18 @@ model KarteEntry {
   narrative    String         @default("") // NARRATIVE用の自由記述本文
   detail       String? // JSON文字列。REFERRAL/AMBULANCEの構造化項目
   createdAt    DateTime       @default(now())
+}
+
+// 問診・身体診察AIチャットのログ1件分。学生の発言とAI（模擬患者役）の応答を時系列で保持する。
+model EncounterMessage {
+  id           String        @id @default(cuid())
+  caseId       String
+  case         Case          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  authorUserId String
+  author       User          @relation(fields: [authorUserId], references: [id])
+  role         EncounterRole
+  content      String
+  createdAt    DateTime      @default(now())
 }
 
 model DrugMaster {

@@ -102,6 +102,33 @@ export function CaseForm({ templates }: { templates: Template[] }) {
         </div>
       </div>
 
+      <div className="card">
+        <div className="card-h">問診・身体診察AIの台本</div>
+        <div className="card-b form-grid">
+          <div className="field">
+            <label htmlFor="historyScript">問診シナリオ（現病歴・既往歴・アレルギー・生活歴など）</label>
+            <textarea
+              id="historyScript"
+              name="historyScript"
+              placeholder="例: 3日前から38℃台の発熱と咳嗽。既往に糖尿病。喫煙歴20本/日×30年。アレルギーなし。"
+              style={{ minHeight: 120 }}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="examScript">身体診察所見（視診・触診・打診・聴診など系統別）</label>
+            <textarea
+              id="examScript"
+              name="examScript"
+              placeholder="例: 右下肺野で断続性ラ音を聴取。腹部は平坦・軟、圧痛なし。下腿浮腫なし。"
+              style={{ minHeight: 120 }}
+            />
+          </div>
+          <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "var(--ink-soft)" }}>
+            ここに記載した内容がAI（模擬患者役）の応答の根拠になります。空欄の場合はプロブレムやバイタルと矛盾しない範囲でAIが即興で応答します。
+          </div>
+        </div>
+      </div>
+
       <div className="split">
         <div className="card">
           <div className="card-h">時間進行・結果反映設定</div>
