@@ -71,6 +71,8 @@ export const auditActionLabel: Record<string, string> = {
   case_join: "症例プールに参加",
   case_publish: "症例を公開",
   case_draft_save: "症例を下書き保存",
+  case_edit: "症例を編集",
+  case_delete: "症例を削除",
   master_drug_create: "薬剤マスターを登録",
   master_drug_update: "薬剤マスターを更新",
   master_drug_delete: "薬剤マスターを削除",

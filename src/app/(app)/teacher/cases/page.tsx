@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { caseTypeLabel } from "@/lib/labels";
 import { formatJaDateTime, formatJaDateTimeShort } from "@/lib/format";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { deleteCase } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "下書き",
@@ -56,6 +58,7 @@ export default async function TeacherCasesPage() {
                     <th>状態</th>
                     <th>担当学生数</th>
                     <th>作成日</th>
+                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -73,6 +76,22 @@ export default async function TeacherCasesPage() {
                       </td>
                       <td>{c.assignments.length}</td>
                       <td>{formatJaDateTimeShort(c.createdAt)}</td>
+                      <td>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <Link href={`/teacher/cases/${c.id}/edit`} className="btn ghost" style={{ fontSize: 11 }}>
+                            編集
+                          </Link>
+                          <form>
+                            <ConfirmButton
+                              formAction={deleteCase.bind(null, c.id)}
+                              confirmText={`「${c.title}」を削除しますか？（関連するオーダー・カルテ記載もすべて削除されます）`}
+                              className="btn ghost"
+                            >
+                              削除
+                            </ConfirmButton>
+                          </form>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

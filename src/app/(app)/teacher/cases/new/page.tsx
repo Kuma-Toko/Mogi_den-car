@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatJaDateTime } from "@/lib/format";
-import { CaseForm } from "./CaseForm";
+import { CaseForm } from "../CaseForm";
+import { createCase } from "../actions";
 import { parsePhysiologyParams } from "@/lib/physiology-engine";
 
 export default async function NewCasePage() {
@@ -26,7 +27,7 @@ export default async function NewCasePage() {
         <div className="meta">{formatJaDateTime(new Date())}</div>
       </div>
       <div className="content">
-        <CaseForm templates={templateProps} />
+        <CaseForm templates={templateProps} action={createCase} />
       </div>
     </>
   );
