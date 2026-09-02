@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireCaseAccess } from "@/lib/case-access";
-import { reconcileCase } from "@/lib/engine";
-import { getCaseClockNow, getTemplateConfig } from "@/lib/physiology-engine";
+import { loadTemplateConfig, reconcileCase } from "@/lib/engine";
+import { getCaseClockNow } from "@/lib/physiology-engine";
 import { db } from "@/lib/db";
 import { CrisisBanner } from "./CrisisBanner";
 import { SummaryTab } from "./SummaryTab";
@@ -42,7 +42,7 @@ export default async function CaseDetailPage({
   // reconcileCase()がこのリクエスト中にcrisisStateを更新している可能性があるため、
   // requireCaseAccess()で取得した（reconcile前の）caseRecordとは別に最新状態を取り直す。
   const crisisCaseRecord = await db.case.findUnique({ where: { id: caseId }, include: { diseaseTemplate: true } });
-  const crisisConfig = getTemplateConfig(crisisCaseRecord?.diseaseTemplate?.key);
+  const crisisConfig = await loadTemplateConfig(crisisCaseRecord?.diseaseTemplate?.key);
   const crisisElapsedMinutes =
     crisisCaseRecord?.crisisStartedAt && crisisCaseRecord.crisisState !== "STABLE"
       ? (getCaseClockNow(crisisCaseRecord).getTime() - crisisCaseRecord.crisisStartedAt.getTime()) / 60_000
@@ -70,9 +70,9 @@ export default async function CaseDetailPage({
           <CrisisBanner
             crisisState={crisisCaseRecord.crisisState}
             crisisMode={crisisCaseRecord.crisisMode}
-            scenarioName={crisisConfig?.crisis.name ?? "急変"}
+            scenarioName={crisisConfig?.crisis?.name ?? "急変"}
             elapsedMinutes={crisisElapsedMinutes}
-            windowMinutes={crisisConfig?.crisis.windowMinutes ?? 0}
+            windowMinutes={crisisConfig?.crisis?.windowMinutes ?? 0}
           />
         )}
         <div className="patient-strip">

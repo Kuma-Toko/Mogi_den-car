@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatJaDateTime } from "@/lib/format";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { isEngineLinkedLabCode } from "@/lib/physiology-engine";
+import { loadEngineLinkedLabCodes } from "@/lib/engine";
 import { createLabItem, deleteLabItem, updateLabItem } from "./actions";
 
 const COLS = "0.9fr 1.3fr 1fr 1fr 0.6fr 1.8fr auto";
@@ -15,7 +15,10 @@ export default async function AdminLabItemsPage({
   await requireAdmin();
   const { error } = await searchParams;
 
-  const labItems = await db.labItemMaster.findMany({ orderBy: { name: "asc" } });
+  const [labItems, engineLinkedCodes] = await Promise.all([
+    db.labItemMaster.findMany({ orderBy: { name: "asc" } }),
+    loadEngineLinkedLabCodes(),
+  ]);
 
   return (
     <>
@@ -52,7 +55,7 @@ export default async function AdminLabItemsPage({
               <form key={item.id} className="mrow" style={{ gridTemplateColumns: COLS }} action={updateLabItem.bind(null, item.id)}>
                 <div>
                   <input name="code" defaultValue={item.code} required />
-                  {isEngineLinkedLabCode(item.code) && (
+                  {engineLinkedCodes.has(item.code) && (
                     <span className="badge blue" style={{ marginTop: 4, display: "inline-block" }}>
                       連動
                     </span>

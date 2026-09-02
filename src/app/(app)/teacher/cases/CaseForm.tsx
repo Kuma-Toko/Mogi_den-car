@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_PHYSIOLOGY_PARAMS,
-  IMAGING_PATTERNS,
   sliderToSeverityLabel,
   sliderToSpeedLabel,
   sliderToSpo2,
@@ -36,7 +35,6 @@ export type CaseFormInitial = {
   examScript: string;
   diseaseTemplateId: string | null;
   resultTiming: "IMMEDIATE" | "DELAYED";
-  imagingPattern: string;
   sharingMode: "SOLO" | "TEAM";
   crisisMode: CrisisMode;
   physiologyParams: PhysiologyParams;
@@ -67,7 +65,6 @@ export function CaseForm({
     initial?.diseaseTemplateId ?? templates[0]?.id ?? null
   );
   const [resultTiming, setResultTiming] = useState<"IMMEDIATE" | "DELAYED">(initial?.resultTiming ?? "IMMEDIATE");
-  const [imagingPattern, setImagingPattern] = useState(initial?.imagingPattern || IMAGING_PATTERNS[1].key);
   const [sharingMode, setSharingMode] = useState<"SOLO" | "TEAM">(initial?.sharingMode ?? "TEAM");
   const [crisisMode, setCrisisMode] = useState<CrisisMode>(initial?.crisisMode ?? "LETHAL");
 
@@ -333,16 +330,6 @@ ${context}
                 </div>
               </div>
               <input type="hidden" name="resultTiming" value={resultTiming} />
-            </div>
-            <div className="field" style={{ marginBottom: 12 }}>
-              <label htmlFor="imagingPattern">画像所見の出し分け</label>
-              <select id="imagingPattern" name="imagingPattern" value={imagingPattern} onChange={(e) => setImagingPattern(e.target.value)}>
-                {IMAGING_PATTERNS.map((p) => (
-                  <option key={p.key} value={p.key}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
             </div>
             <div className="field">
               <label htmlFor="crisisMode">重症化した場合の危機シナリオ</label>

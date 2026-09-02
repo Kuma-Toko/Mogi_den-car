@@ -1,11 +1,19 @@
 "use server";
 
+import { after } from "next/server";
 import { refresh, revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireCaseAccess } from "@/lib/case-access";
 import { normalizeDrugName } from "@/lib/drugName";
 import { logAudit } from "@/lib/audit";
-import { computeResultReadyAt, reconcileCase, resolveLabResult } from "@/lib/engine";
+import {
+  computeResultReadyAt,
+  createPendingTreatmentEvaluationIfNeeded,
+  loadTemplateConfig,
+  processTreatmentEvaluation,
+  reconcileCase,
+  resolveLabResult,
+} from "@/lib/engine";
 import { getCaseClockNow } from "@/lib/physiology-engine";
 
 // 紹介状（診療情報提供書）の構造化項目。KarteEntry.detailにJSON文字列として保存する。
@@ -268,6 +276,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
   ]);
   const labItemMap = new Map(labItems.map((l) => [l.id, l]));
   const drugMap = new Map(drugs.map((d) => [d.id, d]));
+  const engineConfig = await loadTemplateConfig(caseRecord.diseaseTemplate?.key);
 
   let immediateResultCount = 0;
   const rpCounters = { MEDICATION: 0, INJECTION: 0 };
@@ -279,7 +288,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
         if (!labItem) continue;
 
         const result = immediate
-          ? resolveLabResult(caseRecord, treatmentOrders, caseRecord.diseaseTemplate?.key, labItem, resultReadyAt)
+          ? resolveLabResult(caseRecord, treatmentOrders, engineConfig, labItem, resultReadyAt)
           : null;
         const imaging = item.imaging;
 
@@ -442,6 +451,19 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
     targetId: caseId,
     detail: { count: items.length, immediateResultCount },
   });
+
+  // 治療系オーダー（処方・注射・処置）を含む提出のときだけAI治療評価の対象にする。
+  // 検査・画像・一般指示のみの提出では発火しない。PENDING行の作成は同期（軽量なDB書き込みのみ）で行い、
+  // 実際のAI呼び出しはafter()でレスポンス返却後にバックグラウンド実行する。
+  const includesTreatmentOrder = items.some(
+    (i) => i.kind === "MEDICATION_RP" || i.kind === "INJECTION_RP" || i.kind === "PROCEDURE"
+  );
+  if (includesTreatmentOrder) {
+    const evaluationId = await createPendingTreatmentEvaluationIfNeeded(caseId);
+    if (evaluationId) {
+      after(() => processTreatmentEvaluation(evaluationId));
+    }
+  }
 
   revalidatePath(`/patients/${caseId}`);
   refresh();
