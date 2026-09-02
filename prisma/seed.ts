@@ -106,12 +106,26 @@ async function main() {
     if (old) await db.labItemMaster.update({ where: { id: old.id }, data: { code: newCode } });
   }
 
+  // 作成時の選択ミスにより誤ったコード（TNFレセプター2）が割り当てられていたため、
+  // 正しいsIL-2Rのコードへ「その場でリネーム」してid（＝既存Orderの参照）を保持する（2026-09-02）。
+  const RENAME_MAP3: Record<string, string> = {
+    "5J016": "5J095", // 可溶性TNFレセプター2 → 可溶性IL-2レセプター
+  };
+  for (const [oldCode, newCode] of Object.entries(RENAME_MAP3)) {
+    const old = await db.labItemMaster.findUnique({ where: { code: oldCode } });
+    if (old) await db.labItemMaster.update({ where: { id: old.id }, data: { code: newCode } });
+  }
+
   const OBSOLETE_CODES = [
     "A0001", "A2007", "B1001", "B1003", "B1004", "B2003", "B2006", "B2019", "B3009",
     "C1002", "C1003", "C1009", "C1010", "C2001", "C2008", "C2011", "C2012", "C2017", "C2024", "C2028", "C2042",
     "C3003", "C3004", "C4001", "C6002", "C6005", "C6008", "C6011", "C7003", "C7004", "C7006", "C8011", "C8012",
     "H8040", "K1001", "K1006",
     "V1055", "V1061", "V2010", "V2011", "V2026", "V2168", "V2171", "V2184", "V2252", "V2256", "V2259", "V2263",
+    // 2026-09-02、項目整理により削除（血液ガスへ統合／重複・低頻度項目のため）
+    "3H050", "3H055", "3H060", "3H065", "3H070", "3H075",
+    "2A990", "2B032", "3C010", "3D050", "3E010", "3G125", "5C090",
+    "IMG-CT-011", "IMG-CT-012", "IMG-MG-003", "IMG-MR-010", "IMG-US-005",
   ];
   for (const code of OBSOLETE_CODES) {
     const old = await db.labItemMaster.findUnique({ where: { code } });
@@ -206,12 +220,10 @@ async function main() {
     { code: "2A110", name: "網赤血球数（網状赤血球数）", category: "血液学的検査", subcategory: "血液一般・形態検査", unit: "‰", sampleResult: null, sampleValues: JSON.stringify([{ label: "網赤血球", value: 10, unit: "‰" }]) },
     { code: "2A160", name: "血液像（白血球分類）", category: "血液学的検査", subcategory: "血液一般・形態検査", unit: null, sampleResult: "好中球58%　リンパ球32%　単球6%　好酸球3%　好塩基球1%（異常細胞なし）", sampleValues: null },
     { code: "2A170", name: "骨髄像", category: "血液学的検査", subcategory: "血液一般・形態検査", unit: null, sampleResult: "有核細胞数・M/E比とも正常範囲、異常細胞なし", sampleValues: null },
-    { code: "2A990", name: "末梢血液一般検査", category: "血液学的検査", subcategory: "血液一般・形態検査", unit: null, sampleResult: "WBC 6200/μL　RBC 480万/μL　Hb 14.5g/dL　Ht 43.0%　Plt 24.0万/μL（異常所見なし）", sampleValues: null },
     // ── 血液学的検査/凝固・線溶関連検査 ──
     { code: "2B010", name: "出血時間", category: "血液学的検査", subcategory: "凝固・線溶関連検査", unit: "分", sampleResult: null, sampleValues: JSON.stringify([{ label: "出血時間", value: 3, unit: "分" }]) },
     { code: "2B020", name: "活性化部分トロンボプラスチン時間（APTT）", category: "血液学的検査", subcategory: "凝固・線溶関連検査", unit: "秒", sampleResult: null, sampleValues: JSON.stringify([{ label: "APTT", value: 30, unit: "秒" }]) },
     { code: "2B030", name: "プロトロンビン時間（PT）", category: "血液学的検査", subcategory: "凝固・線溶関連検査", unit: "秒", sampleResult: null, sampleValues: JSON.stringify([{ label: "PT秒", value: 11.5, unit: "秒" }]) },
-    { code: "2B032", name: "トロンビン時間", category: "血液学的検査", subcategory: "凝固・線溶関連検査", unit: "秒", sampleResult: null, sampleValues: JSON.stringify([{ label: "トロンビン時間", value: 16, unit: "秒" }]) },
     { code: "2B100", name: "フィブリノゲン", category: "血液学的検査", subcategory: "凝固・線溶関連検査", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "フィブリノゲン", value: 280, unit: "mg/dL" }]) },
     { code: "2B120", name: "フィブリン・フィブリノゲン分解産物（FDP）", category: "血液学的検査", subcategory: "凝固・線溶関連検査", unit: "μg/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "FDP", value: 3, unit: "μg/mL" }]) },
     { code: "2B140", name: "D-Dダイマー（FDP Dダイマー）", category: "血液学的検査", subcategory: "凝固・線溶関連検査", unit: "μg/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "Dダイマー", value: 0.5, unit: "μg/mL" }]) },
@@ -243,7 +255,6 @@ async function main() {
     { code: "3B176", name: "唾液腺アミラーゼ（S-アミラーゼ）", category: "生化学的検査", subcategory: "酵素および関連物質", unit: "U/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "S-アミラーゼ", value: 35, unit: "U/L" }]) },
     { code: "3B180", name: "リパーゼ", category: "生化学的検査", subcategory: "酵素および関連物質", unit: "U/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "リパーゼ", value: 40, unit: "U/L" }]) },
     // ── 生化学的検査/低分子窒素化合物 ──
-    { code: "3C010", name: "クレアチン", category: "生化学的検査", subcategory: "低分子窒素化合物", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "クレアチン", value: 0.4, unit: "mg/dL" }]) },
     { code: "3C015", name: "クレアチニン", category: "生化学的検査", subcategory: "低分子窒素化合物", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "Cr", value: 0.8, unit: "mg/dL" }]) },
     { code: "3C020", name: "尿酸（UA）", category: "生化学的検査", subcategory: "低分子窒素化合物", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "UA", value: 5.0, unit: "mg/dL" }]) },
     { code: "3C025", name: "尿素窒素（UN）", category: "生化学的検査", subcategory: "低分子窒素化合物", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "BUN", value: 14, unit: "mg/dL" }]) },
@@ -252,11 +263,9 @@ async function main() {
     // ── 生化学的検査/糖質および関連物質 ──
     { code: "3D010", name: "グルコース", category: "生化学的検査", subcategory: "糖質および関連物質", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "Glu", value: 92, unit: "mg/dL" }]) },
     { code: "3D045", name: "グリコヘモグロビンA1c（HbA1c）", category: "生化学的検査", subcategory: "糖質および関連物質", unit: "%", sampleResult: null, sampleValues: JSON.stringify([{ label: "HbA1c", value: 5.4, unit: "%" }]) },
-    { code: "3D050", name: "フルクトサミン", category: "生化学的検査", subcategory: "糖質および関連物質", unit: "μmol/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "フルクトサミン", value: 220, unit: "μmol/L" }]) },
     { code: "3D055", name: "グリコアルブミン", category: "生化学的検査", subcategory: "糖質および関連物質", unit: "%", sampleResult: null, sampleValues: JSON.stringify([{ label: "GA", value: 14.5, unit: "%" }]) },
     { code: "3D085", name: "1,5アンヒドログルシトール（1,5AG）", category: "生化学的検査", subcategory: "糖質および関連物質", unit: "μg/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "1,5AG", value: 15, unit: "μg/mL" }]) },
     // ── 生化学的検査/有機酸 ──
-    { code: "3E010", name: "乳酸", category: "生化学的検査", subcategory: "有機酸", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "乳酸", value: 12, unit: "mg/dL" }]) },
     // ── 生化学的検査/脂質および関連物質 ──
     { code: "3F015", name: "トリグリセリド（TG）", category: "生化学的検査", subcategory: "脂質および関連物質", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "TG", value: 90, unit: "mg/dL" }]) },
     { code: "3F050", name: "コレステロール（TC）", category: "生化学的検査", subcategory: "脂質および関連物質", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "T-Cho", value: 190, unit: "mg/dL" }]) },
@@ -272,23 +281,18 @@ async function main() {
     { code: "3G065", name: "25-ヒドロキシビタミンD3", category: "生化学的検査", subcategory: "ビタミンおよび関連物質", unit: "ng/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "25(OH)VD3", value: 25, unit: "ng/mL" }]) },
     { code: "3G070", name: "1,25-ジヒドロキシビタミンD3", category: "生化学的検査", subcategory: "ビタミンおよび関連物質", unit: "pg/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "1,25(OH)2VD3", value: 40, unit: "pg/mL" }]) },
     { code: "3G105", name: "葉酸（FA）", category: "生化学的検査", subcategory: "ビタミンおよび関連物質", unit: "ng/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "葉酸", value: 6, unit: "ng/mL" }]) },
-    { code: "3G125", name: "重炭酸塩", category: "生化学的検査", subcategory: "ビタミンおよび関連物質", unit: "mEq/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "重炭酸塩", value: 24, unit: "mEq/L" }]) },
-    // ── 生化学的検査/電解質・血液ガス ──
-    { code: "3H010", name: "ナトリウム（Na）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mEq/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "Na", value: 140, unit: "mEq/L" }]) },
-    { code: "3H015", name: "カリウム（K）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mEq/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "K", value: 4.2, unit: "mEq/L" }]) },
-    { code: "3H020", name: "クロール（Cl）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mEq/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "Cl", value: 103, unit: "mEq/L" }]) },
-    { code: "3H025", name: "マグネシウム（Mg）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "Mg", value: 2.1, unit: "mg/dL" }]) },
-    { code: "3H030", name: "カルシウム（Ca）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "Ca", value: 9.5, unit: "mg/dL" }]) },
-    { code: "3H035", name: "イオン化カルシウム", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mmol/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "iCa", value: 1.2, unit: "mmol/L" }]) },
-    { code: "3H040", name: "無機リン（IP）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "IP", value: 3.4, unit: "mg/dL" }]) },
-    { code: "3H045", name: "浸透圧", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mOsm/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "浸透圧", value: 285, unit: "mOsm/L" }]) },
-    { code: "3H050", name: "動脈血pH（pH）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: null, sampleResult: null, sampleValues: JSON.stringify([{ label: "動脈血pH", value: 7.4, unit: "" }]) },
-    { code: "3H055", name: "動脈血CO2分圧（pCO2）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mmHg", sampleResult: null, sampleValues: JSON.stringify([{ label: "pCO2", value: 40, unit: "mmHg" }]) },
-    { code: "3H060", name: "O2分圧（pO2）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mmHg", sampleResult: null, sampleValues: JSON.stringify([{ label: "pO2", value: 90, unit: "mmHg" }]) },
-    { code: "3H065", name: "O2飽和度（O2 sat.）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "%", sampleResult: null, sampleValues: JSON.stringify([{ label: "O2飽和度", value: 97, unit: "%" }]) },
-    { code: "3H070", name: "血漿HCO3濃度（HCO3）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mEq/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "血漿HCO3", value: 24, unit: "mEq/L" }]) },
-    { code: "3H075", name: "Base excess（BE）", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: "mEq/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "BE", value: 0, unit: "mEq/L" }]) },
-    { code: "3H080", name: "血液ガス", category: "生化学的検査", subcategory: "電解質・血液ガス", unit: null, sampleResult: "pH 7.40　pCO2 40mmHg　pO2 90mmHg　HCO3 24mEq/L　BE 0mEq/L（room air、異常所見なし）", sampleValues: null },
+    // ── 生化学的検査/電解質 ──
+    { code: "3H010", name: "ナトリウム（Na）", category: "生化学的検査", subcategory: "電解質", unit: "mEq/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "Na", value: 140, unit: "mEq/L" }]) },
+    { code: "3H015", name: "カリウム（K）", category: "生化学的検査", subcategory: "電解質", unit: "mEq/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "K", value: 4.2, unit: "mEq/L" }]) },
+    { code: "3H020", name: "クロール（Cl）", category: "生化学的検査", subcategory: "電解質", unit: "mEq/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "Cl", value: 103, unit: "mEq/L" }]) },
+    { code: "3H025", name: "マグネシウム（Mg）", category: "生化学的検査", subcategory: "電解質", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "Mg", value: 2.1, unit: "mg/dL" }]) },
+    { code: "3H030", name: "カルシウム（Ca）", category: "生化学的検査", subcategory: "電解質", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "Ca", value: 9.5, unit: "mg/dL" }]) },
+    { code: "3H035", name: "イオン化カルシウム", category: "生化学的検査", subcategory: "電解質", unit: "mmol/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "iCa", value: 1.2, unit: "mmol/L" }]) },
+    { code: "3H040", name: "無機リン（IP）", category: "生化学的検査", subcategory: "電解質", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "IP", value: 3.4, unit: "mg/dL" }]) },
+    { code: "3H045", name: "浸透圧", category: "生化学的検査", subcategory: "電解質", unit: "mOsm/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "浸透圧", value: 285, unit: "mOsm/L" }]) },
+    // ── 生化学的検査/血液ガス（2026-09-02、単一項目「血液ガス」を動脈・静脈の2項目に分割し独立） ──
+    { code: "3H080", name: "動脈血液ガス分析", category: "生化学的検査", subcategory: "血液ガス", unit: null, sampleResult: "pH 7.40　pCO2 40mmHg　pO2 90mmHg　HCO3 24mEq/L　BE 0mEq/L（room air、異常所見なし）", sampleValues: null },
+    { code: "3H081", name: "静脈血液ガス分析", category: "生化学的検査", subcategory: "血液ガス", unit: null, sampleResult: "pH 7.36　pCO2 46mmHg　pO2 40mmHg　HCO3 25mEq/L　BE 1mEq/L（異常所見なし）", sampleValues: null },
     // ── 生化学的検査/生体微量金属 ──
     { code: "3I010", name: "鉄（Fe）", category: "生化学的検査", subcategory: "生体微量金属", unit: "μg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "Fe", value: 100, unit: "μg/dL" }]) },
     { code: "3I015", name: "総鉄結合能（TIBC）", category: "生化学的検査", subcategory: "生体微量金属", unit: "μg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "TIBC", value: 330, unit: "μg/dL" }]) },
@@ -344,7 +348,6 @@ async function main() {
     { code: "5C045", name: "セルロプラスミン（Cp）", category: "免疫学的検査", subcategory: "血漿蛋白", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "セルロプラスミン", value: 28, unit: "mg/dL" }]) },
     { code: "5C065", name: "β2マイクログロブリン（BMG）", category: "免疫学的検査", subcategory: "血漿蛋白", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "β2MG", value: 0.18, unit: "mg/dL" }]) },
     { code: "5C070", name: "C反応性蛋白（CRP）", category: "免疫学的検査", subcategory: "血漿蛋白", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "CRP", value: 0.15, unit: "mg/dL" }]) },
-    { code: "5C090", name: "ミオグロビン", category: "免疫学的検査", subcategory: "血漿蛋白", unit: "ng/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "ミオグロビン", value: 30, unit: "ng/mL" }]) },
     { code: "5C093", name: "トロポニンT", category: "免疫学的検査", subcategory: "血漿蛋白", unit: "ng/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "トロポニンT", value: 0.01, unit: "ng/mL" }]) },
     { code: "5C094", name: "トロポニンI", category: "免疫学的検査", subcategory: "血漿蛋白", unit: "pg/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "トロポニンI", value: 5, unit: "pg/mL" }]) },
     { code: "5C095", name: "フェリチン", category: "免疫学的検査", subcategory: "血漿蛋白", unit: "ng/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "フェリチン", value: 80, unit: "ng/mL" }]) },
@@ -378,7 +381,7 @@ async function main() {
     { code: "5E151", name: "(1→3)-β-Dグルカン", category: "免疫学的検査", subcategory: "感染症(非ウイルス)関連検査", unit: "pg/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "β-Dグルカン", value: 5, unit: "pg/mL" }]) },
     { code: "5E301", name: "結核菌特異蛋白刺激性遊離インターフェロン-γ（IGRA）", category: "免疫学的検査", subcategory: "感染症(非ウイルス)関連検査", unit: null, sampleResult: "陰性", sampleValues: null },
     // ── 免疫学的検査/ウイルス感染症検査 ──
-    { code: "5F016", name: "HBs", category: "免疫学的検査", subcategory: "ウイルス感染症検査", unit: null, sampleResult: "陰性(-)", sampleValues: null },
+    { code: "5F016", name: "HBs抗原", category: "免疫学的検査", subcategory: "ウイルス感染症検査", unit: null, sampleResult: "陰性(-)", sampleValues: null },
     { code: "5F191", name: "単純ヘルペスウイルス1型", category: "免疫学的検査", subcategory: "ウイルス感染症検査", unit: null, sampleResult: "陰性(-)", sampleValues: null },
     { code: "5F194", name: "サイトメガロウイルス", category: "免疫学的検査", subcategory: "ウイルス感染症検査", unit: null, sampleResult: "陰性(-)", sampleValues: null },
     { code: "5F202", name: "EBウイルス VCA", category: "免疫学的検査", subcategory: "ウイルス感染症検査", unit: null, sampleResult: "陰性(-)", sampleValues: null },
@@ -428,7 +431,7 @@ async function main() {
     // ── 免疫学的検査/細胞性免疫検査 ──
     { code: "5I014", name: "リンパ球刺激試験-薬剤（DLST）", category: "免疫学的検査", subcategory: "細胞性免疫検査", unit: null, sampleResult: "SI 105%（陰性、判定基準180%未満）", sampleValues: null },
     // ── 免疫学的検査/サイトカイン ──
-    { code: "5J016", name: "可溶性TNFレセプター2（可溶性腫瘍壊死因子レセプター2）", category: "免疫学的検査", subcategory: "サイトカイン", unit: "ng/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "sTNFR2", value: 2.0, unit: "ng/mL" }]) },
+    { code: "5J095", name: "可溶性IL-2レセプター（可溶性インターロイキン-2レセプター）", category: "免疫学的検査", subcategory: "サイトカイン", unit: "U/mL", sampleResult: null, sampleValues: JSON.stringify([{ label: "sIL-2R", value: 400, unit: "U/mL" }]) },
     // ── 微生物学的検査/その他 ──
     { code: "6Z100", name: "13C尿素呼気試験", category: "微生物学的検査", subcategory: "その他", unit: "‰", sampleResult: null, sampleValues: JSON.stringify([{ label: "13C尿素呼気試験", value: 2.0, unit: "‰" }]) },
     { code: "6Z200", name: "迅速ウレアーゼ試験", category: "微生物学的検査", subcategory: "その他", unit: null, sampleResult: "陰性(-)", sampleValues: null },
@@ -473,8 +476,6 @@ async function main() {
     { code: "IMG-CT-008", name: "胸部CT（造影）", category: "画像検査", subcategory: "CT", unit: null, sampleResult: "縦隔・肺門に明らかなリンパ節腫大を認めない。", sampleValues: null },
     { code: "IMG-CT-009", name: "肺動脈CT（造影・肺塞栓プロトコル）", category: "画像検査", subcategory: "CT", unit: null, sampleResult: "肺動脈本幹〜区域枝に明らかな造影欠損（塞栓）を認めない。", sampleValues: null },
     { code: "IMG-CT-010", name: "冠動脈CT（造影）", category: "画像検査", subcategory: "CT", unit: null, sampleResult: "冠動脈に明らかな有意狭窄を認めない。石灰化スコアは軽度。", sampleValues: null },
-    { code: "IMG-CT-011", name: "上腹部CT（単純）", category: "画像検査", subcategory: "CT", unit: null, sampleResult: "肝・胆・膵・脾に明らかな占拠性病変を認めない。", sampleValues: null },
-    { code: "IMG-CT-012", name: "上腹部CT（造影）", category: "画像検査", subcategory: "CT", unit: null, sampleResult: "肝・胆・膵・脾に明らかな造影効果を伴う病変を認めない。", sampleValues: null },
     { code: "IMG-CT-013", name: "腹部・骨盤CT（単純）", category: "画像検査", subcategory: "CT", unit: null, sampleResult: "腹腔内に明らかな異常所見を認めない。", sampleValues: null },
     { code: "IMG-CT-014", name: "腹部・骨盤CT（造影）", category: "画像検査", subcategory: "CT", unit: null, sampleResult: "腹腔内臓器に明らかな造影効果異常を認めない。腸間膜・後腹膜に有意なリンパ節腫大を認めない。", sampleValues: null },
     { code: "IMG-CT-015", name: "下肢動脈CT（造影）", category: "画像検査", subcategory: "CT", unit: null, sampleResult: "大腿〜下腿動脈に明らかな有意狭窄・閉塞を認めない。", sampleValues: null },
@@ -492,7 +493,6 @@ async function main() {
     { code: "IMG-MR-007", name: "肩関節MRI（単純）", category: "画像検査", subcategory: "MRI", unit: null, sampleResult: "腱板に明らかな断裂所見を認めない。", sampleValues: null },
     { code: "IMG-MR-008", name: "膝関節MRI（単純）", category: "画像検査", subcategory: "MRI", unit: null, sampleResult: "半月板・靭帯に明らかな損傷を認めない。", sampleValues: null },
     { code: "IMG-MR-009", name: "股関節MRI（単純）", category: "画像検査", subcategory: "MRI", unit: null, sampleResult: "大腿骨頭に明らかな壊死像・骨髄浮腫を認めない。", sampleValues: null },
-    { code: "IMG-MR-010", name: "上腹部MRI（造影）", category: "画像検査", subcategory: "MRI", unit: null, sampleResult: "肝・胆・膵に明らかな造影効果異常を認めない。", sampleValues: null },
     { code: "IMG-MR-011", name: "MRCP（胆膵管撮影）", category: "画像検査", subcategory: "MRI", unit: null, sampleResult: "総胆管・膵管の拡張や明らかな結石像を認めない。", sampleValues: null },
     { code: "IMG-MR-012", name: "骨盤部MRI（単純）", category: "画像検査", subcategory: "MRI", unit: null, sampleResult: "骨盤内臓器に明らかな占拠性病変を認めない。", sampleValues: null },
     { code: "IMG-MR-013", name: "骨盤部MRI（造影）", category: "画像検査", subcategory: "MRI", unit: null, sampleResult: "骨盤内臓器に明らかな造影効果異常を認めない。", sampleValues: null },
@@ -503,7 +503,6 @@ async function main() {
     { code: "IMG-US-002", name: "心エコー（経食道）", category: "画像検査", subcategory: "超音波", unit: null, sampleResult: "左房内に明らかな血栓を認めない。弁構造は保たれる。", sampleValues: null },
     { code: "IMG-US-003", name: "頸動脈エコー", category: "画像検査", subcategory: "超音波", unit: null, sampleResult: "頸動脈に明らかなプラーク・有意狭窄を認めない。IMTは正常範囲。", sampleValues: null },
     { code: "IMG-US-004", name: "下肢エコー", category: "画像検査", subcategory: "超音波", unit: null, sampleResult: "下肢動静脈に明らかな閉塞・血栓を認めない。", sampleValues: null },
-    { code: "IMG-US-005", name: "腹部大動脈エコー", category: "画像検査", subcategory: "超音波", unit: null, sampleResult: "腹部大動脈径は正常範囲で、明らかな瘤形成を認めない。", sampleValues: null },
     { code: "IMG-US-006", name: "頚部エコー", category: "画像検査", subcategory: "超音波", unit: null, sampleResult: "甲状腺の腫大・結節を認めない。頸部リンパ節の有意な腫大を認めない。", sampleValues: null },
     { code: "IMG-US-007", name: "乳房エコー", category: "画像検査", subcategory: "超音波", unit: null, sampleResult: "明らかな腫瘤性病変を認めない。", sampleValues: null },
     { code: "IMG-US-008", name: "骨盤部エコー（経腹）", category: "画像検査", subcategory: "超音波", unit: null, sampleResult: "子宮・付属器（または膀胱・前立腺）に明らかな異常を認めない。", sampleValues: null },
@@ -532,7 +531,6 @@ async function main() {
     // マンモグラフィ
     { code: "IMG-MG-001", name: "マンモグラフィ（両側2方向）", category: "画像検査", subcategory: "マンモグラフィ", unit: null, sampleResult: "カテゴリ1〜2相当。明らかな腫瘤・石灰化を認めない。", sampleValues: null },
     { code: "IMG-MG-002", name: "マンモグラフィ（片側追加撮影）", category: "画像検査", subcategory: "マンモグラフィ", unit: null, sampleResult: "圧迫拡大撮影で明らかな悪性所見を認めない。", sampleValues: null },
-    { code: "IMG-MG-003", name: "トモシンセシス撮影（乳房）", category: "画像検査", subcategory: "マンモグラフィ", unit: null, sampleResult: "断層像でも明らかな構築の乱れ・腫瘤影を認めない。", sampleValues: null },
   ];
   for (const l of labItems) {
     await db.labItemMaster.upsert({ where: { code: l.code }, update: l, create: l });
