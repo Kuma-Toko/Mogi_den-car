@@ -60,9 +60,9 @@ export async function updateTemplate(id: string, formData: FormData) {
 export async function deleteTemplate(id: string) {
   const user = await requireAdmin();
 
-  // 外部キーはON DELETE SET NULLのため、削除自体はチェックなしでも例外を投げない。
-  // 症例のテンプレート参照が黙ってNULLになる（その症例の動的エンジンが無効化される）のを防ぐため、事前に確認する。
-  const usageCount = await db.case.count({ where: { diseaseTemplateId: id } });
+  // 症例がこのテンプレートをアタッチ中（CaseDiseaseLink経由）なら削除できないよう事前に確認する
+  // （外部キーはON DELETE RESTRICTのため、確認なしでも例外にはなるが、事前にエラーメッセージで案内する）。
+  const usageCount = await db.caseDiseaseLink.count({ where: { templateId: id } });
   if (usageCount > 0) {
     redirect("/admin/templates?error=in_use");
   }
@@ -97,8 +97,8 @@ export async function updateTemplateEngineConfig(id: string, formData: FormData)
     drugCategories: splitList(formData.get("drugCategories")),
     procedureKeywords: splitList(formData.get("procedureKeywords")),
   };
+  // baseは持たない（基礎生理モデルが一元管理する）。テンプレートは重症度100あたりの増減量のみを持つ。
   const vitals = {
-    base: readVitalPoint(formData, "base"),
     perSeverity: readVitalPoint(formData, "perSeverity"),
   };
 
@@ -107,6 +107,22 @@ export async function updateTemplateEngineConfig(id: string, formData: FormData)
     data: { treatmentConfig: JSON.stringify(treatment), vitalsConfig: JSON.stringify(vitals) },
   });
   await logAudit({ userId: user.id, action: "master_template_engine_config_update", targetType: "DiseaseTemplate", targetId: id });
+
+  revalidatePath("/admin/templates");
+}
+
+// ── 基礎生理モデル（BasePhysiologyModel、症例・疾患非依存のシングルトン） ────────────────
+
+export async function updateBasePhysiologyModel(formData: FormData) {
+  const user = await requireAdmin();
+
+  const point = readVitalPoint(formData, "base");
+  await db.basePhysiologyModel.upsert({
+    where: { id: "default" },
+    update: point,
+    create: { id: "default", ...point },
+  });
+  await logAudit({ userId: user.id, action: "master_base_physiology_update", targetType: "BasePhysiologyModel", targetId: "default" });
 
   revalidatePath("/admin/templates");
 }
@@ -243,6 +259,7 @@ export async function deleteLabPatternValue(id: string) {
 function readCrisisScenarioFields(formData: FormData) {
   return {
     name: String(formData.get("name") ?? "").trim(),
+    sustainMinutes: Math.max(0, Math.round(Number(formData.get("sustainMinutes") ?? 0))),
     windowMinutes: Math.max(1, Math.round(Number(formData.get("windowMinutes") ?? 480))),
     postRescueSeverity: Math.min(100, Math.max(0, Math.round(Number(formData.get("postRescueSeverity") ?? 50)))),
     crisisVitals: JSON.stringify(readVitalPoint(formData, "crisisVitals")),

@@ -15,7 +15,11 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
   const [caseRecord, templates] = await Promise.all([
     db.case.findUnique({
       where: { id: caseId },
-      include: { problems: { orderBy: { sortOrder: "asc" } }, assignments: { include: { student: true } } },
+      include: {
+        problems: { orderBy: { sortOrder: "asc" } },
+        assignments: { include: { student: true } },
+        diseaseLinks: { orderBy: { sortOrder: "asc" } },
+      },
     }),
     db.diseaseTemplate.findMany({ orderBy: { createdAt: "asc" } }),
   ]);
@@ -28,6 +32,11 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
     description: t.description,
     defaultParams: parsePhysiologyParams(t.defaultParams),
   }));
+
+  const primaryLink = caseRecord.diseaseLinks.find((l) => l.isPrimary) ?? caseRecord.diseaseLinks[0] ?? null;
+  const physiologyParamsByTemplate = Object.fromEntries(
+    caseRecord.diseaseLinks.map((l) => [l.templateId, parsePhysiologyParams(l.physiologyParams)])
+  );
 
   const initial: CaseFormInitial = {
     status: caseRecord.status,
@@ -42,11 +51,12 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
     problems: caseRecord.problems.map((p) => p.label).join(", "),
     historyScript: caseRecord.historyScript ?? "",
     examScript: caseRecord.examScript ?? "",
-    diseaseTemplateId: caseRecord.diseaseTemplateId,
+    diseaseTemplateIds: caseRecord.diseaseLinks.map((l) => l.templateId),
+    primaryTemplateId: primaryLink?.templateId ?? null,
     resultTiming: caseRecord.resultTiming === "DELAYED" ? "DELAYED" : "IMMEDIATE",
     sharingMode: caseRecord.sharingMode === "TEAM" ? "TEAM" : "SOLO",
     crisisMode: caseRecord.crisisMode,
-    physiologyParams: parsePhysiologyParams(caseRecord.physiologyParams),
+    physiologyParamsByTemplate,
     assigneeLoginIds: caseRecord.assignments.map((a) => a.student.loginId).join(", "),
   };
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireCaseAccess } from "@/lib/case-access";
-import { loadTemplateConfig, reconcileCase } from "@/lib/engine";
+import { findPrimaryDiseaseLink, loadTemplateConfig, reconcileCase } from "@/lib/engine";
 import { getCaseClockNow } from "@/lib/physiology-engine";
 import { db } from "@/lib/db";
 import { CrisisBanner } from "./CrisisBanner";
@@ -41,8 +41,12 @@ export default async function CaseDetailPage({
 
   // reconcileCase()がこのリクエスト中にcrisisStateを更新している可能性があるため、
   // requireCaseAccess()で取得した（reconcile前の）caseRecordとは別に最新状態を取り直す。
-  const crisisCaseRecord = await db.case.findUnique({ where: { id: caseId }, include: { diseaseTemplate: true } });
-  const crisisConfig = await loadTemplateConfig(crisisCaseRecord?.diseaseTemplate?.key);
+  const crisisCaseRecord = await db.case.findUnique({
+    where: { id: caseId },
+    include: { diseaseLinks: { include: { template: true }, orderBy: { sortOrder: "asc" } } },
+  });
+  const primaryDiseaseLink = crisisCaseRecord ? findPrimaryDiseaseLink(crisisCaseRecord.diseaseLinks) : null;
+  const crisisConfig = await loadTemplateConfig(primaryDiseaseLink?.template.key);
   const crisisElapsedMinutes =
     crisisCaseRecord?.crisisStartedAt && crisisCaseRecord.crisisState !== "STABLE"
       ? (getCaseClockNow(crisisCaseRecord).getTime() - crisisCaseRecord.crisisStartedAt.getTime()) / 60_000

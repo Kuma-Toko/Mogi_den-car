@@ -27,6 +27,7 @@ import {
   updateLabPatternCode,
   updateLabPatternText,
   updateLabPatternValue,
+  updateBasePhysiologyModel,
   updateTemplate,
   updateTemplateEngineConfig,
 } from "./actions";
@@ -59,6 +60,7 @@ export default async function AdminTemplatesPage({
   const { error } = await searchParams;
 
   const templates = await db.diseaseTemplate.findMany({ orderBy: { createdAt: "asc" }, include: TEMPLATE_INCLUDE });
+  const basePhysiology = await db.basePhysiologyModel.findUnique({ where: { id: "default" } });
 
   return (
     <>
@@ -73,6 +75,39 @@ export default async function AdminTemplatesPage({
           </div>
         )}
 
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div className="card-h">基礎生理モデル</div>
+          <div className="card-b">
+            <div style={{ fontSize: 11.5, color: "var(--ink-soft)", marginBottom: 8 }}>
+              疾患が何もない状態でのバイタルの基準値。生理モデルはここへ、アタッチされた各病態テンプレートの
+              「重症度100あたりの増減量」を自身の重症度に応じて単純加算し、最終的なバイタルを算出する。
+            </div>
+            <form action={updateBasePhysiologyModel}>
+              <VitalPointGrid
+                prefix="base"
+                title="基準値"
+                defaults={
+                  basePhysiology
+                    ? {
+                        temperature: basePhysiology.temperature,
+                        systolicBp: basePhysiology.systolicBp,
+                        diastolicBp: basePhysiology.diastolicBp,
+                        pulse: basePhysiology.pulse,
+                        spo2: basePhysiology.spo2,
+                        respRate: basePhysiology.respRate,
+                      }
+                    : undefined
+                }
+              />
+              <div style={{ textAlign: "right", marginTop: 8 }}>
+                <button type="submit" className="btn primary">
+                  基礎生理モデルを保存
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
         <div style={{ fontSize: 11.5, color: "var(--ink-soft)", marginBottom: 14 }}>
           <span className="badge amber" style={{ marginRight: 6 }}>
             エンジン未対応
@@ -82,7 +117,7 @@ export default async function AdminTemplatesPage({
 
         {templates.map((t) => {
           const engineReady = !!t.vitalsConfig && !!t.treatmentConfig;
-          const vitals = t.vitalsConfig ? (JSON.parse(t.vitalsConfig) as { base: Record<string, number>; perSeverity: Record<string, number> }) : null;
+          const vitals = t.vitalsConfig ? (JSON.parse(t.vitalsConfig) as { perSeverity: Record<string, number> }) : null;
           const treatment = t.treatmentConfig ? (JSON.parse(t.treatmentConfig) as { drugCategories?: string[]; procedureKeywords?: string[] }) : null;
 
           return (
@@ -159,8 +194,7 @@ export default async function AdminTemplatesPage({
                     </div>
                   </div>
 
-                  <VitalPointGrid prefix="base" title="基準値（重症度0）" defaults={vitals?.base} />
-                  <VitalPointGrid prefix="perSeverity" title="重症度100あたりの増減量" defaults={vitals?.perSeverity} />
+                  <VitalPointGrid prefix="perSeverity" title="重症度100あたりの増減量（基礎生理モデルへ加算）" defaults={vitals?.perSeverity} />
 
                   <div style={{ textAlign: "right", marginTop: 10 }}>
                     <button type="submit" className="btn primary">
@@ -438,6 +472,10 @@ function CrisisSection({ template }: { template: TemplateWithRelations }) {
               <input name="name" required placeholder="例: 敗血症性ショック・心停止" />
             </div>
             <div className="field">
+              <label>持続時間（分）— この時間だけ発動条件が連続して満たされたらCRITICALへ</label>
+              <input name="sustainMinutes" type="number" defaultValue={0} min={0} />
+            </div>
+            <div className="field">
               <label>猶予時間（分）</label>
               <input name="windowMinutes" type="number" defaultValue={480} min={1} />
             </div>
@@ -474,6 +512,10 @@ function CrisisSection({ template }: { template: TemplateWithRelations }) {
           <div className="field">
             <label>シナリオ名</label>
             <input name="name" defaultValue={crisis.name} required />
+          </div>
+          <div className="field">
+            <label>持続時間（分）— この時間だけ発動条件が連続して満たされたらCRITICALへ</label>
+            <input name="sustainMinutes" type="number" defaultValue={crisis.sustainMinutes} min={0} />
           </div>
           <div className="field">
             <label>猶予時間（分）</label>

@@ -23,6 +23,7 @@ CREATE TABLE "new_Case" (
     "crisisState" TEXT NOT NULL DEFAULT 'STABLE',
     "crisisStartedAt" DATETIME,
     "severityBaselineAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "aiSeverityRatePerHour" REAL,
     "historyScript" TEXT,
     "examScript" TEXT,
     "createdByUserId" TEXT NOT NULL,
@@ -32,7 +33,7 @@ CREATE TABLE "new_Case" (
     CONSTRAINT "Case_diseaseTemplateId_fkey" FOREIGN KEY ("diseaseTemplateId") REFERENCES "DiseaseTemplate" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Case_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
-INSERT INTO "new_Case" ("bed", "caseCode", "caseType", "createdAt", "createdByUserId", "crisisMode", "crisisStartedAt", "crisisState", "diseaseTemplateId", "examScript", "historyScript", "id", "patientAge", "patientGender", "patientName", "physiologyParams", "publishedAt", "resultTiming", "sharingMode", "simNowAt", "status", "timeProgressMode", "title", "updatedAt", "visibilityScope", "ward") SELECT "bed", "caseCode", "caseType", "createdAt", "createdByUserId", "crisisMode", "crisisStartedAt", "crisisState", "diseaseTemplateId", "examScript", "historyScript", "id", "patientAge", "patientGender", "patientName", "physiologyParams", "publishedAt", "resultTiming", "sharingMode", "simNowAt", "status", "timeProgressMode", "title", "updatedAt", "visibilityScope", "ward" FROM "Case";
+INSERT INTO "new_Case" ("aiSeverityRatePerHour", "bed", "caseCode", "caseType", "createdAt", "createdByUserId", "crisisMode", "crisisStartedAt", "crisisState", "diseaseTemplateId", "examScript", "historyScript", "id", "patientAge", "patientGender", "patientName", "physiologyParams", "publishedAt", "resultTiming", "sharingMode", "severityBaselineAt", "simNowAt", "status", "timeProgressMode", "title", "updatedAt", "visibilityScope", "ward") SELECT "aiSeverityRatePerHour", "bed", "caseCode", "caseType", "createdAt", "createdByUserId", "crisisMode", "crisisStartedAt", "crisisState", "diseaseTemplateId", "examScript", "historyScript", "id", "patientAge", "patientGender", "patientName", "physiologyParams", "publishedAt", "resultTiming", "sharingMode", "severityBaselineAt", "simNowAt", "status", "timeProgressMode", "title", "updatedAt", "visibilityScope", "ward" FROM "Case";
 DROP TABLE "Case";
 ALTER TABLE "new_Case" RENAME TO "Case";
 CREATE UNIQUE INDEX "Case_caseCode_key" ON "Case"("caseCode");

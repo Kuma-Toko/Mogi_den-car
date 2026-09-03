@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   DEFAULT_PHYSIOLOGY_PARAMS,
   sliderToSeverityLabel,
@@ -33,11 +33,12 @@ export type CaseFormInitial = {
   problems: string;
   historyScript: string;
   examScript: string;
-  diseaseTemplateId: string | null;
+  diseaseTemplateIds: string[];
+  primaryTemplateId: string | null;
   resultTiming: "IMMEDIATE" | "DELAYED";
   sharingMode: "SOLO" | "TEAM";
   crisisMode: CrisisMode;
-  physiologyParams: PhysiologyParams;
+  physiologyParamsByTemplate: Record<string, PhysiologyParams>;
   assigneeLoginIds: string;
 };
 
@@ -61,34 +62,46 @@ export function CaseForm({
   initial?: CaseFormInitial;
 }) {
   const [caseType] = useState<CaseType>(initial?.caseType ?? "SIMULATION");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    initial?.diseaseTemplateId ?? templates[0]?.id ?? null
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>(
+    initial?.diseaseTemplateIds ?? (templates[0] ? [templates[0].id] : [])
+  );
+  const [primaryTemplateId, setPrimaryTemplateId] = useState<string | null>(
+    initial?.primaryTemplateId ?? templates[0]?.id ?? null
   );
   const [resultTiming, setResultTiming] = useState<"IMMEDIATE" | "DELAYED">(initial?.resultTiming ?? "IMMEDIATE");
   const [sharingMode, setSharingMode] = useState<"SOLO" | "TEAM">(initial?.sharingMode ?? "TEAM");
   const [crisisMode, setCrisisMode] = useState<CrisisMode>(initial?.crisisMode ?? "LETHAL");
 
-  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
-  const sliderDefaults: PhysiologyParams = selectedTemplate?.defaultParams ?? DEFAULT_PHYSIOLOGY_PARAMS;
-  // 編集時、まだテンプレートを切り替えていなければ症例保存済みのスライダー値を、
-  // テンプレートを切り替えた後はそのテンプレートの既定値を使う。
-  const sliderInitial: PhysiologyParams =
-    initial && selectedTemplateId === initial.diseaseTemplateId ? initial.physiologyParams : sliderDefaults;
+  // 疾患ごとのスライダー値。編集時は保存済みの値を、新規選択時はそのテンプレートの既定値を初期値にする。
+  const [physiologyValuesByTemplate, setPhysiologyValuesByTemplate] = useState<Record<string, PhysiologyParams>>(
+    () => initial?.physiologyParamsByTemplate ?? {}
+  );
 
   const formRef = useRef<HTMLFormElement>(null);
-  const [physiologyValues, setPhysiologyValues] = useState<PhysiologyParams>(sliderInitial);
   const [copiedKind, setCopiedKind] = useState<"history" | "exam" | null>(null);
   const [promptPreview, setPromptPreview] = useState<{ kind: "history" | "exam"; text: string } | null>(null);
-  const isFirstRender = useRef(true);
 
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    setPhysiologyValues(sliderDefaults);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTemplateId]);
+  function toggleTemplate(templateId: string) {
+    setSelectedTemplateIds((prev) => {
+      const isSelected = prev.includes(templateId);
+      const next = isSelected ? prev.filter((id) => id !== templateId) : [...prev, templateId];
+
+      if (!isSelected) {
+        // 新規選択: まだ値を持っていなければそのテンプレートの既定値で初期化する
+        setPhysiologyValuesByTemplate((values) =>
+          values[templateId]
+            ? values
+            : { ...values, [templateId]: templates.find((t) => t.id === templateId)?.defaultParams ?? DEFAULT_PHYSIOLOGY_PARAMS }
+        );
+        if (!primaryTemplateId) setPrimaryTemplateId(templateId);
+      } else if (primaryTemplateId === templateId) {
+        // 主病態を解除した場合、残りの選択肢の先頭を新たな主病態にする
+        setPrimaryTemplateId(next[0] ?? null);
+      }
+
+      return next;
+    });
+  }
 
   function buildCaseContext() {
     const fd = new FormData(formRef.current ?? undefined);
@@ -97,15 +110,24 @@ export function CaseForm({
     const patientAge = String(fd.get("patientAge") || "").trim() || "(未入力)";
     const patientGender = String(fd.get("patientGender") || "").trim() || "(未入力)";
     const problems = String(fd.get("problems") || "").trim() || "(未入力)";
-    const templateName = selectedTemplate?.name ?? "(未選択)";
-    const templateDescription = selectedTemplate?.description ?? "";
+    const selectedTemplates = templates.filter((t) => selectedTemplateIds.includes(t.id));
+    const templateSummary =
+      selectedTemplates.length > 0
+        ? selectedTemplates.map((t) => `${t.name}${t.description ? `（${t.description}）` : ""}`).join("、")
+        : "(未選択)";
+    const primaryValues = primaryTemplateId ? physiologyValuesByTemplate[primaryTemplateId] : undefined;
+    const physiologyLine = primaryValues
+      ? `主病態の重症度: ${sliderToSeverityLabel(primaryValues.severitySlider)} / 体温: ${sliderToTemp(primaryValues.initialTempSlider)}℃ / SpO2: ${sliderToSpo2(primaryValues.initialSpo2Slider)}% / 改善速度: ${sliderToSpeedLabel(primaryValues.improvementSpeedSlider)}`
+      : "";
     return [
       `症例名: ${title}`,
       `模擬患者: ${patientName}（${patientAge}歳・${patientGender}）`,
       `プロブレム: ${problems}`,
-      `想定疾患テンプレート: ${templateName}${templateDescription ? `（${templateDescription}）` : ""}`,
-      `重症度: ${sliderToSeverityLabel(physiologyValues.severitySlider)} / 体温: ${sliderToTemp(physiologyValues.initialTempSlider)}℃ / SpO2: ${sliderToSpo2(physiologyValues.initialSpo2Slider)}% / 改善速度: ${sliderToSpeedLabel(physiologyValues.improvementSpeedSlider)}`,
-    ].join("\n");
+      `想定疾患テンプレート: ${templateSummary}`,
+      physiologyLine,
+    ]
+      .filter(Boolean)
+      .join("\n");
   }
 
   function buildPrompt(kind: "history" | "exam") {
@@ -213,26 +235,63 @@ ${context}
       </div>
 
       <div className="card">
-        <div className="card-h">病態テンプレート</div>
+        <div className="card-h">病態テンプレート（複数選択可）</div>
         <div className="card-b">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10, marginBottom: 16 }}>
-            {templates.map((t) => (
-              <div
-                key={t.id}
-                className={`tpl-card${selectedTemplateId === t.id ? " on" : ""}`}
-                onClick={() => setSelectedTemplateId(t.id)}
-              >
-                <div className="t">{t.name}</div>
-                <div className="d">{t.description}</div>
-              </div>
-            ))}
+            {templates.map((t) => {
+              const isSelected = selectedTemplateIds.includes(t.id);
+              const isPrimary = primaryTemplateId === t.id;
+              return (
+                <div key={t.id} className={`tpl-card${isSelected ? " on" : ""}`} onClick={() => toggleTemplate(t.id)}>
+                  <div className="t" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {t.name}
+                    {isPrimary && <span className="badge teal" style={{ fontSize: 10 }}>主病態</span>}
+                  </div>
+                  <div className="d">{t.description}</div>
+                  {isSelected && !isPrimary && (
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      style={{ fontSize: 10.5, padding: "2px 8px", marginTop: 6 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPrimaryTemplateId(t.id);
+                      }}
+                    >
+                      主病態にする
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <input type="hidden" name="diseaseTemplateId" value={selectedTemplateId ?? ""} />
+          {selectedTemplateIds.map((id) => (
+            <input key={id} type="hidden" name="diseaseTemplateIds" value={id} />
+          ))}
+          <input type="hidden" name="primaryTemplateId" value={primaryTemplateId ?? ""} />
 
           <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6 }}>
-            テンプレートを微調整
+            疾患ごとに微調整
           </div>
-          <PhysiologySliders key={selectedTemplateId} initial={sliderInitial} onChange={setPhysiologyValues} />
+          {selectedTemplateIds.length === 0 ? (
+            <div className="empty-note">病態テンプレートを1つ以上選択してください。</div>
+          ) : (
+            templates
+              .filter((t) => selectedTemplateIds.includes(t.id))
+              .map((t) => (
+                <div key={t.id} style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                    {t.name}
+                    {primaryTemplateId === t.id && <span className="badge teal" style={{ fontSize: 10 }}>主病態</span>}
+                  </div>
+                  <PhysiologySliders
+                    initial={physiologyValuesByTemplate[t.id] ?? t.defaultParams}
+                    namePrefix={`tpl_${t.id}_`}
+                    onChange={(values) => setPhysiologyValuesByTemplate((prev) => ({ ...prev, [t.id]: values }))}
+                  />
+                </div>
+              ))
+          )}
         </div>
       </div>
 

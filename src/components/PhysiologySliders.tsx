@@ -12,9 +12,13 @@ import {
 export function PhysiologySliders({
   initial,
   onChange,
+  namePrefix = "",
 }: {
   initial: PhysiologyParams;
   onChange?: (values: PhysiologyParams) => void;
+  // 症例作成フォームのように1つの<form>内に疾患ごとのスライダーを複数並べる場合、
+  // FormDataのフィールド名が衝突しないよう疾患ごとに異なるprefixを渡す（例: `tpl_${templateId}_`）。
+  namePrefix?: string;
 }) {
   const [values, setValues] = useState(initial);
 
@@ -32,7 +36,7 @@ export function PhysiologySliders({
           type="range"
           min={0}
           max={100}
-          name="initialTempSlider"
+          name={`${namePrefix}initialTempSlider`}
           value={values.initialTempSlider}
           onChange={(e) => update({ initialTempSlider: Number(e.target.value) })}
         />
@@ -44,7 +48,7 @@ export function PhysiologySliders({
           type="range"
           min={0}
           max={100}
-          name="improvementSpeedSlider"
+          name={`${namePrefix}improvementSpeedSlider`}
           value={values.improvementSpeedSlider}
           onChange={(e) => update({ improvementSpeedSlider: Number(e.target.value) })}
         />
@@ -56,19 +60,19 @@ export function PhysiologySliders({
           type="range"
           min={0}
           max={100}
-          name="initialSpo2Slider"
+          name={`${namePrefix}initialSpo2Slider`}
           value={values.initialSpo2Slider}
           onChange={(e) => update({ initialSpo2Slider: Number(e.target.value) })}
         />
         <div className="val">{sliderToSpo2(values.initialSpo2Slider)}%</div>
       </div>
       <div className="param-row">
-        <div className="lab">重症度（画像所見の分岐に反映）</div>
+        <div className="lab">重症度</div>
         <input
           type="range"
           min={0}
           max={100}
-          name="severitySlider"
+          name={`${namePrefix}severitySlider`}
           value={values.severitySlider}
           onChange={(e) => update({ severitySlider: Number(e.target.value) })}
         />

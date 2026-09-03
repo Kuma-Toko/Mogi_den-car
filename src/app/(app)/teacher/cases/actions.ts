@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import type { Case, CaseType, CrisisMode } from "@prisma/client";
+import type { PhysiologyParams } from "@/lib/physiology";
 
 const CRISIS_MODES: CrisisMode[] = ["OFF", "REVERSIBLE", "LETHAL"];
 
@@ -41,7 +42,13 @@ function readCaseFields(formData: FormData) {
   const historyScript = String(formData.get("historyScript") ?? "").trim() || null;
   const examScript = String(formData.get("examScript") ?? "").trim() || null;
   const problemsRaw = String(formData.get("problems") ?? "");
-  const diseaseTemplateId = String(formData.get("diseaseTemplateId") ?? "") || null;
+  const diseaseTemplateIds = formData
+    .getAll("diseaseTemplateIds")
+    .map((v) => String(v))
+    .filter(Boolean);
+  const primaryTemplateIdRaw = String(formData.get("primaryTemplateId") ?? "") || null;
+  const primaryTemplateId =
+    primaryTemplateIdRaw && diseaseTemplateIds.includes(primaryTemplateIdRaw) ? primaryTemplateIdRaw : (diseaseTemplateIds[0] ?? null);
   const resultTiming = String(formData.get("resultTiming") ?? "IMMEDIATE");
   const crisisModeRaw = String(formData.get("crisisMode") ?? "LETHAL");
   const crisisMode = CRISIS_MODES.includes(crisisModeRaw as CrisisMode) ? (crisisModeRaw as CrisisMode) : "LETHAL";
@@ -54,12 +61,15 @@ function readCaseFields(formData: FormData) {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const physiologyParams = {
-    initialTempSlider: Number(formData.get("initialTempSlider") ?? 50),
-    improvementSpeedSlider: Number(formData.get("improvementSpeedSlider") ?? 50),
-    initialSpo2Slider: Number(formData.get("initialSpo2Slider") ?? 50),
-    severitySlider: Number(formData.get("severitySlider") ?? 50),
-  };
+  const physiologyParamsByTemplate: Record<string, PhysiologyParams> = {};
+  for (const templateId of diseaseTemplateIds) {
+    physiologyParamsByTemplate[templateId] = {
+      initialTempSlider: Number(formData.get(`tpl_${templateId}_initialTempSlider`) ?? 50),
+      improvementSpeedSlider: Number(formData.get(`tpl_${templateId}_improvementSpeedSlider`) ?? 50),
+      initialSpo2Slider: Number(formData.get(`tpl_${templateId}_initialSpo2Slider`) ?? 50),
+      severitySlider: Number(formData.get(`tpl_${templateId}_severitySlider`) ?? 50),
+    };
+  }
 
   return {
     title,
@@ -73,12 +83,13 @@ function readCaseFields(formData: FormData) {
     historyScript,
     examScript,
     problemLabels,
-    diseaseTemplateId,
+    diseaseTemplateIds,
+    primaryTemplateId,
     resultTiming,
     crisisMode,
     sharingMode,
     assigneeLoginIds,
-    physiologyParams,
+    physiologyParamsByTemplate,
   };
 }
 
@@ -113,12 +124,13 @@ export async function createCase(formData: FormData) {
     historyScript,
     examScript,
     problemLabels,
-    diseaseTemplateId,
+    diseaseTemplateIds,
+    primaryTemplateId,
     resultTiming,
     crisisMode,
     sharingMode,
     assigneeLoginIds,
-    physiologyParams,
+    physiologyParamsByTemplate,
   } = readCaseFields(formData);
 
   if (!title || !patientName) return;
@@ -149,13 +161,23 @@ export async function createCase(formData: FormData) {
         visibilityScope,
         historyScript,
         examScript,
-        diseaseTemplateId,
-        physiologyParams: JSON.stringify(physiologyParams),
         crisisMode,
         createdByUserId: user.id,
         publishedAt: isPublish ? new Date() : null,
       },
     });
+
+    if (diseaseTemplateIds.length > 0) {
+      await tx.caseDiseaseLink.createMany({
+        data: diseaseTemplateIds.map((templateId, i) => ({
+          caseId: created.id,
+          templateId,
+          isPrimary: templateId === primaryTemplateId,
+          physiologyParams: JSON.stringify(physiologyParamsByTemplate[templateId]),
+          sortOrder: i,
+        })),
+      });
+    }
 
     if (problemLabels.length > 0) {
       await tx.problem.createMany({
@@ -202,12 +224,13 @@ export async function updateCase(caseId: string, formData: FormData) {
     historyScript,
     examScript,
     problemLabels,
-    diseaseTemplateId,
+    diseaseTemplateIds,
+    primaryTemplateId,
     resultTiming,
     crisisMode,
     sharingMode,
     assigneeLoginIds,
-    physiologyParams,
+    physiologyParamsByTemplate,
   } = readCaseFields(formData);
   // 区分（caseType）はcaseCode採番・時間進行モードと結びついているため作成後は変更不可。
 
@@ -236,15 +259,26 @@ export async function updateCase(caseId: string, formData: FormData) {
         visibilityScope,
         historyScript,
         examScript,
-        // update()の生成型はdiseaseTemplateIdを直接受け付けない（create()と異なりネストしたrelation構文が必須）。
-        diseaseTemplate: diseaseTemplateId ? { connect: { id: diseaseTemplateId } } : { disconnect: true },
-        physiologyParams: JSON.stringify(physiologyParams),
         crisisMode,
         ...(isPublish
           ? { status: caseRecord.caseType === "SIMULATION" ? "SIMULATING" : "ACTIVE", publishedAt: new Date() }
           : {}),
       },
     });
+
+    // 選択解除された疾患のリンクは削除。残った/新規の疾患はupsertする（既存分のseverityBaselineAt・
+    // aiSeverityRatePerHourは更新対象に含めないので、他のフィールド編集で重症度進行がリセットされない）。
+    await tx.caseDiseaseLink.deleteMany({ where: { caseId, templateId: { notIn: diseaseTemplateIds } } });
+    for (let i = 0; i < diseaseTemplateIds.length; i++) {
+      const templateId = diseaseTemplateIds[i];
+      const isPrimary = templateId === primaryTemplateId;
+      const physiologyParamsJson = JSON.stringify(physiologyParamsByTemplate[templateId]);
+      await tx.caseDiseaseLink.upsert({
+        where: { caseId_templateId: { caseId, templateId } },
+        update: { isPrimary, physiologyParams: physiologyParamsJson, sortOrder: i },
+        create: { caseId, templateId, isPrimary, physiologyParams: physiologyParamsJson, sortOrder: i },
+      });
+    }
 
     await tx.problem.deleteMany({ where: { caseId } });
     if (problemLabels.length > 0) {

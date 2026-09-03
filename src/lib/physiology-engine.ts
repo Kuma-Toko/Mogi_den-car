@@ -1,4 +1,4 @@
-import type { Case, Order } from "@prisma/client";
+import type { Case, CaseDiseaseLink, Order } from "@prisma/client";
 import { DEFAULT_PHYSIOLOGY_PARAMS, type PhysiologyParams } from "@/lib/physiology";
 import { formatLabValues, type LabValue } from "@/lib/lab-reference-ranges";
 
@@ -13,9 +13,10 @@ export type VitalPoint = {
   respRate: number;
 };
 
+// 疾患の影響は基礎生理モデルへの増減量（perSeverity * severity/100）のみを持つ。基礎値(base)は
+// BasePhysiologyModel（症例・疾患非依存の1行）が持ち、生理モデルがそこへ全疾患分を単純加算する。
 type VitalCoefficients = {
-  base: VitalPoint;
-  perSeverity: VitalPoint; // 重症度100あたりの増減量（base + perSeverity * severity/100）
+  perSeverity: VitalPoint; // 重症度100あたりの増減量
 };
 
 type TextPatternSet = { kind: "text"; patterns: Record<SeverityTier, string> };
@@ -51,6 +52,8 @@ export type CrisisRescueAction = {
 export type CrisisScenario = {
   name: string; // 表示名（例: "心室細動・心停止"）
   triggers: CrisisTrigger[]; // いずれか1つで発動（OR）
+  // トリガー条件が連続して満たされてからCRITICALへ遷移するまでの猶予（分）。0＝瞬間発火。
+  sustainMinutes: number;
   windowMinutes: number; // 発動後この時間内に救命オーダーがなければ死亡（crisisMode=LETHALの場合）
   rescueActions: CrisisRescueAction[]; // いずれか1つのオーダーで危機を脱する
   crisisVitals: VitalPoint; // 危機発生中（CRITICAL/DECEASED）は通常の重症度カーブでなくこの固定値を表示
@@ -214,20 +217,26 @@ export function getSeverityTier(severity: number): SeverityTier {
   return "severe";
 }
 
-// oxygenBoostは酸素投与によるSpO2上乗せ幅（findActiveOxygenBoostの戻り値）。省略時は0（酸素投与なし）。
-export function computeVitalsForSeverity(config: TemplateConfig, severity: number, oxygenBoost = 0): VitalPoint {
-  const ratio = clamp(severity, 0, 100) / 100;
-  const { base, perSeverity } = config.vitals;
+// 生理モデルへの1疾患分の入力＝そのテンプレート設定と、現時点でのその疾患自身の重症度。
+export type DiseaseContribution = { config: TemplateConfig; severity: number };
+
+// 生理モデル: 基礎生理モデル(base)に、活性中の全疾患それぞれの(perSeverity * 自分の重症度/100)を
+// 単純加算して最終的なバイタルを算出する。oxygenBoostは酸素投与によるSpO2上乗せ幅
+// （findActiveOxygenBoostの戻り値）。省略時は0（酸素投与なし）。
+export function aggregateVitals(base: VitalPoint, contributions: DiseaseContribution[], oxygenBoost = 0): VitalPoint {
   const round1 = (v: number) => Math.round(v * 10) / 10;
   const round0 = (v: number) => Math.round(v);
-  const spo2WithoutO2 = clamp(round0(base.spo2 + perSeverity.spo2 * ratio), 70, 100);
+  const sumField = (field: keyof VitalPoint) =>
+    base[field] +
+    contributions.reduce((total, c) => total + c.config.vitals.perSeverity[field] * (clamp(c.severity, 0, 100) / 100), 0);
+  const spo2WithoutO2 = clamp(round0(sumField("spo2")), 70, 100);
   return {
-    temperature: round1(base.temperature + perSeverity.temperature * ratio),
-    systolicBp: round0(base.systolicBp + perSeverity.systolicBp * ratio),
-    diastolicBp: round0(base.diastolicBp + perSeverity.diastolicBp * ratio),
-    pulse: round0(base.pulse + perSeverity.pulse * ratio),
+    temperature: round1(sumField("temperature")),
+    systolicBp: round0(sumField("systolicBp")),
+    diastolicBp: round0(sumField("diastolicBp")),
+    pulse: round0(sumField("pulse")),
     spo2: clamp(spo2WithoutO2 + oxygenBoost, 70, 100),
-    respRate: round0(base.respRate + perSeverity.respRate * ratio),
+    respRate: round0(sumField("respRate")),
   };
 }
 
@@ -248,26 +257,55 @@ export function resolveDynamicLab(
   return { text: formatLabValues(values), values };
 }
 
-// severityBaselineAtは重症度カーブの起点。通常は症例作成時刻（createdAt相当）だが、
+// 生理モデル: 検査値の統合。数値項目(kind=values)は基礎値(LabItemMaster.sampleValues)に、
+// パターンを持つ各疾患の「階層値-基礎値」を単純加算する。文章型(kind=text)や基礎値が無い項目は
+// 数値合成できないため、パターンを持つ各疾患の所見テキストを連結する（渡された順、通常は主病態→他疾患）。
+// パターンを持たない疾患の寄与は0（無視）。誰もパターンを持たなければnull（呼び出し側は静的サンプルにフォールバック）。
+export function aggregateLabResult(
+  labItemCode: string,
+  contributions: DiseaseContribution[],
+  baseSampleValues: LabValue[] | null
+): DynamicLabResult | null {
+  const matched = contributions
+    .map((c) => resolveDynamicLab(c.config, labItemCode, c.severity))
+    .filter((r): r is DynamicLabResult => r !== null);
+  if (matched.length === 0) return null;
+
+  const allNumeric = matched.every((r) => r.values !== null);
+  if (!allNumeric || !baseSampleValues || baseSampleValues.length === 0) {
+    return { text: matched.map((r) => r.text).join("\n"), values: null };
+  }
+
+  const combined: LabValue[] = baseSampleValues.map((base) => {
+    const delta = matched.reduce((sum, r) => {
+      const entry = r.values!.find((v) => v.label === base.label);
+      return sum + (entry ? entry.value - base.value : 0);
+    }, 0);
+    return { ...base, value: Math.round((base.value + delta) * 1000) / 1000 };
+  });
+  return { text: formatLabValues(combined), values: combined };
+}
+
+// severityBaselineAtは重症度カーブの起点。通常は疾患アタッチ時刻相当だが、
 // 危機シナリオからの救命成功時やAI治療評価時にその時刻へ更新され、以降はそこを新たな起点として
 // 重症度が再計算される（救命前の治療オーダーはこの新しい起点以降のものだけを見る）。
 export function computeCaseSeverityAtTime(
-  caseRecord: Pick<Case, "physiologyParams" | "severityBaselineAt" | "aiSeverityRatePerHour">,
+  diseaseLink: Pick<CaseDiseaseLink, "physiologyParams" | "severityBaselineAt" | "aiSeverityRatePerHour">,
   orders: TreatmentOrder[],
   config: TemplateConfig | null,
   atTime: Date
 ): number | null {
   if (!config) return null;
-  const params = parsePhysiologyParams(caseRecord.physiologyParams);
-  const baselineAt = caseRecord.severityBaselineAt;
+  const params = parsePhysiologyParams(diseaseLink.physiologyParams);
+  const baselineAt = diseaseLink.severityBaselineAt;
 
-  // AI治療評価が一度でも発火した症例は、severityBaselineAt以降aiSeverityRatePerHour（時間あたりの
+  // AI治療評価が一度でも発火した疾患は、severityBaselineAt以降aiSeverityRatePerHour（時間あたりの
   // 重症度変化量）による線形カーブに切り替わる。この場合、drugCategories/procedureKeywordsによる
   // 素朴な治療開始判定（treatmentStartAt）はもう使わない（AIの評価が既にそれを代替しているため）。
-  // AI評価が未発火（null）の症例・テンプレートでは従来どおりの指数減衰カーブを使う。
-  if (caseRecord.aiSeverityRatePerHour !== null && caseRecord.aiSeverityRatePerHour !== undefined) {
+  // AI評価が未発火（null）の疾患では従来どおりの指数減衰カーブを使う。
+  if (diseaseLink.aiSeverityRatePerHour !== null && diseaseLink.aiSeverityRatePerHour !== undefined) {
     const hoursSinceBaseline = Math.max(0, (atTime.getTime() - baselineAt.getTime()) / 3_600_000);
-    return clamp(params.severitySlider + caseRecord.aiSeverityRatePerHour * hoursSinceBaseline, 0, 100);
+    return clamp(params.severitySlider + diseaseLink.aiSeverityRatePerHour * hoursSinceBaseline, 0, 100);
   }
 
   const relevantOrders = orders.filter((o) => o.orderedAt >= baselineAt);
@@ -285,20 +323,20 @@ function compareOp(value: number, op: ">=" | "<=", threshold: number): boolean {
   return op === ">=" ? value >= threshold : value <= threshold;
 }
 
-// 危機シナリオの発動条件を判定する。lab/vitalは実際にオーダーされた結果ではなく、
-// その時点の重症度から導かれる「真の」値を参照する（未オーダーでも急変しうる）。
-// crisisが未設定のテンプレート（管理画面でまだ急変シナリオを作っていない）は常にfalse。
-export function evaluateCrisisTriggers(config: TemplateConfig, severity: number, oxygenBoost: number): boolean {
-  if (!config.crisis) return false;
-  return config.crisis.triggers.some((trigger) => {
-    if (trigger.type === "severity") return compareOp(severity, trigger.op, trigger.value);
-    if (trigger.type === "vital") {
-      const vitals = computeVitalsForSeverity(config, severity, oxygenBoost);
-      return compareOp(vitals[trigger.field], trigger.op, trigger.value);
-    }
-    const dynamic = resolveDynamicLab(config, trigger.code, severity);
-    const entry = trigger.label ? dynamic?.values?.find((v) => v.label === trigger.label) : dynamic?.values?.[0];
-    return typeof entry?.value === "number" && compareOp(entry.value, trigger.op, trigger.value);
+// 危機シナリオの発動条件を判定する。lab/vitalは実際にオーダーされた結果ではなく、生理モデルが
+// 集約した後の「真の」値（呼び出し側が事前に計算して渡すaggregatedVitals/resolveAggregatedLabValue経由）
+// を参照する（未オーダーでも急変しうる）。severityは主病態自身の重症度を見る。
+export function evaluateCrisisTriggers(
+  crisis: CrisisScenario,
+  primarySeverity: number,
+  aggregatedVitals: VitalPoint,
+  resolveAggregatedLabValue: (code: string, label?: string) => number | null
+): boolean {
+  return crisis.triggers.some((trigger) => {
+    if (trigger.type === "severity") return compareOp(primarySeverity, trigger.op, trigger.value);
+    if (trigger.type === "vital") return compareOp(aggregatedVitals[trigger.field], trigger.op, trigger.value);
+    const value = resolveAggregatedLabValue(trigger.code, trigger.label);
+    return typeof value === "number" && compareOp(value, trigger.op, trigger.value);
   });
 }
 

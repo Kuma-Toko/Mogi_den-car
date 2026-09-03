@@ -9,7 +9,7 @@ import { logAudit } from "@/lib/audit";
 import {
   computeResultReadyAt,
   createPendingTreatmentEvaluationIfNeeded,
-  loadTemplateConfig,
+  loadDiseaseContributionsAt,
   processTreatmentEvaluation,
   reconcileCase,
   resolveLabResult,
@@ -246,7 +246,10 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
   const { user } = await requireCaseAccess(caseId);
   if (!items || items.length === 0) return;
 
-  const caseRecord = await db.case.findUnique({ where: { id: caseId }, include: { diseaseTemplate: true } });
+  const caseRecord = await db.case.findUnique({
+    where: { id: caseId },
+    include: { diseaseLinks: { include: { template: true }, orderBy: { sortOrder: "asc" } } },
+  });
   if (!caseRecord || caseRecord.crisisState === "DECEASED") return;
 
   // シミュレーション症例ではオーダー時刻もシミュレーション時計に合わせる。治療開始時刻の判定や
@@ -276,7 +279,17 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
   ]);
   const labItemMap = new Map(labItems.map((l) => [l.id, l]));
   const drugMap = new Map(drugs.map((d) => [d.id, d]));
-  const engineConfig = await loadTemplateConfig(caseRecord.diseaseTemplate?.key);
+
+  // トランザクション内でテンプレート設定の読み込み（別途DB読み取り）が発生しないよう、
+  // 全疾患の寄与を先に一度だけ計算しておく（この一括提出内のLABオーダーは全て同じ時刻を見る）。
+  const labContributions = immediate
+    ? await loadDiseaseContributionsAt(
+        caseRecord.diseaseLinks,
+        treatmentOrders,
+        resultReadyAt,
+        caseRecord.crisisState === "STABLE" ? undefined : 100
+      )
+    : [];
 
   let immediateResultCount = 0;
   const rpCounters = { MEDICATION: 0, INJECTION: 0 };
@@ -287,9 +300,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
         const labItem = labItemMap.get(item.labItemId);
         if (!labItem) continue;
 
-        const result = immediate
-          ? resolveLabResult(caseRecord, treatmentOrders, engineConfig, labItem, resultReadyAt)
-          : null;
+        const result = immediate ? resolveLabResult(labContributions, labItem) : null;
         const imaging = item.imaging;
 
         await tx.order.create({

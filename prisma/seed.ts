@@ -653,6 +653,12 @@ async function main() {
     templates[t.key] = rec;
   }
 
+  await db.basePhysiologyModel.upsert({
+    where: { id: "default" },
+    update: {},
+    create: { id: "default" },
+  });
+
   async function ensureCase(input: {
     caseCode: string;
     title: string;
@@ -686,12 +692,21 @@ async function main() {
         ward: input.ward,
         bed: input.bed,
         visibilityScope: "消化器内科ローテーション学生",
-        diseaseTemplateId: input.templateKey ? templates[input.templateKey]?.id : undefined,
-        physiologyParams: input.templateKey ? JSON.stringify(templateDefs.find((t) => t.key === input.templateKey)!.defaultParams) : undefined,
         createdByUserId: teacher1.id,
         publishedAt: input.status === "DRAFT" ? null : new Date(),
       },
     });
+
+    if (input.templateKey && templates[input.templateKey]) {
+      await db.caseDiseaseLink.create({
+        data: {
+          caseId: created.id,
+          templateId: templates[input.templateKey].id,
+          isPrimary: true,
+          physiologyParams: JSON.stringify(templateDefs.find((t) => t.key === input.templateKey)!.defaultParams),
+        },
+      });
+    }
 
     for (let i = 0; i < input.problems.length; i++) {
       await db.problem.create({
