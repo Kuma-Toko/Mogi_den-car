@@ -108,6 +108,49 @@ async function main() {
   } catch (err) {
     console.log(`DiseaseTemplate query failed: ${err instanceof Error ? err.message : err}`);
   }
+
+  console.log("\n=== Case columns (multi-disease model migration check) ===");
+  try {
+    const caseCols = await client.execute(`PRAGMA table_info("Case")`);
+    const names = caseCols.rows.map((r) => String(r.name));
+    for (const n of names) console.log(`  ${n}`);
+    const oldFields = ["diseaseTemplateId", "physiologyParams", "severityBaselineAt", "aiSeverityRatePerHour"];
+    const stillPresent = oldFields.filter((f) => names.includes(f));
+    console.log(`  old Case fields still present (should be empty): ${stillPresent.join(", ") || "(none)"}`);
+    console.log(`  has crisisConditionSince: ${names.includes("crisisConditionSince")}`);
+    const caseCount = await client.execute(`SELECT COUNT(*) as c FROM "Case"`);
+    console.log(`Case row count: ${caseCount.rows[0].c}`);
+  } catch (err) {
+    console.log(`Case columns query failed: ${err instanceof Error ? err.message : err}`);
+  }
+
+  console.log("\n=== BasePhysiologyModel / CaseDiseaseLink ===");
+  try {
+    const base = await client.execute(`SELECT * FROM "BasePhysiologyModel"`);
+    console.log(`BasePhysiologyModel row count: ${base.rows.length}`);
+    for (const r of base.rows) console.log(`  ${JSON.stringify(r)}`);
+    const linkCount = await client.execute(`SELECT COUNT(*) as c FROM "CaseDiseaseLink"`);
+    console.log(`CaseDiseaseLink row count: ${linkCount.rows[0].c}`);
+    const primaryCount = await client.execute(`SELECT COUNT(*) as c FROM "CaseDiseaseLink" WHERE "isPrimary" = 1`);
+    console.log(`CaseDiseaseLink rows with isPrimary=true: ${primaryCount.rows[0].c}`);
+    const casesWithoutLink = await client.execute(
+      `SELECT COUNT(*) as c FROM "Case" c WHERE NOT EXISTS (SELECT 1 FROM "CaseDiseaseLink" l WHERE l."caseId" = c."id")`
+    );
+    console.log(`Case rows with zero CaseDiseaseLink (expected for cases with no template): ${casesWithoutLink.rows[0].c}`);
+  } catch (err) {
+    console.log(`BasePhysiologyModel/CaseDiseaseLink query failed: ${err instanceof Error ? err.message : err}`);
+  }
+
+  console.log("\n=== TemplateCrisisScenario ===");
+  try {
+    const cols = await client.execute(`PRAGMA table_info("TemplateCrisisScenario")`);
+    const names = cols.rows.map((r) => String(r.name));
+    console.log(`  has sustainMinutes: ${names.includes("sustainMinutes")}`);
+    const count = await client.execute(`SELECT COUNT(*) as c FROM "TemplateCrisisScenario"`);
+    console.log(`TemplateCrisisScenario row count: ${count.rows[0].c}`);
+  } catch (err) {
+    console.log(`TemplateCrisisScenario query failed: ${err instanceof Error ? err.message : err}`);
+  }
 }
 
 main()
