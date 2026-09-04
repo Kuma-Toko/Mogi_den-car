@@ -6,16 +6,24 @@ import {
   aggregateLabResult,
   aggregateVitals,
   applyContraindicationJump,
+  applyDrugLabEffect,
   computeAiSeverityRatePerHour,
   computeCaseSeverityAtTime,
   evaluateCrisisTriggers,
   findActiveOxygenBoost,
+  findActiveVitalsIntervalHours,
   findCrisisRescueAt,
   getCaseClockNow,
   parsePhysiologyParams,
-  type CrisisScenario,
+  resolveActiveDrugEffects,
+  summarizeDrugEffects,
+  type ActiveDrugEffects,
+  type CrisisRescueConfig,
   type CrisisTrigger,
+  type CrisisTriggerConfig,
   type DiseaseContribution,
+  type DrugEffectRule,
+  type DrugOrderForEffect,
   type PatternSet,
   type SeverityTier,
   type TemplateConfig,
@@ -23,24 +31,38 @@ import {
   type VitalPoint,
 } from "@/lib/physiology-engine";
 import { formatLabValues, type LabValue } from "@/lib/lab-reference-ranges";
-import { evaluateTreatment } from "@/lib/ai-treatment-evaluation";
+import { evaluateTreatment, type TargetedTherapyContext } from "@/lib/ai-treatment-evaluation";
+import {
+  evaluateAntibioticCoverage,
+  resolveCultureFinalResult,
+  resolveCulturePreliminaryResult,
+  type ActiveAntibioticCategory,
+  type PathogenProfile,
+} from "@/lib/infection-engine";
 
 // DiseaseTemplateとその関連テーブル（TemplateLabPattern/TemplateCrisisScenario等）から、
 // physiology-engine.tsの純粋な計算関数が期待するTemplateConfig形へ組み立てる。
 // vitalsConfig/treatmentConfigが未設定のテンプレート（管理画面でまだ入力していない）はnullを返す
 // （エンジン非対応。従来の重症度カーブ・急変判定は一切走らない）。
+function parseCrisisTriggerRows(rows: { type: string; code: string | null; label: string | null; field: string | null; op: string; value: number }[]): CrisisTrigger[] {
+  return rows.map((t) => {
+    if (t.type === "severity") return { type: "severity", op: t.op as ">=" | "<=", value: t.value };
+    if (t.type === "vital") return { type: "vital", field: t.field as keyof VitalPoint, op: t.op as ">=" | "<=", value: t.value };
+    return { type: "lab", code: t.code ?? "", label: t.label ?? undefined, op: t.op as ">=" | "<=", value: t.value };
+  });
+}
+
 export async function loadTemplateConfig(templateKey: string | null | undefined): Promise<TemplateConfig | null> {
   if (!templateKey) return null;
   const template = await db.diseaseTemplate.findUnique({
     where: { key: templateKey },
     include: {
       labPatterns: { include: { values: { orderBy: { sortOrder: "asc" } } }, orderBy: { sortOrder: "asc" } },
-      crisis: {
-        include: {
-          triggers: { orderBy: { sortOrder: "asc" } },
-          rescueActions: { orderBy: { sortOrder: "asc" } },
-        },
+      crisisTriggers: {
+        include: { triggers: { orderBy: { sortOrder: "asc" } }, targetTemplate: { select: { key: true, name: true } } },
+        orderBy: { sortOrder: "asc" },
       },
+      crisisRescue: { include: { rescueActions: { orderBy: { sortOrder: "asc" } } } },
     },
   });
   if (!template || !template.vitalsConfig || !template.treatmentConfig) return null;
@@ -61,33 +83,31 @@ export async function loadTemplateConfig(templateKey: string | null | undefined)
     }
   }
 
-  let crisis: CrisisScenario | null = null;
-  if (template.crisis) {
-    const triggers: CrisisTrigger[] = template.crisis.triggers.map((t) => {
-      if (t.type === "severity") return { type: "severity", op: t.op as ">=" | "<=", value: t.value };
-      if (t.type === "vital") return { type: "vital", field: t.field as keyof VitalPoint, op: t.op as ">=" | "<=", value: t.value };
-      return { type: "lab", code: t.code ?? "", label: t.label ?? undefined, op: t.op as ">=" | "<=", value: t.value };
-    });
-    crisis = {
-      name: template.crisis.name,
-      triggers,
-      sustainMinutes: template.crisis.sustainMinutes,
-      windowMinutes: template.crisis.windowMinutes,
-      rescueActions: template.crisis.rescueActions.map((r) => ({
-        label: r.label,
-        drugCategories: JSON.parse(r.drugCategories) as string[],
-        procedureKeywords: JSON.parse(r.procedureKeywords) as string[],
-      })),
-      crisisVitals: JSON.parse(template.crisis.crisisVitals) as VitalPoint,
-      postRescueSeverity: template.crisis.postRescueSeverity,
-    };
-  }
+  const crisisTriggers: CrisisTriggerConfig[] = template.crisisTriggers.map((s) => ({
+    id: s.id,
+    targetTemplateKey: s.targetTemplate.key,
+    targetTemplateName: s.targetTemplate.name,
+    triggers: parseCrisisTriggerRows(s.triggers),
+    sustainMinutes: s.sustainMinutes,
+  }));
+
+  const crisisRescue: CrisisRescueConfig | null = template.crisisRescue
+    ? {
+        postRescueSeverity: template.crisisRescue.postRescueSeverity,
+        rescueActions: template.crisisRescue.rescueActions.map((r) => ({
+          label: r.label,
+          drugCategories: JSON.parse(r.drugCategories) as string[],
+          procedureKeywords: JSON.parse(r.procedureKeywords) as string[],
+        })),
+      }
+    : null;
 
   return {
     treatment: JSON.parse(template.treatmentConfig) as TreatmentTrigger,
     vitals: JSON.parse(template.vitalsConfig) as TemplateConfig["vitals"],
     labPatterns,
-    crisis,
+    crisisTriggers,
+    crisisRescue,
   };
 }
 
@@ -97,9 +117,38 @@ export async function loadEngineLinkedLabCodes(): Promise<Set<string>> {
   return new Set(rows.map((r) => r.labItemCode));
 }
 
+// ── 感染症エンジン（原因菌×抗菌薬感受性による培養結果生成） ──────────────────────
+
+// 症例にアタッチされた疾患リンクのうち、最初に「真の原因菌」が設定されているものを返す
+// （通常は感染症系テンプレートが1つだけ該当する想定）。どのリンクにも設定が無ければnull。
+export function findCasePathogenId(diseaseLinks: { pathogenId: string | null }[]): string | null {
+  return diseaseLinks.find((l) => l.pathogenId)?.pathogenId ?? null;
+}
+
+export async function loadPathogenProfile(pathogenId: string): Promise<PathogenProfile | null> {
+  const pathogen = await db.pathogenMaster.findUnique({
+    where: { id: pathogenId },
+    include: { susceptibilities: { include: { category: true } } },
+  });
+  if (!pathogen) return null;
+  return {
+    name: pathogen.name,
+    gramStain: pathogen.gramStain,
+    susceptibilities: pathogen.susceptibilities.map((s) => ({
+      subCategory: s.category.subCategory ?? s.category.majorCategory,
+      susceptibility: s.susceptibility as "S" | "I" | "R",
+      note: s.note,
+    })),
+  };
+}
+
 const DEFAULT_RESULT_TEXT = "結果は基準範囲内です。";
 const DELAYED_RESULT_DELAY_MS = 2 * 3_600_000; // 遅延型オーダーの結果反映までの固定遅延（簡易実装。症例の時計＝実時間 or シミュレーション時間で解釈）
-const SNAPSHOT_INTERVAL_HOURS = 4; // バイタルの自動記録間隔（実時間 or シミュレーション時間）
+// バイタルの自動記録間隔（実時間 or シミュレーション時間）。既定は4時間ごとだが、学生・教員が
+// 一般指示「バイタル測定」オーダーで2〜8時間ごとの範囲に調節できる（findActiveVitalsIntervalHours）。
+// 急変(crisisState=CRITICAL)発生中はその指示に関わらずリアルタイム監視相当（15分ごと）に強制する。
+const DEFAULT_SNAPSHOT_INTERVAL_HOURS = 4;
+const CRITICAL_SNAPSHOT_INTERVAL_HOURS = 0.25;
 const MAX_SNAPSHOTS_PER_RECONCILE = 12; // 一度に生成するバイタル記録の上限（時間を大きく進めた場合の暴走防止）
 
 // 症例にアタッチされた1病態モデル分の状態（DiseaseTemplate本体込み）
@@ -118,7 +167,6 @@ type CaseForEngine = Pick<
   | "crisisMode"
   | "crisisState"
   | "crisisStartedAt"
-  | "crisisConditionSince"
 > & {
   diseaseLinks: LinkWithTemplate[];
 };
@@ -128,8 +176,35 @@ type TreatmentOrderWithDrug = {
   orderType: OrderType;
   label: string;
   detail: string | null;
-  drug: { categoryLinks: { category: { majorCategory: string } }[] } | null;
+  discontinuedAt: Date | null;
+  drug: { categoryLinks: { categoryId: string; category: { majorCategory: string } }[] } | null;
 };
+
+// 薬剤影響エンジン向け: 処方・注射オーダーのうちdrugが紐づくものだけを、判定に使う形(categoryIds)へ変換する。
+function toDrugOrdersForEffect(orders: TreatmentOrderWithDrug[]): DrugOrderForEffect[] {
+  return orders
+    .filter((o): o is TreatmentOrderWithDrug & { drug: NonNullable<TreatmentOrderWithDrug["drug"]> } => o.drug !== null)
+    .map((o) => ({
+      orderedAt: o.orderedAt,
+      discontinuedAt: o.discontinuedAt,
+      categoryIds: o.drug.categoryLinks.map((l) => l.categoryId),
+    }));
+}
+
+// 症例横断で共有できるマスターデータ(件数が少なく症例に依存しない)。呼び出しごとに全件取得する。
+export async function loadDrugEffectRules(): Promise<DrugEffectRule[]> {
+  const rows = await db.drugEffectRule.findMany({
+    select: { categoryId: true, targetType: true, target: true, shiftValue: true, effectText: true, onsetDelayHours: true },
+  });
+  return rows.map((r) => ({ ...r, targetType: r.targetType === "vital" ? "vital" : "lab" }));
+}
+
+// atTime時点で有効な薬剤影響ルールを、バイタル・検査値それぞれの加算量へ集約する(resolveActiveDrugEffects
+// + summarizeDrugEffectsのまとめ)。submitOrderBatch（即時結果を解決する箇所）からも直接使う。
+export function computeDrugEffectsAt(orders: TreatmentOrderWithDrug[], rules: DrugEffectRule[], atTime: Date): ActiveDrugEffects {
+  const active = resolveActiveDrugEffects(toDrugOrdersForEffect(orders), rules, atTime);
+  return summarizeDrugEffects(active);
+}
 
 export function computeResultReadyAt(resultTiming: "IMMEDIATE" | "DELAYED", now = new Date()): Date {
   if (resultTiming === "IMMEDIATE") return now;
@@ -153,20 +228,38 @@ function parseLabValues(raw: string | null): LabValue[] | null {
   }
 }
 
-// 生理モデルの基礎値（バイタルのみ）。BasePhysiologyModelは常に1行だけ存在する想定だが、
-// 万一未初期化の場合は生理学的に妥当な既定値にフォールバックする。
-async function loadBasePhysiology(): Promise<VitalPoint> {
-  const row = await db.basePhysiologyModel.findUnique({ where: { id: "default" } });
-  return row
+// 生理モデルの基礎値（バイタルのみ）。年齢・性別に該当するPhysiologyBaselineBandがあればbaseはその値、
+// なければBasePhysiologyModel（症例・疾患非依存のシングルトン、常に1行だけ存在する想定）にフォールバックする。
+// referenceは常にBasePhysiologyModelの値（各病態テンプレートのperSeverityがこれを基準に定義されているため、
+// aggregateVitalsがbase/referenceの比率でperSeverityをスケーリングするのに使う。詳細はphysiology-engine.ts参照）。
+// BasePhysiologyModel自体が万一未初期化の場合は生理学的に妥当な既定値にフォールバックする。
+async function loadPhysiologyBaseline(age: number, gender: string): Promise<{ base: VitalPoint; reference: VitalPoint }> {
+  const referenceRow = await db.basePhysiologyModel.findUnique({ where: { id: "default" } });
+  const reference: VitalPoint = referenceRow
     ? {
-        temperature: row.temperature,
-        systolicBp: row.systolicBp,
-        diastolicBp: row.diastolicBp,
-        pulse: row.pulse,
-        spo2: row.spo2,
-        respRate: row.respRate,
+        temperature: referenceRow.temperature,
+        systolicBp: referenceRow.systolicBp,
+        diastolicBp: referenceRow.diastolicBp,
+        pulse: referenceRow.pulse,
+        spo2: referenceRow.spo2,
+        respRate: referenceRow.respRate,
       }
     : { temperature: 36.5, systolicBp: 120, diastolicBp: 70, pulse: 75, spo2: 98, respRate: 16 };
+
+  const bands = await db.physiologyBaselineBand.findMany({ where: { minAge: { lte: age }, maxAge: { gte: age } } });
+  const match = bands.find((b) => b.gender === gender) ?? bands.find((b) => b.gender === "共通") ?? null;
+  const base: VitalPoint = match
+    ? {
+        temperature: match.temperature,
+        systolicBp: match.systolicBp,
+        diastolicBp: match.diastolicBp,
+        pulse: match.pulse,
+        spo2: match.spo2,
+        respRate: match.respRate,
+      }
+    : reference;
+
+  return { base, reference };
 }
 
 // 症例にアタッチされた各疾患について、指定時刻における(テンプレート設定, 重症度)の組を集める。
@@ -191,34 +284,46 @@ export async function loadDiseaseContributionsAt(
   return contributions;
 }
 
-// 病態テンプレートに紐づく検査項目なら、その時点の重症度に応じた（複数疾患を統合した）所見を返す。
-// テンプレート対象外の項目や、どの疾患もパターンを持たない場合は、マスターの固定値/固定文にフォールバックする。
+// 病態テンプレートに紐づく検査項目なら、その時点の重症度に応じた（複数疾患を統合した）所見を返し、
+// さらに薬剤影響エンジンのdrugLabEffects（有効なら）をその上へ加算する。テンプレート対象外の項目や
+// どの疾患もパターンを持たない場合は、マスターの固定値/固定文をベースに同様に薬剤影響を加算する。
 export function resolveLabResult(
   contributions: DiseaseContribution[],
-  labItem: Pick<LabItemMaster, "code" | "sampleResult" | "sampleValues"> | null
+  labItem: Pick<LabItemMaster, "code" | "sampleResult" | "sampleValues"> | null,
+  drugLabEffects?: Pick<ActiveDrugEffects, "labShifts" | "labTexts">
 ): LabResult {
-  if (labItem) {
-    const baseSampleValues = parseLabValues(labItem.sampleValues);
-    const dynamic = aggregateLabResult(labItem.code, contributions, baseSampleValues);
-    if (dynamic) return dynamic;
-    if (baseSampleValues) return { text: formatLabValues(baseSampleValues), values: baseSampleValues };
-    if (labItem.sampleResult) return { text: labItem.sampleResult, values: null };
-  }
-  return { text: DEFAULT_RESULT_TEXT, values: null };
+  if (!labItem) return { text: DEFAULT_RESULT_TEXT, values: null };
+
+  const baseSampleValues = parseLabValues(labItem.sampleValues);
+  const dynamic = aggregateLabResult(labItem.code, contributions, baseSampleValues);
+  const result: LabResult = dynamic
+    ? dynamic
+    : baseSampleValues
+      ? { text: formatLabValues(baseSampleValues), values: baseSampleValues }
+      : labItem.sampleResult
+        ? { text: labItem.sampleResult, values: null }
+        : { text: DEFAULT_RESULT_TEXT, values: null };
+
+  if (!drugLabEffects) return result;
+  const shift = drugLabEffects.labShifts[labItem.code] ?? 0;
+  const texts = drugLabEffects.labTexts[labItem.code] ?? [];
+  return applyDrugLabEffect(result, shift, texts);
 }
 
-// resolveLabResult向けに、症例の全疾患の寄与を指定時刻で計算してから解決するまとめ関数。
+// resolveLabResult向けに、症例の全疾患の寄与＋薬剤影響を指定時刻で計算してから解決するまとめ関数。
 // crisisState が STABLE でない（危機シナリオ発生中・死亡後）症例は、通常の重症度カーブでなく
 // 常にsevere階層の所見を返す（危機専用の所見までは作り込まず、既存のsevere値を流用する）。
 export async function resolveLabResultForCase(
   caseRecord: Pick<CaseForEngine, "crisisState" | "diseaseLinks">,
   treatmentOrders: TreatmentOrderWithDrug[],
+  drugEffectRules: DrugEffectRule[],
   labItem: Pick<LabItemMaster, "code" | "sampleResult" | "sampleValues"> | null,
   atTime: Date
 ): Promise<LabResult> {
   const overrideSeverity = caseRecord.crisisState === "STABLE" ? undefined : 100;
   const contributions = await loadDiseaseContributionsAt(caseRecord.diseaseLinks, treatmentOrders, atTime, overrideSeverity);
-  return resolveLabResult(contributions, labItem);
+  const drugEffects = computeDrugEffectsAt(treatmentOrders, drugEffectRules, atTime);
+  return resolveLabResult(contributions, labItem, drugEffects);
 }
 
 async function loadCaseForEngine(caseId: string): Promise<CaseForEngine | null> {
@@ -228,8 +333,9 @@ async function loadCaseForEngine(caseId: string): Promise<CaseForEngine | null> 
   });
 }
 
-// MEDICATION/INJECTION（薬剤治療判定）・PROCEDURE（処置・手術治療判定）・GENERAL（酸素投与のSpO2上乗せ判定）
-// をまとめて取得する。判定に使わないオーダー種別（LAB/IMAGING）は含めない。
+// MEDICATION/INJECTION（薬剤治療判定）・PROCEDURE（処置・手術治療判定）・
+// GENERAL（酸素投与のSpO2上乗せ判定・バイタル測定間隔判定）をまとめて取得する。
+// 判定に使わないオーダー種別（LAB/IMAGING）は含めない。
 async function loadTreatmentOrders(caseId: string): Promise<TreatmentOrderWithDrug[]> {
   return db.order.findMany({
     where: { caseId, orderType: { in: ["MEDICATION", "INJECTION", "PROCEDURE", "GENERAL"] } },
@@ -238,9 +344,61 @@ async function loadTreatmentOrders(caseId: string): Promise<TreatmentOrderWithDr
       orderType: true,
       label: true,
       detail: true,
-      drug: { select: { categoryLinks: { select: { category: { select: { majorCategory: true } } } } } },
+      discontinuedAt: true,
+      drug: { select: { categoryLinks: { select: { categoryId: true, category: { select: { majorCategory: true } } } } } },
     },
   });
+}
+
+// AI治療評価（標的治療フェーズ）向け: 抗菌薬オーダー(MEDICATION/INJECTION)を、感受性判定に使う
+// 系統(DrugCategoryMaster.subCategory)単位に解決する。severityカーブの治療判定用loadTreatmentOrders
+// （大分類のみ見る二値判定）とは別軸の解決なので専用に用意する。
+async function loadActiveAntibioticCategories(caseId: string): Promise<ActiveAntibioticCategory[]> {
+  const orders = await db.order.findMany({
+    where: { caseId, orderType: { in: ["MEDICATION", "INJECTION"] } },
+    select: {
+      label: true,
+      drug: {
+        select: {
+          categoryLinks: {
+            where: { category: { majorCategory: "抗菌薬" } },
+            select: { category: { select: { subCategory: true, majorCategory: true } } },
+          },
+        },
+      },
+    },
+  });
+
+  const result: ActiveAntibioticCategory[] = [];
+  for (const order of orders) {
+    for (const link of order.drug?.categoryLinks ?? []) {
+      result.push({ subCategory: link.category.subCategory ?? link.category.majorCategory, drugLabel: order.label });
+    }
+  }
+  return result;
+}
+
+// AI治療評価（標的治療フェーズ）向け: 症例に原因菌が割り当てられ、かつ培養の確定結果(RESULT_AVAILABLE)が
+// 開示済みの場合のみ、現在の抗菌薬オーダーの原因菌カバレッジを判定して返す。原因菌未割当・培養未確定
+// （＝学生がまだ原因菌を知り得ない経験的治療フェーズ）ではnullを返し、AIの採点材料に含めない
+// （既存の大分類ベースの二値判定のみで評価される、従来どおりの挙動を維持する）。
+async function loadTargetedTherapyContext(
+  caseRecord: Pick<CaseForEngine, "id" | "diseaseLinks">
+): Promise<TargetedTherapyContext | null> {
+  const casePathogenId = findCasePathogenId(caseRecord.diseaseLinks);
+  if (!casePathogenId) return null;
+
+  const cultureRevealed = await db.order.findFirst({
+    where: { caseId: caseRecord.id, status: "RESULT_AVAILABLE", labItem: { isCulture: true } },
+    select: { id: true },
+  });
+  if (!cultureRevealed) return null;
+
+  const pathogen = await loadPathogenProfile(casePathogenId);
+  if (!pathogen) return null;
+
+  const activeCategories = await loadActiveAntibioticCategories(caseRecord.id);
+  return { pathogenName: pathogen.name, coverage: evaluateAntibioticCoverage(pathogen, activeCategories) };
 }
 
 // 遅延型オーダーのうち反映時刻を過ぎたものを「結果あり」に更新し、通知を発行する。
@@ -250,17 +408,47 @@ export async function reconcileCaseResults(caseId: string): Promise<void> {
   if (!caseRecord || caseRecord.crisisState === "DECEASED") return;
   const clockNow = getCaseClockNow(caseRecord);
 
-  const due = await db.order.findMany({
-    where: { caseId, status: "RESULT_PENDING", resultReadyAt: { lte: clockNow } },
+  const pending = await db.order.findMany({
+    where: { caseId, status: { in: ["RESULT_PENDING", "RESULT_PRELIMINARY"] } },
     include: { labItem: true },
   });
-  if (due.length === 0) return;
+  if (pending.length === 0) return;
 
-  const treatmentOrders = await loadTreatmentOrders(caseId);
+  // 培養系検査(preliminaryResultReadyAtが設定されている＝isCulture&&原因菌割り当てありのオーダーのみ)の
+  // 速報開示。確定開示のタイミングと同時に到達した場合は速報を飛ばして確定へ進む（下のdueFinalへ）。
+  const duePrelim = pending.filter(
+    (o) =>
+      o.status === "RESULT_PENDING" &&
+      o.preliminaryResultReadyAt &&
+      o.preliminaryResultReadyAt <= clockNow &&
+      (!o.resultReadyAt || o.resultReadyAt > clockNow)
+  );
+  const dueFinal = pending.filter((o) => o.resultReadyAt && o.resultReadyAt <= clockNow);
+  if (duePrelim.length === 0 && dueFinal.length === 0) return;
 
-  for (const order of due) {
-    const atTime = order.resultReadyAt ?? new Date();
-    const result = await resolveLabResultForCase(caseRecord, treatmentOrders, order.labItem, atTime);
+  const casePathogenId = findCasePathogenId(caseRecord.diseaseLinks);
+  const pathogen = casePathogenId ? await loadPathogenProfile(casePathogenId) : null;
+  // 通常検査(非培養)の最終結果解決にのみ必要。培養系は原因菌モデルベースでオーダー履歴を見ないため省略可。
+  const needsTreatmentOrders = dueFinal.some((o) => !o.labItem?.isCulture);
+  const treatmentOrders = needsTreatmentOrders ? await loadTreatmentOrders(caseId) : [];
+  const drugEffectRules = needsTreatmentOrders ? await loadDrugEffectRules() : [];
+
+  for (const order of duePrelim) {
+    const text = resolveCulturePreliminaryResult(pathogen, order.labItem?.sampleResult ?? null);
+    await db.order.update({ where: { id: order.id }, data: { status: "RESULT_PRELIMINARY", resultText: text } });
+    await db.notification.create({
+      data: { userId: order.orderedByUserId, caseId, message: `${order.label} の速報結果が出ました。` },
+    });
+  }
+
+  for (const order of dueFinal) {
+    let result: LabResult;
+    if (order.labItem?.isCulture) {
+      result = { text: resolveCultureFinalResult(pathogen, order.labItem.sampleResult), values: null };
+    } else {
+      const atTime = order.resultReadyAt ?? new Date();
+      result = await resolveLabResultForCase(caseRecord, treatmentOrders, drugEffectRules, order.labItem, atTime);
+    }
     await db.order.update({
       where: { id: order.id },
       data: { status: "RESULT_AVAILABLE", resultText: result.text, resultValues: result.values ? JSON.stringify(result.values) : null },
@@ -286,52 +474,98 @@ export async function reconcileCaseVitals(caseId: string): Promise<void> {
   const lastVital = await db.vital.findFirst({ where: { caseId }, orderBy: { recordedAt: "desc" } });
   const anchor = lastVital?.recordedAt ?? caseRecord.createdAt;
 
-  const intervalMs = SNAPSHOT_INTERVAL_HOURS * 3_600_000;
-  const totalMs = clockNow.getTime() - anchor.getTime();
-  // 前回記録から丸1間隔分の時間が経っていなければ何もしない。
-  // これがないと、タブ切り替えなどページを開くたびに reconcile が走り、
-  // ほぼ同時刻の記録が何件も量産されてしまう（実際に起きていたバグ）。
-  if (totalMs < intervalMs) return;
-
-  // 通常は固定間隔で記録するが、間隔が長く空きすぎた場合は上限件数に収まるよう間隔を引き伸ばす
-  const rawSteps = Math.floor(totalMs / intervalMs);
-  const steps = Math.min(rawSteps, MAX_SNAPSHOTS_PER_RECONCILE);
-  const stepMs = rawSteps > MAX_SNAPSHOTS_PER_RECONCILE ? totalMs / MAX_SNAPSHOTS_PER_RECONCILE : intervalMs;
+  const treatmentOrders = await loadTreatmentOrders(caseId);
+  const drugEffectRules = await loadDrugEffectRules();
+  const { base: basePhysiology, reference: referenceBase } = await loadPhysiologyBaseline(caseRecord.patientAge, caseRecord.patientGender);
 
   const points: Date[] = [];
-  for (let i = 1; i <= steps; i++) {
-    points.push(new Date(anchor.getTime() + stepMs * i));
+  // 症例の初回閲覧時（＝まだ1件もバイタルが記録されていない）は、記録間隔を待たず、
+  // 症例開始時点の初期バイタルを必ず記録する。これが無いと、症例作成直後に開いた学生には
+  // 次の間隔が経過するまでバイタルが1件も表示されない。
+  if (!lastVital) points.push(anchor);
+
+  const intervalHours =
+    caseRecord.crisisState === "CRITICAL"
+      ? CRITICAL_SNAPSHOT_INTERVAL_HOURS
+      : (findActiveVitalsIntervalHours(treatmentOrders, clockNow) ?? DEFAULT_SNAPSHOT_INTERVAL_HOURS);
+  const intervalMs = intervalHours * 3_600_000;
+  const totalMs = clockNow.getTime() - anchor.getTime();
+  // 前回記録から丸1間隔分の時間が経っていれば、通常の定期記録も追加する。
+  // 間隔判定自体を省略しないのは、タブ切り替えなどページを開くたびに reconcile が走り、
+  // ほぼ同時刻の記録が何件も量産されてしまう（実際に起きていたバグ）のを防ぐため。
+  if (totalMs >= intervalMs) {
+    // 通常は固定間隔で記録するが、間隔が長く空きすぎた場合は上限件数に収まるよう間隔を引き伸ばす
+    const rawSteps = Math.floor(totalMs / intervalMs);
+    const steps = Math.min(rawSteps, MAX_SNAPSHOTS_PER_RECONCILE);
+    const stepMs = rawSteps > MAX_SNAPSHOTS_PER_RECONCILE ? totalMs / MAX_SNAPSHOTS_PER_RECONCILE : intervalMs;
+    for (let i = 1; i <= steps; i++) {
+      points.push(new Date(anchor.getTime() + stepMs * i));
+    }
   }
 
-  const treatmentOrders = await loadTreatmentOrders(caseId);
-  const basePhysiology = await loadBasePhysiology();
-  const primaryLink = findPrimaryDiseaseLink(caseRecord.diseaseLinks);
-  const primaryConfig = primaryLink ? await loadTemplateConfig(primaryLink.template.key) : null;
+  if (points.length === 0) return;
 
-  // 危機シナリオ発生中（CRITICAL）は通常の重症度カーブでなく、主病態のシナリオ固定の危機バイタルを記録する。
+  // 危機病態(CRITICAL中の主病態)も普通の疾患としてperSeverity寄与を持つため、STABLE/CRITICALを
+  // 区別せず常に全疾患を集約する。危機発生中の荒れたバイタルは危機病態自身の重症度・perSeverityから
+  // 自然に生じる（固定値による上書きは廃止）。
   for (const at of points) {
-    let vitals: VitalPoint | null;
-    if (caseRecord.crisisState === "CRITICAL") {
-      vitals = primaryConfig?.crisis?.crisisVitals ?? null;
-    } else {
-      const contributions = await loadDiseaseContributionsAt(caseRecord.diseaseLinks, treatmentOrders, at);
-      const oxygenBoost = findActiveOxygenBoost(treatmentOrders, at);
-      vitals = contributions.length > 0 ? aggregateVitals(basePhysiology, contributions, oxygenBoost) : null;
-    }
-    if (!vitals) continue;
+    const contributions = await loadDiseaseContributionsAt(caseRecord.diseaseLinks, treatmentOrders, at);
+    if (contributions.length === 0) continue;
+    const oxygenBoost = findActiveOxygenBoost(treatmentOrders, at);
+    const { vitalShifts } = computeDrugEffectsAt(treatmentOrders, drugEffectRules, at);
+    const vitals = aggregateVitals(basePhysiology, referenceBase, contributions, oxygenBoost, vitalShifts);
     await db.vital.create({ data: { caseId, recordedAt: at, ...vitals } });
   }
 }
 
-// 危機シナリオ（急変・死亡モデル）の状態遷移を判定する。症例に複数疾患がアタッチされていても、
-// 危機シナリオは「主病態」（isPrimaryのCaseDiseaseLink）1件のものだけを見る。
-// STABLE: 発動条件（生理モデルが集約した後のバイタル・検査値・主病態自身の重症度）を、新設の
-//   sustainMinutes分だけ連続して満たせばCRITICALへ遷移し、対象学生へ通知する（連続性が途切れたら
-//   crisisConditionSinceをリセットし、また最初から数え直す）。
-// CRITICAL: crisisStartedAt以降に救命オーダー（crisis.rescueActions）があればSTABLEへ復帰
-//   （主病態の重症度カーブの起点をこの時刻にリセットし、postRescueSeverityから再開する）。
-//   なければwindowMinutes経過を確認し、crisisMode=LETHALならDECEASEDへ（症例凍結）、
-//   REVERSIBLEなら猶予切れでも死亡させずCRITICALのまま留まる（いつでも救命オーダーで脱出可能）。
+// 症例の全疾患の現時点の寄与＋集約後バイタルと、labトリガーが参照する検査値を同期的に引けるresolverを
+// まとめて用意する（reconcileCaseCrisisのSTABLE判定・CRITICAL判定の両方で使う）。
+async function buildCrisisEvaluationContext(
+  diseaseLinks: LinkWithTemplate[],
+  treatmentOrders: TreatmentOrderWithDrug[],
+  drugEffectRules: DrugEffectRule[],
+  atTime: Date,
+  labCodesNeeded: Set<string>,
+  patientAge: number,
+  patientGender: string
+): Promise<{
+  contributions: (DiseaseContribution & { link: LinkWithTemplate })[];
+  aggregatedVitals: VitalPoint;
+  resolveAggregatedLabValue: (code: string, label?: string) => number | null;
+}> {
+  const contributions = await loadDiseaseContributionsAt(diseaseLinks, treatmentOrders, atTime);
+  const { base: basePhysiology, reference: referenceBase } = await loadPhysiologyBaseline(patientAge, patientGender);
+  const oxygenBoost = findActiveOxygenBoost(treatmentOrders, atTime);
+  const drugEffects = computeDrugEffectsAt(treatmentOrders, drugEffectRules, atTime);
+  const aggregatedVitals = aggregateVitals(basePhysiology, referenceBase, contributions, oxygenBoost, drugEffects.vitalShifts);
+
+  const labItems =
+    labCodesNeeded.size > 0 ? await db.labItemMaster.findMany({ where: { code: { in: Array.from(labCodesNeeded) } } }) : [];
+  const labItemByCode = new Map(labItems.map((l) => [l.code, l]));
+  const resolveAggregatedLabValue = (code: string, label?: string): number | null => {
+    const labItem = labItemByCode.get(code);
+    if (!labItem) return null;
+    const dynamic = aggregateLabResult(code, contributions, parseLabValues(labItem.sampleValues));
+    const withDrugEffect = dynamic ? applyDrugLabEffect(dynamic, drugEffects.labShifts[code] ?? 0, []) : null;
+    const entry = label ? withDrugEffect?.values?.find((v) => v.label === label) : withDrugEffect?.values?.[0];
+    return typeof entry?.value === "number" ? entry.value : null;
+  };
+
+  return { contributions, aggregatedVitals, resolveAggregatedLabValue };
+}
+
+// 危機シナリオ（急変・死亡モデル）の状態遷移を判定する。危機シナリオも「病態モデルの1つ」として扱う:
+// 症例に複数疾患がアタッチされていても、発火条件は「主病態」（isPrimaryのCaseDiseaseLink）が持つ
+// 発火条件(crisisTriggers、条件による複数分岐が持てる)だけを見る。
+// STABLE: 各分岐の発動条件を、生理モデルが集約した後のバイタル・検査値・主病態自身の重症度で判定する。
+//   分岐ごとにCaseCrisisTriggerProgressで持続時間を追跡し、sustainMinutes分だけ連続して満たした
+//   最初の分岐が発火する。発火すると、その分岐のtargetTemplateを新規CaseDiseaseLinkとしてアタッチし
+//   （疾患自身の初期値はtargetTemplate.defaultParamsから）、他の全リンクのisPrimaryをfalseにしてこの
+//   危機病態を主病態に昇格させ、CRITICALへ遷移する（決定事項: 危機病態は以後の主病態であり続ける）。
+// CRITICAL: 主病態（＝危機病態）自身のcrisisRescueを見る。crisisStartedAt以降に救命オーダーがあれば
+//   STABLEへ復帰（危機病態の重症度カーブの起点をこの時刻にリセットし、postRescueSeverityから再開）。
+//   救命されなければ、危機病態自身の現在の重症度を計算し、100に達し crisisMode=LETHAL ならDECEASEDへ
+//   （症例凍結）。REVERSIBLEなら重症度が上限に張り付いても死亡させずCRITICALのまま留まる。
 export async function reconcileCaseCrisis(caseId: string): Promise<void> {
   const caseRecord = await loadCaseForEngine(caseId);
   if (!caseRecord || caseRecord.crisisState === "DECEASED" || caseRecord.crisisMode === "OFF") return;
@@ -339,87 +573,131 @@ export async function reconcileCaseCrisis(caseId: string): Promise<void> {
   const primaryLink = findPrimaryDiseaseLink(caseRecord.diseaseLinks);
   if (!primaryLink) return;
   const primaryConfig = await loadTemplateConfig(primaryLink.template.key);
-  const crisis = primaryConfig?.crisis;
-  if (!crisis) return;
+  if (!primaryConfig) return;
 
   const clockNow = getCaseClockNow(caseRecord);
   const treatmentOrders = await loadTreatmentOrders(caseId);
+  const drugEffectRules = await loadDrugEffectRules();
 
   if (caseRecord.crisisState === "STABLE") {
-    const contributions = await loadDiseaseContributionsAt(caseRecord.diseaseLinks, treatmentOrders, clockNow);
+    const scenarios = primaryConfig.crisisTriggers;
+    if (scenarios.length === 0) return;
+
+    const labCodesNeeded = new Set<string>();
+    for (const s of scenarios) for (const t of s.triggers) if (t.type === "lab") labCodesNeeded.add(t.code);
+    const { contributions, aggregatedVitals, resolveAggregatedLabValue } = await buildCrisisEvaluationContext(
+      caseRecord.diseaseLinks,
+      treatmentOrders,
+      drugEffectRules,
+      clockNow,
+      labCodesNeeded,
+      caseRecord.patientAge,
+      caseRecord.patientGender
+    );
     const primaryContribution = contributions.find((c) => c.link.id === primaryLink.id);
     if (!primaryContribution) return; // 主病態がエンジン非対応（vitalsConfig等未設定）なら判定不可
 
-    const basePhysiology = await loadBasePhysiology();
-    const oxygenBoost = findActiveOxygenBoost(treatmentOrders, clockNow);
-    const aggregatedVitals = aggregateVitals(basePhysiology, contributions, oxygenBoost);
+    const progressRows = await db.caseCrisisTriggerProgress.findMany({
+      where: { caseId, scenarioId: { in: scenarios.map((s) => s.id) } },
+    });
+    const progressByScenario = new Map(progressRows.map((p) => [p.scenarioId, p]));
 
-    // labトリガーが参照する検査項目コードだけ事前にまとめて取得しておき、
-    // evaluateCrisisTriggers（同期関数）へ同期的なlookupとして渡す。
-    const labTriggerCodes = new Set<string>();
-    for (const t of crisis.triggers) if (t.type === "lab") labTriggerCodes.add(t.code);
-    const labItems =
-      labTriggerCodes.size > 0 ? await db.labItemMaster.findMany({ where: { code: { in: Array.from(labTriggerCodes) } } }) : [];
-    const labItemByCode = new Map(labItems.map((l) => [l.code, l]));
-    const resolveAggregatedLabValue = (code: string, label?: string): number | null => {
-      const labItem = labItemByCode.get(code);
-      if (!labItem) return null;
-      const dynamic = aggregateLabResult(code, contributions, parseLabValues(labItem.sampleValues));
-      const entry = label ? dynamic?.values?.find((v) => v.label === label) : dynamic?.values?.[0];
-      return typeof entry?.value === "number" ? entry.value : null;
-    };
+    for (const scenario of scenarios) {
+      const conditionHolds = evaluateCrisisTriggers(scenario, primaryContribution.severity, aggregatedVitals, resolveAggregatedLabValue);
+      const progress = progressByScenario.get(scenario.id);
 
-    const conditionHolds = evaluateCrisisTriggers(crisis, primaryContribution.severity, aggregatedVitals, resolveAggregatedLabValue);
-
-    if (!conditionHolds) {
-      if (caseRecord.crisisConditionSince) {
-        await db.case.update({ where: { id: caseId }, data: { crisisConditionSince: null } });
+      if (!conditionHolds) {
+        if (progress) await db.caseCrisisTriggerProgress.delete({ where: { id: progress.id } });
+        continue;
       }
+      if (!progress) {
+        await db.caseCrisisTriggerProgress.create({ data: { caseId, scenarioId: scenario.id, conditionSince: clockNow } });
+        continue;
+      }
+      const sustainedMinutes = (clockNow.getTime() - progress.conditionSince.getTime()) / 60_000;
+      if (sustainedMinutes < scenario.sustainMinutes) continue;
+
+      // 発火: targetTemplateを危機病態としてアタッチし、主病態に昇格させる
+      const targetTemplate = await db.diseaseTemplate.findUnique({ where: { key: scenario.targetTemplateKey } });
+      if (!targetTemplate) continue; // 設定不備（テンプレート削除済み等）。この分岐はスキップし他の分岐を確認
+      const targetParams = parsePhysiologyParams(targetTemplate.defaultParams);
+      const maxSort = await db.caseDiseaseLink.aggregate({ where: { caseId }, _max: { sortOrder: true } });
+
+      await db.caseDiseaseLink.updateMany({ where: { caseId }, data: { isPrimary: false } });
+      await db.caseDiseaseLink.upsert({
+        where: { caseId_templateId: { caseId, templateId: targetTemplate.id } },
+        update: {
+          isPrimary: true,
+          severityBaselineAt: clockNow,
+          physiologyParams: JSON.stringify(targetParams),
+          aiSeverityRatePerHour: null,
+        },
+        create: {
+          caseId,
+          templateId: targetTemplate.id,
+          isPrimary: true,
+          physiologyParams: JSON.stringify(targetParams),
+          severityBaselineAt: clockNow,
+          sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+        },
+      });
+      await db.case.update({ where: { id: caseId }, data: { crisisState: "CRITICAL", crisisStartedAt: clockNow } });
+      await db.caseCrisisTriggerProgress.deleteMany({ where: { caseId } });
+      await notifyAssignedStudents(caseId, `【急変】${targetTemplate.name}を疑う状態です。直ちに対応してください。`);
       return;
     }
-
-    if (!caseRecord.crisisConditionSince) {
-      await db.case.update({ where: { id: caseId }, data: { crisisConditionSince: clockNow } });
-      return;
-    }
-
-    const sustainedMinutes = (clockNow.getTime() - caseRecord.crisisConditionSince.getTime()) / 60_000;
-    if (sustainedMinutes < crisis.sustainMinutes) return;
-
-    await db.case.update({
-      where: { id: caseId },
-      data: { crisisState: "CRITICAL", crisisStartedAt: clockNow, crisisConditionSince: null },
-    });
-    await notifyAssignedStudents(caseId, `【急変】${crisis.name}を疑う状態です。直ちに対応してください。`);
     return;
   }
 
-  // CRITICAL
+  // CRITICAL: 主病態(=危機病態)自身の救命設定を見る
+  const rescue = primaryConfig.crisisRescue;
   const crisisStartedAt = caseRecord.crisisStartedAt ?? clockNow;
-  const rescuedAt = findCrisisRescueAt(treatmentOrders, crisis, crisisStartedAt);
-  if (rescuedAt) {
-    const params = parsePhysiologyParams(primaryLink.physiologyParams);
-    await db.case.update({ where: { id: caseId }, data: { crisisState: "STABLE", crisisStartedAt: null } });
-    await db.caseDiseaseLink.update({
-      where: { id: primaryLink.id },
-      data: {
-        severityBaselineAt: clockNow,
-        physiologyParams: JSON.stringify({ ...params, severitySlider: crisis.postRescueSeverity }),
-      },
-    });
-    await notifyAssignedStudents(caseId, "救命処置が奏功し、状態は安定化しました。");
-    return;
+
+  if (rescue) {
+    const rescuedAt = findCrisisRescueAt(treatmentOrders, rescue, crisisStartedAt);
+    if (rescuedAt) {
+      const params = parsePhysiologyParams(primaryLink.physiologyParams);
+      await db.case.update({ where: { id: caseId }, data: { crisisState: "STABLE", crisisStartedAt: null } });
+      await db.caseDiseaseLink.update({
+        where: { id: primaryLink.id },
+        data: {
+          severityBaselineAt: clockNow,
+          physiologyParams: JSON.stringify({ ...params, severitySlider: rescue.postRescueSeverity }),
+        },
+      });
+      await notifyAssignedStudents(caseId, "救命処置が奏功し、状態は安定化しました。");
+      return;
+    }
   }
 
-  const elapsedMinutes = (clockNow.getTime() - crisisStartedAt.getTime()) / 60_000;
-  if (elapsedMinutes >= crisis.windowMinutes && caseRecord.crisisMode === "LETHAL") {
-    await db.case.update({ where: { id: caseId }, data: { crisisState: "DECEASED" } });
-    await notifyAssignedStudents(caseId, "【死亡確認】救命処置が間に合わず、患者は死亡しました。");
+  if (caseRecord.crisisMode === "LETHAL") {
+    const severity = computeCaseSeverityAtTime(primaryLink, treatmentOrders, primaryConfig, clockNow);
+    if (severity !== null && severity >= 100) {
+      await db.case.update({ where: { id: caseId }, data: { crisisState: "DECEASED" } });
+      await notifyAssignedStudents(caseId, "【死亡確認】救命処置が間に合わず、患者は死亡しました。");
+    }
   }
 }
 
+// 症例の主病態（危機発生中は危機病態）について、現在時刻における重症度を計算する。
+// CrisisBannerの表示用（現在の重症度/100を目安として提示する）。
+export async function getCurrentPrimarySeverity(caseId: string): Promise<number | null> {
+  const caseRecord = await loadCaseForEngine(caseId);
+  if (!caseRecord) return null;
+  const primaryLink = findPrimaryDiseaseLink(caseRecord.diseaseLinks);
+  if (!primaryLink) return null;
+  const config = await loadTemplateConfig(primaryLink.template.key);
+  if (!config) return null;
+  const treatmentOrders = await loadTreatmentOrders(caseId);
+  const clockNow = getCaseClockNow(caseRecord);
+  return computeCaseSeverityAtTime(primaryLink, treatmentOrders, config, clockNow);
+}
+
 async function notifyAssignedStudents(caseId: string, message: string): Promise<void> {
-  const assignments = await db.caseAssignment.findMany({ where: { caseId }, select: { studentId: true } });
+  const assignments = await db.caseAssignment.findMany({
+    where: { caseId, dischargedAt: null },
+    select: { studentId: true },
+  });
   if (assignments.length === 0) return;
   await db.notification.createMany({ data: assignments.map((a) => ({ userId: a.studentId, caseId, message })) });
 }
@@ -432,7 +710,7 @@ export async function reconcileCase(caseId: string): Promise<void> {
 
 export async function reconcileCasesForStudent(studentId: string): Promise<void> {
   const assignments = await db.caseAssignment.findMany({
-    where: { studentId },
+    where: { studentId, dischargedAt: null },
     select: { caseId: true },
   });
   for (const { caseId } of assignments) {
@@ -516,13 +794,14 @@ export async function processTreatmentEvaluation(evaluationId: string): Promise<
 
   try {
     const orderIds = JSON.parse(evaluation.orderIdsSnapshot) as string[];
-    const [orders, problems, latestVital] = await Promise.all([
+    const [orders, problems, latestVital, targetedTherapy] = await Promise.all([
       db.order.findMany({
         where: { id: { in: orderIds } },
         select: { orderType: true, label: true, detail: true, orderedAt: true },
       }),
       db.problem.findMany({ where: { caseId: evaluation.caseId }, select: { label: true, isPrimary: true } }),
       db.vital.findFirst({ where: { caseId: evaluation.caseId }, orderBy: { recordedAt: "desc" } }),
+      loadTargetedTherapyContext(caseRecord),
     ]);
 
     const result = await evaluateTreatment({
@@ -533,6 +812,7 @@ export async function processTreatmentEvaluation(evaluationId: string): Promise<
       problems,
       orders,
       latestVital,
+      targetedTherapy,
     });
 
     // AI呼び出し中（数秒〜）に状態が変わっていないか（危機発生・死亡）再確認してから重症度へ反映する

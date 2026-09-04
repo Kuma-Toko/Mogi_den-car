@@ -12,7 +12,7 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
   if (!user) redirect("/login");
   if (user.role === "STUDENT") redirect("/patients");
 
-  const [caseRecord, templates] = await Promise.all([
+  const [caseRecord, templates, pathogens] = await Promise.all([
     db.case.findUnique({
       where: { id: caseId },
       include: {
@@ -22,6 +22,7 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
       },
     }),
     db.diseaseTemplate.findMany({ orderBy: { createdAt: "asc" } }),
+    db.pathogenMaster.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
   ]);
   if (!caseRecord) notFound();
   if (user.role === "TEACHER" && caseRecord.createdByUserId !== user.id) redirect("/teacher/cases");
@@ -31,11 +32,15 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
     name: t.name,
     description: t.description,
     defaultParams: parsePhysiologyParams(t.defaultParams),
+    isInfectious: t.isInfectious,
   }));
 
   const primaryLink = caseRecord.diseaseLinks.find((l) => l.isPrimary) ?? caseRecord.diseaseLinks[0] ?? null;
   const physiologyParamsByTemplate = Object.fromEntries(
     caseRecord.diseaseLinks.map((l) => [l.templateId, parsePhysiologyParams(l.physiologyParams)])
+  );
+  const pathogenIdByTemplate = Object.fromEntries(
+    caseRecord.diseaseLinks.filter((l) => l.pathogenId).map((l) => [l.templateId, l.pathogenId as string])
   );
 
   const initial: CaseFormInitial = {
@@ -57,6 +62,7 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
     sharingMode: caseRecord.sharingMode === "TEAM" ? "TEAM" : "SOLO",
     crisisMode: caseRecord.crisisMode,
     physiologyParamsByTemplate,
+    pathogenIdByTemplate,
     assigneeLoginIds: caseRecord.assignments.map((a) => a.student.loginId).join(", "),
   };
 
@@ -67,7 +73,7 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
         <div className="meta">{formatJaDateTime(new Date())}</div>
       </div>
       <div className="content">
-        <CaseForm templates={templateProps} mode="edit" action={updateCase.bind(null, caseId)} initial={initial} />
+        <CaseForm templates={templateProps} pathogens={pathogens} mode="edit" action={updateCase.bind(null, caseId)} initial={initial} />
       </div>
     </>
   );

@@ -355,7 +355,7 @@ cmtgz3gsj009shgynfgidd92o	100940801	パラミヂンカプセル300mg		1カプセ
 cmtgz3gsj009thgynza8wgd9r	100944602	ニフラン錠75mg		1錠		内服	FALSE		
 cmtgz3gsj009uhgynqoj97cwd	100947701	プラノプロフェン錠75mg		1錠		内服	FALSE	解熱鎮痛薬	NSAIDs
 cmtgz3gsj009vhgyn03n1nzrj	100953801	プラノプロフェンカプセル75mg		1カプセル		内服	FALSE	解熱鎮痛薬	NSAIDs
-cmtgz3gsj009whgynx7pcewfv	100959001	プラノプロフェン液1.5%MEEK		1mL		内服	FALSE		
+cmtgz3gsj009whgynx7pcewfv	100959001	プラノプロフェン液1.5%MEEK		1mL		内服	FALSE	解熱鎮痛薬	NSAIDs
 cmtgz3gsj009xhgynae09ywuo	100960601	フロベン顆粒8%		1g		内服	FALSE		
 cmtgz3gsj009yhgynpnj4htw0	100961301	フロベン錠40		1錠		内服	FALSE		
 cmtgz3gsj009zhgynaqqk8vk2	100963701	アップノン錠40mg		1錠		内服	FALSE		
@@ -1165,7 +1165,7 @@ cmtgz3gy200wahgyng7dp1jwo	102318301	フサコール点鼻液0.05%		1瓶		外用	
 cmtgz3gy200wbhgyn6xi4orl9	102320601	ケトチフェンネーザル0.05%		1瓶		外用	FALSE		
 cmtgz3gy200wchgynddou5pbc	102328202	タリビッド耳科用液0.3%		1mL		外用	FALSE	抗菌薬	ニューキノロン系
 cmtgz3gy200wdhgyn9fb5luil	102329901	フルナーゼ点鼻液50μg28噴霧用		1瓶		外用	FALSE		
-cmtgz3gy200wehgynwxexays2	102330501	リボスチン点鼻液0.025mg112噴霧用		1瓶		外用	FALSE		
+cmtgz3gy200wehgynwxexays2	102330501	リボスチン点鼻液0.025mg112噴霧用		1瓶		外用	FALSE	抗ヒスタミン薬	
 cmtgz3gy200wfhgyn0uxmibsh	102331202	コールタイジン点鼻液		1mL		外用	FALSE		
 cmtgz3gy200wghgynegcp711a	102333605	ドラマミン錠50mg		1錠		内服	FALSE		
 cmtgz3gy200whhgyncyyiu4p9	102334301	イソメニールカプセル7.5mg		1カプセル		内服	FALSE		
@@ -1184,7 +1184,7 @@ cmtgz3gy200wthgyn94j7r9ll	102363301	トラベルミン注		1管		注射・点滴
 cmtgz3gy200wuhgynebfpae48	102365701	ジギトキシン錠「シオノギ」0.025mg		1錠		内服	FALSE		
 cmtgz3gy200wvhgyng9m3c0p7	102366402	ジギトキシン錠「シオノギ」0.1mg		1錠		内服	FALSE		
 cmtgz3gy200wwhgyn5gbjysej	102366404	ジギトキシン錠		1錠		内服	FALSE		
-cmtgz3gy200wxhgyng5031rly	102367101	ジゴシン錠0.25mg		1錠		内服	FALSE		
+cmtgz3gy200wxhgyng5031rly	102367101	ジゴシン錠0.25mg		1錠		内服	FALSE	強心配糖体	
 cmtgz3gy200wyhgynvfyiidbm	102367102	ジゴキシンKY錠0.25		1錠		内服	FALSE	強心配糖体	
 cmtgz3gy200wzhgyndguq9wms	102367104	ジゴキシン錠「タイヨー」0.25mg		1錠		内服	FALSE	強心配糖体	
 cmtgz3gy200x0hgynwxgk2kmm	102367105	ジゴキシン錠0.25mg		1錠		内服	FALSE	強心配糖体	
@@ -1450,10 +1450,10 @@ cmtgz3gy30147hgynvfad1wmy	102776101	アポプロン注0.3mg		1管		注射・点�
 cmtgz3gy30148hgynv3mq4wxk	102777801	レセルピエム注		1管		注射・点滴	TRUE		
 cmtgz3gy30149hgynoysga1kd	102777802	アポプロン注0.5mg		1管		注射・点滴	TRUE		
 cmtgz3gy3014ahgynk5bvt2gc	102778501	アポプロン注1mg		1管		注射・点滴	TRUE		
-cmtgz3gy3014bhgynnpusj3rr	102779201	カプトリル細粒5%		1g		内服	FALSE		
-cmtgz3gy3014chgyns948s0fc	102782201	カプトリル錠12.5mg		1錠		内服	FALSE		
+cmtgz3gy3014bhgynnpusj3rr	102779201	カプトリル細粒5%		1g		内服	FALSE	降圧薬	ACE阻害薬
+cmtgz3gy3014chgyns948s0fc	102782201	カプトリル錠12.5mg		1錠		内服	FALSE	降圧薬	ACE阻害薬
 cmtgz3gy3014dhgynr3oo6hq6	102791401	カプトプリル錠12.5		1錠		内服	FALSE	降圧薬	ACE阻害薬
-cmtgz3gy3014ehgynw669hiol	102798301	カプトリル錠25mg		1錠		内服	FALSE		
+cmtgz3gy3014ehgynw669hiol	102798301	カプトリル錠25mg		1錠		内服	FALSE	降圧薬	ACE阻害薬
 cmtgz3gy3014fhgynhuysccmb	102806501	カプトリル-Rカプセル18.75mg		1カプセル		内服	FALSE		
 cmtgz3gy3014ghgync0t3xrd8	102807201	カプトプリルRカプセル18.75		1カプセル		内服	FALSE		
 cmtgz3gy3014hhgynxuzxo12w	102808901	レニベース錠2.5		1錠		内服	FALSE		
@@ -1652,14 +1652,14 @@ cmtgz3gy3019thgynq2npjcgq	103176803	ニフェジピン錠10mg		1錠		内服	FALS
 cmtgz3gy3019uhgynbncorodx	103178201	カサンミル錠10mg		1錠		内服	FALSE		
 cmtgz3gy3019vhgyn658fdlio	103181201	ラミタレートL錠10mg		1錠		内服	FALSE		
 cmtgz3gy3019whgynz1vmfuoi	103182901	アダラートL錠10mg		1錠		内服	FALSE		
-cmtgz3gy3019xhgynsva7otzs	103183601	ニフェジピンL錠10mg		1錠		内服	FALSE		
+cmtgz3gy3019xhgynsva7otzs	103183601	ニフェジピンL錠10mg		1錠		内服	FALSE	降圧薬	Ca拮抗薬
 cmtgz3gy3019yhgyn8ivtcist	103184301	カサンミルS錠10		1錠		内服	FALSE		
 cmtgz3gy3019zhgynx72nxh3j	103189801	ニフェスロー錠10mg		1錠		内服	FALSE		
 cmtgz3gy301a0hgynj5binwld	103193501	ヘルラートL錠10		1錠		内服	FALSE		
 cmtgz3gy301a1hgynv54be3qo	103194203	シオペルミンL錠10		1錠		内服	FALSE		
 cmtgz3gy301a2hgyntucq4lao	103196601	アダラートL錠20mg		1錠		内服	FALSE		
 cmtgz3gy301a3hgynxw9ilacq	103197301	アテネラートL錠20mg		1錠		内服	FALSE		
-cmtgz3gy301a4hgynlwplm3wu	103197304	ニフェジピンL錠20mg		1錠		内服	FALSE		
+cmtgz3gy301a4hgynlwplm3wu	103197304	ニフェジピンL錠20mg		1錠		内服	FALSE	降圧薬	Ca拮抗薬
 cmtgz3gy301a5hgynz6yomq8f	103199701	カサンミルS錠20		1錠		内服	FALSE		
 cmtgz3gy301a6hgynjg6bo721	103202401	コリネールL錠20mg		1錠		内服	FALSE		
 cmtgz3gy301a7hgyn7c8e1xr8	103203101	トーワラートL錠20mg		1錠		内服	FALSE		
@@ -1715,9 +1715,9 @@ cmtgz3gy301bkhgynnym3e3uu	103294901	コニール錠2		1錠		内服	FALSE
 cmtgz3gy301blhgyn9ra5pn68	103295601	コニール錠4		1錠		内服	FALSE		
 cmtgz3gy301bmhgyn250trivv	103296301	コニール錠8		1錠		内服	FALSE		
 cmtgz3gy301bnhgynhqjv6v9m	103297001	ノルバスク錠2.5mg		1錠		内服	FALSE		
-cmtgz3gy301bohgyn3zdqf7r5	103298702	アムロジン錠2.5mg		1錠		内服	FALSE		
+cmtgz3gy301bohgyn3zdqf7r5	103298702	アムロジン錠2.5mg		1錠		内服	FALSE	降圧薬	Ca拮抗薬
 cmtgz3gy301bphgyn7ouu6fp0	103299401	ノルバスク錠5mg		1錠		内服	FALSE		
-cmtgz3gy301bqhgyn5bqox29o	103300702	アムロジン錠5mg		1錠		内服	FALSE		
+cmtgz3gy301bqhgyn5bqox29o	103300702	アムロジン錠5mg		1錠		内服	FALSE	降圧薬	Ca拮抗薬
 cmtgz3gy301brhgynvofzvg3c	103301401	アイトロール錠10mg		1錠		内服	FALSE		
 cmtgz3gy301bshgynpv0lielg	103302101	アイトロール錠20mg		1錠		内服	FALSE		
 cmtgz3gy301bthgynhhbkg2sy	103303801	ジピリダモール静注10mg		1管		注射・点滴	TRUE		
@@ -2233,7 +2233,7 @@ cmtgz3h3i01pyhgynaw6kxab4	104297907	シメチパール錠200		1錠		内服	FALSE
 cmtgz3h3i01pzhgyny7ytkwuh	104297908	ダンスール錠200mg		1錠		内服	FALSE		
 cmtgz3h3i01q0hgyn19a8fc14	104297913	シメチジン錠200mg		1錠		内服	FALSE	消化性潰瘍治療薬	H2受容体拮抗薬
 cmtgz3h3i01q1hgynm1x961qy	104297915	ファルジン錠200mg		1錠		内服	FALSE		
-cmtgz3h3i01q2hgynqmedr86r	104297920	シメチラン錠200mg		1錠		内服	FALSE		
+cmtgz3h3i01q2hgynqmedr86r	104297920	シメチラン錠200mg		1錠		内服	FALSE	消化性潰瘍治療薬	H2受容体拮抗薬
 cmtgz3h3i01q3hgynrhj78tq0	104297949	ストマチジン錠200mg		1錠		内服	FALSE	消化性潰瘍治療薬	H2受容体拮抗薬
 cmtgz3h3i01q4hgynuq1v82uj	104301304	タガメット錠200mg		1錠		内服	FALSE		
 cmtgz3h3i01q5hgyne91xx8uh	104303703	エスメラルダ錠400		1錠		内服	FALSE		
@@ -2246,7 +2246,7 @@ cmtgz3h3i01qbhgyngfp43muw	104311201	ガスター錠10mg		1錠		内服	FALSE
 cmtgz3h3i01qchgynyeuutttu	104312901	ガスター錠20mg		1錠		内服	FALSE		
 cmtgz3h3i01qdhgynz8p0m83p	104315002	アルタットカプセル75mg		1カプセル		内服	FALSE		
 cmtgz3h3i01qehgyndf8n60fg	104316702	アルタットカプセル37.5mg		1カプセル		内服	FALSE		
-cmtgz3h3i01qfhgyni3oq2c3i	104319801	シメチジン注200mg		1管		注射・点滴	TRUE		
+cmtgz3h3i01qfhgyni3oq2c3i	104319801	シメチジン注200mg		1管		注射・点滴	TRUE	消化性潰瘍治療薬	H2受容体拮抗薬
 cmtgz3h3i01qghgynpb05qdm6	104319802	シメチジン注射液200mg		1管		注射・点滴	TRUE	消化性潰瘍治療薬	H2受容体拮抗薬
 cmtgz3h3i01qhhgyn86t45rzw	104319805	ファルジン注200mg		1管		注射・点滴	TRUE		
 cmtgz3h3i01qihgynakylblgm	104320404	タガメット注射液200mg		1管		注射・点滴	TRUE		
@@ -2319,7 +2319,7 @@ cmtgz3h3i01schgyn94exqhrb	104525301	ガスロンN錠4mg		1錠		内服	FALSE
 cmtgz3h3i01sdhgyn0k9nekox	104526001	セレガスロン錠4		1錠		内服	FALSE		
 cmtgz3h3i01sehgyns3m5fwwf	104526003	イルソグラジンマレイン酸塩錠4mg		1錠		内服	FALSE		
 cmtgz3h3i01sfhgyngc2cve5p	104528401	ムコスタ錠100mg		1錠		内服	FALSE		
-cmtgz3h3i01sghgynq3hjwhrg	104529102	オメプラール錠20		1錠		内服	FALSE		
+cmtgz3h3i01sghgynq3hjwhrg	104529102	オメプラール錠20		1錠		内服	FALSE	消化性潰瘍治療薬	プロトンポンプ阻害薬(PPI)
 cmtgz3h3i01shhgynxe7maee8	104531401	タケプロンカプセル15		1カプセル		内服	FALSE		
 cmtgz3h3i01sihgynm5wnqp5y	104532101	タケプロンカプセル30		1カプセル		内服	FALSE		
 cmtgz3h3i01sjhgynigkdpj9j	104533801	サイトテック錠200		1錠		内服	FALSE		
@@ -3923,7 +3923,7 @@ cmtgz3h7m030whgynza2pp5m6	107086615	メコバラミン錠500		1錠		内服	FALSE
 cmtgz3h7m030xhgynrn5qw1lq	107086621	メコバラミン錠500(ツルハラ)		1錠		内服	FALSE	ビタミン剤	ビタミンB12
 cmtgz3h7m030yhgyn1npcmew0	107086630	ノイメチコール錠500μg		1錠		内服	FALSE		
 cmtgz3h7m030zhgyn6zmydzet	107087301	メチコバール錠500μg		1錠		内服	FALSE		
-cmtgz3h7m0310hgyn19u190au	107088001	メコラミンカプセル250μg		1カプセル		内服	FALSE		
+cmtgz3h7m0310hgyn19u190au	107088001	メコラミンカプセル250μg		1カプセル		内服	FALSE	ビタミン剤	ビタミンB12
 cmtgz3h7m0311hgyn3pjrf1u6	107088012	メコバラミンカプセル250μg		1カプセル		内服	FALSE	ビタミン剤	ビタミンB12
 cmtgz3h7m0312hgyn1t22zs3b	107090302	ハイトコバミンMカプセル500μg		1カプセル		内服	FALSE		
 cmtgz3h7m0313hgyngefzzaog	107094101	コバマミド注0.5mg		1管		注射・点滴	TRUE		
@@ -3937,7 +3937,7 @@ cmtgz3h7m031ahgyngd6h611h	107113906	シアノコバラミン注射液1,000μg		1
 cmtgz3h7m031bhgyn9ti58x1t	107113907	ビタミンB12注“Z”1000μg		1管		注射・点滴	TRUE	ビタミン剤	
 cmtgz3h7m031chgynrt8cdo25	107113909	シアノコバラミン注1000μg		1管		注射・点滴	TRUE		
 cmtgz3h7m031dhgynnaii8zyh	107113911	シアノコバラミン注射液1mg		1管		注射・点滴	TRUE	ビタミン剤	ビタミンB12
-cmtgz3h7m031ehgyn22q9303p	107114601	メコバラミン注500μg		1管		注射・点滴	TRUE		
+cmtgz3h7m031ehgyn22q9303p	107114601	メコバラミン注500μg		1管		注射・点滴	TRUE	ビタミン剤	ビタミンB12
 cmtgz3h7m031fhgyn0b1puucu	107114606	コメスゲン注射液500μg		1管		注射・点滴	TRUE		
 cmtgz3h7m031ghgynw5wgddqx	107114608	メコバラミン注射液500μg		1管		注射・点滴	TRUE	ビタミン剤	ビタミンB12
 cmtgz3h7m031hhgynh0submxh	107114614	ビーコバM注500μg		1管		注射・点滴	TRUE		
@@ -4502,11 +4502,11 @@ cmtgz3hba03gzhgynx8bo3vye	108112101	エトキシスクレロール1%注射液		1
 cmtgz3hba03h0hgyn1petqw4s	108113801	輸血用チトラミン		1管		注射・点滴	TRUE		
 cmtgz3hba03h1hgynsg7bnyec	108114504	クエン酸ナトリウム水和物原末		10g		外用	FALSE		
 cmtgz3hba03h2hgyn7ip12z6v	108114506	クエン酸ナトリウム		10g		外用	FALSE		
-cmtgz3hba03h3hgynf0vf7ksf	108115201	ワーファリン錠1mg		1錠		内服	FALSE		
+cmtgz3hba03h3hgynf0vf7ksf	108115201	ワーファリン錠1mg		1錠		内服	FALSE	抗凝固薬	ビタミンK拮抗薬
 cmtgz3hba03h4hgyns343kaoh	108115202	アレファリン錠1mg		1錠		内服	FALSE		
 cmtgz3hba03h5hgynkw1kg9r6	108115203	ワルファリンK錠1mg		1錠		内服	FALSE	抗凝固薬	ビタミンK拮抗薬
 cmtgz3hba03h6hgyn7eioejx5	108115205	ワルファリンカリウム錠1mg		1錠		内服	FALSE	抗凝固薬	ビタミンK拮抗薬
-cmtgz3hba03h7hgynpt16t9od	108116901	ワーファリン錠5mg		1錠		内服	FALSE		
+cmtgz3hba03h7hgynpt16t9od	108116901	ワーファリン錠5mg		1錠		内服	FALSE	抗凝固薬	ビタミンK拮抗薬
 cmtgz3hba03h8hgynrbx36mh5	108117603	カプロシン注		1mLバイアル		注射・点滴	TRUE		
 cmtgz3hba03h9hgynst69b9q6	108119002	ヘパリンカルシウム注射液		1mLバイアル		注射・点滴	TRUE	抗凝固薬	ヘパリン
 cmtgz3hba03hahgyn1j1s6tic	108122003	ヘパリンCa皮下注2万単位/0.8mL		1瓶		注射・点滴	TRUE	抗凝固薬	ヘパリン
@@ -8628,8 +8628,8 @@ cmtgz3hqq06nlhgyneqq8nj3k	113484101	ジスロマック細粒小児用10%		1g		�
 cmtgz3hqq06nmhgyn0fb7sm15	113485801	ジスロマック錠250mg		1錠		内服	FALSE	抗菌薬	マクロライド系
 cmtgz3hqq06nnhgynv0msn76t	113486501	ジスロマックカプセル小児用100mg		1カプセル		内服	FALSE	抗菌薬	マクロライド系
 cmtgz3hqq06nohgyn9nxxac51	113526801	アシクロビル顆粒40%		1g		内服	FALSE	抗ウイルス薬	
-cmtgz3hqq06nphgynniqysa9w	113526803	アシクロビン顆粒40%		1g		内服	FALSE		
-cmtgz3hqq06nqhgync8hgnwy4	113529901	アシクロビン錠200		1錠		内服	FALSE		
+cmtgz3hqq06nphgynniqysa9w	113526803	アシクロビン顆粒40%		1g		内服	FALSE	抗ウイルス薬	
+cmtgz3hqq06nqhgync8hgnwy4	113529901	アシクロビン錠200		1錠		内服	FALSE	抗ウイルス薬	
 cmtgz3hqq06nrhgyn3o58l7av	113533601	ゾビクロビル錠200		1錠		内服	FALSE	抗ウイルス薬	
 cmtgz3hqq06nshgyn1rgo71xt	113535001	ビルヘキサル錠200mg		1錠		内服	FALSE		
 cmtgz3hqq06nthgyn17qm4ffv	113537401	アシクロビル錠400mg		1錠		内服	FALSE	抗ウイルス薬	
@@ -8820,7 +8820,7 @@ cmtgz3hqr06sxhgyn88z6tdaw	113873301	ロルカム錠4mg		1錠		内服	FALSE
 cmtgz3hqr06syhgyngs692rlz	113876402	ルーラン錠4mg		1錠		内服	FALSE		
 cmtgz3hqr06szhgyn184egrty	113877102	ルーラン錠8mg		1錠		内服	FALSE		
 cmtgz3hqr06t0hgyn1r8x6hir	113879501	オメプラゾン錠20mg		1錠		内服	FALSE		
-cmtgz3hqr06t1hgynn1ukmdzz	113880101	オメプラール錠10		1錠		内服	FALSE		
+cmtgz3hqr06t1hgynn1ukmdzz	113880101	オメプラール錠10		1錠		内服	FALSE	消化性潰瘍治療薬	プロトンポンプ阻害薬(PPI)
 cmtgz3hqr06t2hgynpn4cmwdb	113881801	オメプラゾン錠10mg		1錠		内服	FALSE		
 cmtgz3hqr06t3hgynek840flg	113887001	アリミデックス錠1mg		1錠		内服	FALSE		
 cmtgz3hqr06t4hgynrhvcnf2s	113888702	タミフルカプセル75		1カプセル		内服	FALSE	抗ウイルス薬	
@@ -8872,7 +8872,7 @@ cmtgz3hqr06udhgyna2eojjcj	113959402	ヒアルロン酸Na0.85眼粘弾剤1%HV		1�
 cmtgz3hqr06uehgynkr9htjff	113963101	オフロキサシン点眼液0.3%		1mL		外用	FALSE	抗菌薬	キノロン系
 cmtgz3hqr06ufhgynrcxjls5g	113965501	タリフロン点眼液0.3%		1mL		外用	FALSE		
 cmtgz3hqr06ughgyndkio5i32	113966201	ファルキサシン点眼液0.3%		1mL		外用	FALSE	抗菌薬	キノロン系
-cmtgz3hqr06uhhgynhlb0w2zh	113967901	オフロキシン点眼液0.3%		1mL		外用	FALSE		
+cmtgz3hqr06uhhgynhlb0w2zh	113967901	オフロキシン点眼液0.3%		1mL		外用	FALSE	抗菌薬	キノロン系
 cmtgz3hqr06uihgyndsdm6oi2	113972301	マロメール点眼液0.3%		1mL		外用	FALSE		
 cmtgz3hqr06ujhgynw7t6uwp0	113973001	オフテクター点眼液0.3%		1mL		外用	FALSE		
 cmtgz3hqr06ukhgynsfe2z1jg	113979201	ベナンザ点眼液0.05%		1瓶		外用	FALSE		
@@ -9044,7 +9044,7 @@ cmtgz3huj06z5hgynq4oaqi2h	114364501	ミオMIBG-I123注射液		10MBq		注射・�
 cmtgz3huj06z6hgyn0pktblru	114365201	カーディオライト第一		1回分		注射・点滴	TRUE		
 cmtgz3huj06z7hgyng6tekty0	114366901	カーディオライト注射液 第一 600MBq		1筒		注射・点滴	TRUE	造影剤・放射性医薬品	放射性医薬品
 cmtgz3huj06z8hgynnwy7e4rt	114368301	ニューロライト第一		1回分		注射・点滴	TRUE		
-cmtgz3huj06z9hgynm6n3zsuw	114369001	ニューロライト注射液 第一		1筒		注射・点滴	TRUE		
+cmtgz3huj06z9hgynm6n3zsuw	114369001	ニューロライト注射液 第一		1筒		注射・点滴	TRUE	造影剤・放射性医薬品	放射性医薬品
 cmtgz3huj06zahgynv6ju6emm	114369002	ニューロライト注射液第一 600MBq		1筒		注射・点滴	TRUE	造影剤・放射性医薬品	放射性医薬品
 cmtgz3huj06zbhgyn4rr6ciiq	114370601	テクネMAG3キット		1回分		注射・点滴	TRUE	造影剤・放射性医薬品	放射性医薬品
 cmtgz3huj06zchgynyxcszy1m	114371301	テクネMAG3注射液 200MBq		1筒		注射・点滴	TRUE	造影剤・放射性医薬品	放射性医薬品
@@ -9212,7 +9212,7 @@ cmtgz3huj073thgyn52lu8yl5	114650901	キンダリー透析剤2E		1組		注射・�
 cmtgz3huj073uhgyn1xxg0mi0	114653001	ネオファーゲン静注20mL		1管		注射・点滴	TRUE		
 cmtgz3huj073vhgyn8sue25mo	114654702	プロテアミン12注射液		1袋		注射・点滴	TRUE		
 cmtgz3huj073whgynfr75wfig	114656101	フルニトラゼパム錠2mg		1錠		内服	FALSE		
-cmtgz3huj073xhgynh6a4zm0i	114657801	ブロチゾラムM錠0.25		1錠		内服	FALSE		
+cmtgz3huj073xhgynh6a4zm0i	114657801	ブロチゾラムM錠0.25		1錠		内服	FALSE	抗不安薬・睡眠薬	ベンゾジアゼピン系
 cmtgz3huj073yhgynlmy603e4	114658501	レンドルミンD錠0.25mg		1錠		内服	FALSE		
 cmtgz3huj073zhgynk5d3tpmq	114660802	エトドラク錠200mg		1錠		内服	FALSE		
 cmtgz3huj0740hgyndfwazwtu	114661501	エトドラク錠200		1錠		内服	FALSE		
@@ -9226,7 +9226,7 @@ cmtgz3huj0747hgyneyfipnpf	114675202	ビスコキング0.85		1筒		外用	FALSE
 cmtgz3huj0748hgynf2s0os3y	114680601	ベトプティック エス懸濁性点眼液0.5%		1mL		外用	FALSE		
 cmtgz3huj0749hgynais24azd	114681302	ベタキソロール点眼液0.5%		1mL		外用	FALSE		
 cmtgz3huj074ahgync95sr3zj	114683701	ジゴキシン錠「タイヨー」0.125mg		1錠		内服	FALSE	強心配糖体	
-cmtgz3huj074bhgyn39veuag9	114684401	ジゴシン錠0.125mg		1錠		内服	FALSE		
+cmtgz3huj074bhgyn39veuag9	114684401	ジゴシン錠0.125mg		1錠		内服	FALSE	強心配糖体	
 cmtgz3huj074chgynso9o6giz	114685101	ジゴハン錠0.125mg		1錠		内服	FALSE		
 cmtgz3huj074dhgyn82fu10ht	114686801	ハーフジゴキシンKY錠0.125		1錠		内服	FALSE	強心配糖体	
 cmtgz3huj074ehgyno4jpjgr3	114688201	エナラプリルM錠5		1錠		内服	FALSE		
@@ -9299,8 +9299,8 @@ cmtgz3huj0768hgynpjq7qd3n	114800803	シザナリン配合点滴静注液		1管		
 cmtgz3huj0769hgynfbmbi9q9	114801501	ミネリック-4注		1管		注射・点滴	TRUE		
 cmtgz3huj076ahgynblo9cs0k	114802201	ボルビサール注		1管		注射・点滴	TRUE		
 cmtgz3huj076bhgynjvjh75o7	114805301	ワルファリンカリウム錠0.5mg		1錠		内服	FALSE	抗凝固薬	ビタミンK拮抗薬
-cmtgz3huj076chgynvh1hzqog	114805303	ワーファリン錠0.5mg		1錠		内服	FALSE		
-cmtgz3huj076dhgyna476bkio	114805304	ワーリン錠0.5mg		1錠		内服	FALSE		
+cmtgz3huj076chgynvh1hzqog	114805303	ワーファリン錠0.5mg		1錠		内服	FALSE	抗凝固薬	ビタミンK拮抗薬
+cmtgz3huj076dhgyna476bkio	114805304	ワーリン錠0.5mg		1錠		内服	FALSE	抗凝固薬	ビタミンK拮抗薬
 cmtgz3huj076ehgyneyudpmm1	114805306	ワルファリンK錠0.5mg		1錠		内服	FALSE	抗凝固薬	ビタミンK拮抗薬
 cmtgz3huj076fhgynh1hnn0qx	114806001	ワルファリンカリウム錠2mg		1錠		内服	FALSE	抗凝固薬	ビタミンK拮抗薬
 cmtgz3huj076ghgync0dghhsx	114806004	ワルファリンK錠2mg		1錠		内服	FALSE	抗凝固薬	ビタミンK拮抗薬
@@ -9840,7 +9840,7 @@ cmtgz3hul07l9hgynnyvy8y4q	115737601	シンベノン錠10		1錠		内服	FALSE
 cmtgz3hul07lahgyniaca37ez	115750501	デカレノン細粒		1g		内服	FALSE		
 cmtgz3hul07lbhgyn0ozjhk3w	115760402	カルシタロールカプセル0.25		1カプセル		内服	FALSE		
 cmtgz3hul07lchgynn5qfzbu0	115762801	塩化リゾチーム錠10		1錠		内服	FALSE		
-cmtgz3hul07ldhgyn7dao241q	115775801	デキサメサゾン軟膏0.1%		1g		外用	FALSE		
+cmtgz3hul07ldhgyn7dao241q	115775801	デキサメサゾン軟膏0.1%		1g		外用	FALSE	副腎皮質ステロイド	
 cmtgz3hul07lehgyncw20pfv7	115776501	イペ軟膏		1g		外用	FALSE		
 cmtgz3hul07lfhgyn7mk44a3y	115777201	イペクリーム		1g		外用	FALSE		
 cmtgz3hul07lghgynawx3023x	115779602	キンダロン軟膏0.05%		1g		外用	FALSE		
@@ -10235,7 +10235,7 @@ cmtgz3hyq07w8hgyn1kzlpwxu	116593701	ヒューマログミックス25注カート
 cmtgz3hyq07w9hgynmiitm6sf	116594401	ヒューマログミックス50注カート		1筒		注射・点滴	TRUE		
 cmtgz3hyq07wahgynjyojb2gc	116595101	ヒューマログN注カート		1筒		注射・点滴	TRUE		
 cmtgz3hyq07wbhgyn4klolt0s	116600202	オザペンバッグ注80mg		1袋		注射・点滴	TRUE		
-cmtgz3hyq07wchgynmwg29ifp	116601901	アシクロビル点滴静注液250mgバッグ100mL		1袋		注射・点滴	TRUE		
+cmtgz3hyq07wchgynmwg29ifp	116601901	アシクロビル点滴静注液250mgバッグ100mL		1袋		注射・点滴	TRUE	抗ウイルス薬	
 cmtgz3hyq07wdhgynfcquhrjj	116607101	コンドロイチン注1%		1管		注射・点滴	TRUE		
 cmtgz3hyq07wehgynvu2bipo3	116608801	コンドロイチン注2%		1管		注射・点滴	TRUE		
 cmtgz3hyr07wfhgyn6zux5jwi	116610101	KN1号輸液 200mL		1袋		注射・点滴	TRUE	輸液	
@@ -10305,7 +10305,7 @@ cmtgz3hyr07y6hgyn8c5h2azj	116693401	シプロキサン注200mg		1袋		注射・�
 cmtgz3hyr07y7hgynnutkkdlr	116695801	トラネキサム酸注1gシリンジ		1筒		注射・点滴	TRUE		
 cmtgz3hyr07y8hgyncs7naaom	116696501	ブチルスコポラミン臭化物注20mgシリンジ		1筒		注射・点滴	TRUE		
 cmtgz3hyr07y9hgyn2eh646z3	116697201	ダルテパリンNaシリンジ5000		1筒		注射・点滴	TRUE		
-cmtgz3hyr07yahgynvg1x4lic	116698901	メコバラミン注500μgシリンジ		1筒		注射・点滴	TRUE		
+cmtgz3hyr07yahgynvg1x4lic	116698901	メコバラミン注500μgシリンジ		1筒		注射・点滴	TRUE	ビタミン剤	ビタミンB12
 cmtgz3hyr07ybhgyn9bv2m6s9	116702301	ミノフィット注20mLシリンジ		1筒		注射・点滴	TRUE		
 cmtgz3hyr07ychgynnsm1v9lk	116703001	ミノフィット注40mLシリンジ		1筒		注射・点滴	TRUE		
 cmtgz3hyr07ydhgynoh6hksx6	116705401	エスクレ注腸用キット「500」		1筒		外用	FALSE		
@@ -10657,8 +10657,8 @@ cmtgz3hys087yhgyn489mn01r	117310901	クラリスロマイシン錠200		1錠		内
 cmtgz3hys087zhgyncy4zapk3	117311601	クラリスロマイシンDS10%		1g		内服	FALSE	抗菌薬	マクロライド系
 cmtgz3hys0880hgynd3eqfjdk	117312302	テルビナフィン錠125		1錠		内服	FALSE		
 cmtgz3hys0881hgynnn51fd80	117313001	塩酸バンコマイシン散0.5		1瓶		内服	FALSE	抗菌薬	グリコペプチド系
-cmtgz3hys0882hgyn6f7obhbu	117315401	アムロジンOD錠2.5mg		1錠		内服	FALSE		
-cmtgz3hys0883hgynfcyxtzg4	117316101	アムロジンOD錠5mg		1錠		内服	FALSE		
+cmtgz3hys0882hgyn6f7obhbu	117315401	アムロジンOD錠2.5mg		1錠		内服	FALSE	降圧薬	Ca拮抗薬
+cmtgz3hys0883hgynfcyxtzg4	117316101	アムロジンOD錠5mg		1錠		内服	FALSE	降圧薬	Ca拮抗薬
 cmtgz3hys0884hgynp7zli3kn	117318501	バップフォー細粒2%		1g		内服	FALSE		
 cmtgz3hys0885hgynyr2uszvk	117319201	メイアクトMS錠100mg		1錠		内服	FALSE	抗菌薬	セフェム系(第3世代)
 cmtgz3hys0886hgynsoi5c479	117320801	イミスタン点滴静注用0.5g		1瓶		注射・点滴	TRUE		
@@ -10892,12 +10892,12 @@ cmtgz3hyu08ehhgyntjwpxanb	117710701	ランタス注100単位/mL		1mLバイアル
 cmtgz3hyu08eihgyn4kpkuqkm	117711401	オンダンセトロン注4mgシリンジ		1筒		注射・点滴	TRUE	制吐薬・消化管運動改善薬	5-HT3受容体拮抗薬
 cmtgz3hyu08ejhgynfrzvy706	117712101	解凍赤血球-LR 血液200mLに由来する赤血球		1袋		注射・点滴	TRUE	血液製剤	赤血球製剤
 cmtgz3hyu08ekhgynq3tvaqod	117713801	解凍赤血球-LR 血液400mLに由来する赤血球		1袋		注射・点滴	TRUE	血液製剤	赤血球製剤
-cmtgz3hyu08elhgyn5bxotj3p	117714501	合成血-LR 血液200mL相当に由来する血液量		1袋		注射・点滴	TRUE		
-cmtgz3hyu08emhgynior287kh	117715201	合成血-LR 血液400mL相当に由来する血液量		1袋		注射・点滴	TRUE		
+cmtgz3hyu08elhgyn5bxotj3p	117714501	合成血-LR 血液200mL相当に由来する血液量		1袋		注射・点滴	TRUE	血液製剤	赤血球製剤
+cmtgz3hyu08emhgynior287kh	117715201	合成血-LR 血液400mL相当に由来する血液量		1袋		注射・点滴	TRUE	血液製剤	赤血球製剤
 cmtgz3hyu08enhgyn34uc246r	117716901	照射解凍赤血球-LR 血液200mLに由来する赤血球		1袋		注射・点滴	TRUE	血液製剤	赤血球製剤
 cmtgz3hyu08eohgynbbml6ziv	117717601	照射解凍赤血球-LR 血液400mLに由来する赤血球		1袋		注射・点滴	TRUE	血液製剤	赤血球製剤
-cmtgz3hyu08ephgynfup7ah6y	117718301	照射合成血-LR 血液200mL相当に由来する血液量		1袋		注射・点滴	TRUE		
-cmtgz3hyu08eqhgynpvvw7mqz	117719001	照射合成血-LR 血液400mL相当に由来する血液量		1袋		注射・点滴	TRUE		
+cmtgz3hyu08ephgynfup7ah6y	117718301	照射合成血-LR 血液200mL相当に由来する血液量		1袋		注射・点滴	TRUE	血液製剤	赤血球製剤
+cmtgz3hyu08eqhgynpvvw7mqz	117719001	照射合成血-LR 血液400mL相当に由来する血液量		1袋		注射・点滴	TRUE	血液製剤	赤血球製剤
 cmtgz3hyu08erhgyno4e0ldol	117720601	照射赤血球濃厚液-LR 血液200mLに由来する赤血球		1袋		注射・点滴	TRUE	血液製剤	赤血球製剤
 cmtgz3hyu08eshgynf5hryxs6	117721301	照射赤血球濃厚液-LR 血液400mLに由来する赤血球		1袋		注射・点滴	TRUE	血液製剤	赤血球製剤
 cmtgz3hyu08ethgynckt8ezmh	117722001	照射洗浄赤血球-LR 200mL		1袋		注射・点滴	TRUE	血液製剤	赤血球製剤
@@ -11124,8 +11124,8 @@ cmtgz3i2m08kxhgyn1vytwnbw	118206401	コンサータ錠18mg		1錠		内服	FALSE
 cmtgz3i2m08kyhgyn5i1qjcdl	118207101	コンサータ錠27mg		1錠		内服	FALSE		
 cmtgz3i2m08kzhgyn0azbzllq	118211801	ピスルシン静注用0.75g		1瓶		注射・点滴	TRUE		
 cmtgz3i2m08l0hgynakxz0dzf	118212501	ピスルシン静注用1.5g		1瓶		注射・点滴	TRUE		
-cmtgz3i2m08l1hgyn6mnfil5z	118213201	ラニチジン注50mgシリンジ		1筒		注射・点滴	TRUE		
-cmtgz3i2m08l2hgynlmkefb0m	118214901	ラニチジン注100mgシリンジ		1筒		注射・点滴	TRUE		
+cmtgz3i2m08l1hgyn6mnfil5z	118213201	ラニチジン注50mgシリンジ		1筒		注射・点滴	TRUE	消化性潰瘍治療薬	H2受容体拮抗薬
+cmtgz3i2m08l2hgynlmkefb0m	118214901	ラニチジン注100mgシリンジ		1筒		注射・点滴	TRUE	消化性潰瘍治療薬	H2受容体拮抗薬
 cmtgz3i2m08l3hgynhdb8e2g8	118218701	マグネビスト静注 37.14%30mL		1瓶		注射・点滴	TRUE	造影剤・放射性医薬品	MRI用造影剤
 cmtgz3i2m08l4hgynshaynp8b	118219401	セボフルラン吸入麻酔液		1mL		外用	FALSE	麻酔薬	全身麻酔薬
 cmtgz3i2m08l5hgyna7uunzcy	118221701	EOB・プリモビスト注シリンジ 18.143%5mL		1筒		注射・点滴	TRUE		
@@ -11501,8 +11501,8 @@ cmtgz3i2n08vehgynrrmv9861	119224701	オプチレイ350注シリンジ100mL		1筒
 cmtgz3i2n08vfhgynpgh2gjci	119228501	サブラッド血液ろ過用補充液BSG 1,010mL		1キット		注射・点滴	TRUE		
 cmtgz3i2n08vghgynurw0gmxc	119229201	サブラッド血液ろ過用補充液BSG 2,020mL		1キット		注射・点滴	TRUE		
 cmtgz3i2n08vhhgynf9dewuie	119232201	シプロフロキサシンDU点滴静注300mg/250mL		1袋		注射・点滴	TRUE		
-cmtgz3i2n08vihgynomk6bahr	119237701	シプロフロキサシン点滴静注200mg/100mL		1袋		注射・点滴	TRUE		
-cmtgz3i2n08vjhgynzw24w7gp	119238401	シプロフロキサシン点滴静注300mg/150mL		1袋		注射・点滴	TRUE		
+cmtgz3i2n08vihgynomk6bahr	119237701	シプロフロキサシン点滴静注200mg/100mL		1袋		注射・点滴	TRUE	抗菌薬	キノロン系
+cmtgz3i2n08vjhgynzw24w7gp	119238401	シプロフロキサシン点滴静注300mg/150mL		1袋		注射・点滴	TRUE	抗菌薬	キノロン系
 cmtgz3i2n08vkhgyn1aomb6yh	119239101	セフォチアム静注用1gバッグ		100mL付)		注射・点滴	TRUE	抗菌薬	セフェム系(第2世代)
 cmtgz3i2n08vlhgynx4xvl5tz	119240701	セフォチアム塩酸塩静注用0.25g		1瓶		注射・点滴	TRUE	抗菌薬	セフェム系(第2世代)
 cmtgz3i2n08vmhgynddr5cbrh	119242101	セフキソン静注用0.5g		1瓶		注射・点滴	TRUE	抗菌薬	セフェム系(第3世代)
@@ -11801,8 +11801,8 @@ cmtgz3i2n093qhgyngi8p97qr	119907901	アミオダロン塩酸塩速崩錠50mg		1�
 cmtgz3i2n093rhgyndg5md346	119908601	アミオダロン塩酸塩速崩錠100mg		1錠		内服	FALSE	抗不整脈薬	
 cmtgz3i2n093shgynj632zow0	119909301	アクトスOD錠15		1錠		内服	FALSE		
 cmtgz3i2n093thgyncl63uj6b	119910901	アクトスOD錠30		1錠		内服	FALSE		
-cmtgz3i2n093uhgyn5kgvpci9	119911601	アムロジン錠10mg		1錠		内服	FALSE		
-cmtgz3i2n093vhgynovscx99m	119912301	アムロジンOD錠10mg		1錠		内服	FALSE		
+cmtgz3i2n093uhgyn5kgvpci9	119911601	アムロジン錠10mg		1錠		内服	FALSE	降圧薬	Ca拮抗薬
+cmtgz3i2n093vhgynovscx99m	119912301	アムロジンOD錠10mg		1錠		内服	FALSE	降圧薬	Ca拮抗薬
 cmtgz3i2n093whgyn1prf9al8	119914701	アズサレオン小児用ドライシロップ1%		1g		内服	FALSE		
 cmtgz3i2n093xhgynnyw9f8b6	119923901	セチリジン塩酸塩OD錠5mg		1錠		内服	FALSE		
 cmtgz3i2n093yhgynph34f7mx	119924601	セチリジン塩酸塩OD錠10mg		1錠		内服	FALSE		
@@ -11853,7 +11853,7 @@ cmtgz3i2n0956hgynbsfa22p8	119992501	ヒアレイン点眼液0.3%		1瓶		外用	F
 cmtgz3i2n0957hgynj3s1q1hl	119995601	ラベプラゾールNa塩錠10mg		1錠		内服	FALSE		
 cmtgz3i2n0958hgyngp6dom72	119996301	ラベプラゾールNa塩錠20mg		1錠		内服	FALSE		
 cmtgz3i2n0959hgynr2toe2v7	120004101	ロキソニンゲル1%		1g		外用	FALSE		
-cmtgz3i2n095ahgyn6pdj77l3	120005801	オメプラゾール注用20mg		1瓶		注射・点滴	TRUE		
+cmtgz3i2n095ahgyn6pdj77l3	120005801	オメプラゾール注用20mg		1瓶		注射・点滴	TRUE	消化性潰瘍治療薬	プロトンポンプ阻害薬(PPI)
 cmtgz3i2n095bhgynvov7u2j0	120015701	アロプリノール錠50mg		1錠		内服	FALSE		
 cmtgz3i2n095chgyn1xedjbmk	120016401	カルフィーナカプセル3μg		1カプセル		内服	FALSE		
 cmtgz3i2n095dhgynmdt2zvjv	120022501	ラベプラゾールナトリウム錠10mg		1錠		内服	FALSE		
@@ -12248,7 +12248,7 @@ cmtgz3i6k09g5hgynrqus6i58	121214301	プロポフォール注1% 1g100mL		1瓶		�
 cmtgz3i6k09g6hgynybl0sz5g	121219801	エポプロステノール静注用「F」専用溶解液		1瓶		注射・点滴	TRUE		
 cmtgz3i6k09g7hgynajsjzjop	121222801	アマリールOD錠1mg		1錠		内服	FALSE		
 cmtgz3i6k09g8hgynqz6knr4m	121223501	アマリールOD錠3mg		1錠		内服	FALSE		
-cmtgz3i6k09g9hgyn4z79hda8	121226601	ワーファリン顆粒0.2%		1g		内服	FALSE		
+cmtgz3i6k09g9hgyn4z79hda8	121226601	ワーファリン顆粒0.2%		1g		内服	FALSE	抗凝固薬	ビタミンK拮抗薬
 cmtgz3i6k09gahgyn769th1fz	121227301	アルキオーネ錠400mg		1錠		内服	FALSE		
 cmtgz3i6k09gbhgyntsps5qou	121228001	プロイメンド点滴静注用150mg		1瓶		注射・点滴	TRUE		
 cmtgz3i6k09gchgyn0v2tnwn3	121234101	トリデミンカプセル5mg		1カプセル		内服	FALSE		
@@ -12496,8 +12496,8 @@ cmtgz3i6k09n1hgyns1fl4a67	122132901	ギリアデル脳内留置用剤7.7mg		1枚
 cmtgz3i6k09n2hgyne1yn7sj9	122133601	トービイ吸入液300mg		1管		外用	FALSE		
 cmtgz3i6k09n3hgynlhubuw53	122136701	イオパミドール300注シリンジ150mL		1筒		注射・点滴	TRUE	造影剤・放射性医薬品	ヨード造影剤
 cmtgz3i6k09n4hgyn3i2a3qcl	122136702	オイパロミン300注シリンジ150mL		1筒		注射・点滴	TRUE	造影剤・放射性医薬品	ヨード造影剤
-cmtgz3i6k09n5hgynfyxsre67	122153401	ドセタキセル点滴静注液20mg/2mL		1瓶		注射・点滴	TRUE		
-cmtgz3i6k09n6hgynkyccvdyi	122154101	ドセタキセル点滴静注液80mg/8mL		1瓶		注射・点滴	TRUE		
+cmtgz3i6k09n5hgynfyxsre67	122153401	ドセタキセル点滴静注液20mg/2mL		1瓶		注射・点滴	TRUE	抗悪性腫瘍薬	タキサン系
+cmtgz3i6k09n6hgynkyccvdyi	122154101	ドセタキセル点滴静注液80mg/8mL		1瓶		注射・点滴	TRUE	抗悪性腫瘍薬	タキサン系
 cmtgz3i6k09n7hgynry8ce4eo	122168801	アフィニトール錠2.5mg		1錠		内服	FALSE		
 cmtgz3i6k09n8hgyn6qscmnkp	122169501	ゾメタ点滴静注4mg/100mL		1瓶		注射・点滴	TRUE		
 cmtgz3i6k09n9hgynt1fk53p2	122170101	ゾレア皮下注用75mg		1瓶		注射・点滴	TRUE		
@@ -12673,8 +12673,8 @@ cmtgz3i6l09ryhgynn2ipoom3	122709301	アジスロマイシン錠500mg		1錠		内�
 cmtgz3i6l09rzhgyn8hecpkq7	122715401	バラシクロビル顆粒50%		1g		内服	FALSE	抗ウイルス薬	
 cmtgz3i6l09s0hgynsj7sngs3	122716101	ヘパリン類似物質油性クリーム0.3%		1g		外用	FALSE	抗凝固薬	ヘパリン
 cmtgz3i6l09s1hgynktjcridx	122717801	セチリジン塩酸塩ドライシロップ1.25%		1g		内服	FALSE		
-cmtgz3i6l09s2hgynt7lr77jm	122720801	ドセタキセル点滴静注20mg/1mL		1瓶		注射・点滴	TRUE		
-cmtgz3i6l09s3hgynhmlysqvv	122721501	ドセタキセル点滴静注80mg/4mL		1瓶		注射・点滴	TRUE		
+cmtgz3i6l09s2hgynt7lr77jm	122720801	ドセタキセル点滴静注20mg/1mL		1瓶		注射・点滴	TRUE	抗悪性腫瘍薬	タキサン系
+cmtgz3i6l09s3hgynhmlysqvv	122721501	ドセタキセル点滴静注80mg/4mL		1瓶		注射・点滴	TRUE	抗悪性腫瘍薬	タキサン系
 cmtgz3i6l09s4hgynhy5vlemy	122722201	カルデナリンOD錠0.5mg		1錠		内服	FALSE		
 cmtgz3i6l09s5hgyn11x29uwu	122723901	カルデナリンOD錠1mg		1錠		内服	FALSE		
 cmtgz3i6l09s6hgyn84np09m2	122724601	カルデナリンOD錠2mg		1錠		内服	FALSE		
@@ -12725,7 +12725,7 @@ cmtgz3i6l09tehgynd7qflvcp	122829801	シタラビン点滴静注液400mg		1瓶		�
 cmtgz3i6l09tfhgyn0btp1nn8	122830401	シタラビン点滴静注液1g		1瓶		注射・点滴	TRUE		
 cmtgz3i6l09tghgynavakl38y	122847201	テオフィリン錠50mg		1錠		内服	FALSE	気管支拡張薬	キサンチン系
 cmtgz3i6l09thhgynw8tvjdgj	122848901	アテレック錠20		1錠		内服	FALSE		
-cmtgz3i6l09tihgyne08ha9zt	122854001	ドセタキセル点滴静注液120mg/12mL		1瓶		注射・点滴	TRUE		
+cmtgz3i6l09tihgyne08ha9zt	122854001	ドセタキセル点滴静注液120mg/12mL		1瓶		注射・点滴	TRUE	抗悪性腫瘍薬	タキサン系
 cmtgz3i6l09tjhgynogfg8xso	122855701	バラシクロビル粒状錠500mg		1包		内服	FALSE	抗ウイルス薬	
 cmtgz3i6l09tkhgynhgfrd3ro	122857101	エスワンメイジ配合カプセルT20		1カプセル(テガフール相当量)		内服	FALSE		
 cmtgz3i6l09tlhgyn1coyhza9	122858801	エスワンメイジ配合カプセルT25		1カプセル(テガフール相当量)		内服	FALSE		
@@ -12879,8 +12879,8 @@ cmtgz3i6l09xohgynrio20x5i	123520301	ルセンティス硝子体内注射用キ�
 cmtgz3i6l09xphgyn0u1821up	123521001	サンドスタチンLAR筋注用キット10mg		1キット(溶解液付)		注射・点滴	TRUE		
 cmtgz3i6l09xqhgynvl8d4uvg	123522701	サンドスタチンLAR筋注用キット20mg		1キット(溶解液付)		注射・点滴	TRUE		
 cmtgz3i6l09xrhgyncy5nnaib	123523401	サンドスタチンLAR筋注用キット30mg		1キット(溶解液付)		注射・点滴	TRUE		
-cmtgz3i6l09xshgyn7mrtvqta	123548701	ドセタキセル点滴静注液20mg/1mL		1瓶		注射・点滴	TRUE		
-cmtgz3i6l09xthgynhigc9mk0	123549401	ドセタキセル点滴静注液80mg/4mL		1瓶		注射・点滴	TRUE		
+cmtgz3i6l09xshgyn7mrtvqta	123548701	ドセタキセル点滴静注液20mg/1mL		1瓶		注射・点滴	TRUE	抗悪性腫瘍薬	タキサン系
+cmtgz3i6l09xthgynhigc9mk0	123549401	ドセタキセル点滴静注液80mg/4mL		1瓶		注射・点滴	TRUE	抗悪性腫瘍薬	タキサン系
 cmtgz3i6l09xuhgyncyufjzxs	123555501	カルベジロール錠1.25mg		1錠		内服	FALSE	β遮断薬	
 cmtgz3i6l09xvhgyniie40awk	123556201	カルベジロール錠2.5mg		1錠		内服	FALSE	β遮断薬	
 cmtgz3i6l09xwhgync4oj5zsv	123566101	ジェイゾロフト錠100mg		1錠		内服	FALSE		
@@ -12952,8 +12952,8 @@ cmtgz3i6l09zphgyn4srr491y	123744301	炭酸水素ナトリウム静注7%PL		1管	
 cmtgz3i6l09zqhgyn4z9ednz1	123745001	ザノサー点滴静注用1g		1瓶		注射・点滴	TRUE		
 cmtgz3i6l09zrhgynuldc6wq4	123746701	グラナテック点眼液0.4%		1mL		外用	FALSE		
 cmtgz3i6l09zshgynw8mfbhb7	123747401	ボシュリフ錠100mg		1錠		内服	FALSE		
-cmtgz3i6l09zthgynezsvofbx	123748101	オキサリプラチン点滴静注液50mg/10mL		1瓶		注射・点滴	TRUE		
-cmtgz3i6l09zuhgyn610jndfc	123749801	オキサリプラチン点滴静注液100mg/20mL		1瓶		注射・点滴	TRUE		
+cmtgz3i6l09zthgynezsvofbx	123748101	オキサリプラチン点滴静注液50mg/10mL		1瓶		注射・点滴	TRUE	抗悪性腫瘍薬	白金製剤
+cmtgz3i6l09zuhgyn610jndfc	123749801	オキサリプラチン点滴静注液100mg/20mL		1瓶		注射・点滴	TRUE	抗悪性腫瘍薬	白金製剤
 cmtgz3i6l09zvhgynwlzkzf5r	123750401	パクリタキセル点滴静注液30mg/5mL		1瓶		注射・点滴	TRUE		
 cmtgz3i6l09zwhgynna3u3yus	123751101	パクリタキセル点滴静注液100mg/16.7mL		1瓶		注射・点滴	TRUE		
 cmtgz3i6l09zxhgynn676rw85	123752801	リクシアナ錠60mg		1錠		内服	FALSE		
@@ -13088,7 +13088,7 @@ cmtgz3ian0a3hhgynp0bz7o5y	124160001	レンビマカプセル4mg		1カプセル		
 cmtgz3ian0a3ihgynmivdi4xi	124161701	レンビマカプセル10mg		1カプセル		内服	FALSE		
 cmtgz3ian0a3jhgyn2n3ou462	124164801	メサラジン腸溶錠400mg		1錠		内服	FALSE		
 cmtgz3ian0a3khgyn8qu9nk65	124172301	メトホルミン塩酸塩錠500mgMT		1錠		内服	FALSE	糖尿病治療薬	ビグアナイド系
-cmtgz3ian0a3lhgynb3q11xv4	124178501	オキサリプラチン点滴静注液200mg/40mL		1瓶		注射・点滴	TRUE		
+cmtgz3ian0a3lhgynb3q11xv4	124178501	オキサリプラチン点滴静注液200mg/40mL		1瓶		注射・点滴	TRUE	抗悪性腫瘍薬	白金製剤
 cmtgz3ian0a3mhgyng5mgl75u	124179201	サイラムザ点滴静注液100mg		1瓶		注射・点滴	TRUE		
 cmtgz3ian0a3nhgynfs01d2qi	124180801	サイラムザ点滴静注液500mg		1瓶		注射・点滴	TRUE		
 cmtgz3ian0a3ohgynn3fwsm6s	124187701	クエチアピン細粒10%		1g		内服	FALSE	抗精神病薬	
@@ -13634,7 +13634,7 @@ cmtgz3iao0aiphgyn9z0qnr4y	125964301	エイフスチラ静注用2500		1瓶(溶解
 cmtgz3iao0aiqhgynqz8by6ub	125965001	エイフスチラ静注用3000		1瓶(溶解液付)		注射・点滴	TRUE		
 cmtgz3iao0airhgyn9fl6s5id	125966701	ケブザラ皮下注150mgシリンジ		1筒		注射・点滴	TRUE		
 cmtgz3iao0aishgynebep88nh	125967401	ケブザラ皮下注200mgシリンジ		1筒		注射・点滴	TRUE		
-cmtgz3iao0aithgyna8dssp3b	125968101	シプロフロキサシン点滴静注400mg/200mL		1袋		注射・点滴	TRUE		
+cmtgz3iao0aithgyna8dssp3b	125968101	シプロフロキサシン点滴静注400mg/200mL		1袋		注射・点滴	TRUE	抗菌薬	キノロン系
 cmtgz3iao0aiuhgyns5vgx7kv	126010601	トラセミド錠4mg		1錠		内服	FALSE	利尿薬	ループ利尿薬
 cmtgz3iao0aivhgynlbbetv4l	126011301	トラセミド錠8mg		1錠		内服	FALSE	利尿薬	ループ利尿薬
 cmtgz3iao0aiwhgynwz7sbofs	126039701	トミロン細粒小児用20%		1g		内服	FALSE	抗菌薬	セフェム系(第3世代)
@@ -14488,7 +14488,7 @@ cmtgz3ie50b6fhgynxoqtxmte	129460601	コレチメント錠9mg		1錠		内服	FALSE
 cmtgz3ie50b6ghgynhhp8m1vb	129461301	ゾニサミドOD錠25mgTRE		1錠		内服	FALSE		
 cmtgz3ie50b6hhgyncovw89ei	129462001	ゾニサミドOD錠50mgTRE		1錠		内服	FALSE		
 cmtgz3ie50b6ihgynqi3mt6t1	129468201	エムパベリ皮下注1080mg		1瓶		注射・点滴	TRUE		
-cmtgz3ie50b6jhgyn7nomrtmy	129485901	ケトプロフェンテープS20mg		1枚		外用	FALSE		
+cmtgz3ie50b6jhgyn7nomrtmy	129485901	ケトプロフェンテープS20mg		1枚		外用	FALSE	解熱鎮痛薬	NSAIDs
 cmtgz3ie50b6khgyn54i49n39	129486601	レクビオ皮下注300mgシリンジ		1筒		注射・点滴	TRUE		
 cmtgz3ie50b6lhgyn2cdtr657	129489701	コルスバ静注透析用シリンジ17.5μg		1筒		注射・点滴	TRUE		
 cmtgz3ie50b6mhgyndy1wcm4o	129490301	コルスバ静注透析用シリンジ25.0μg		1筒		注射・点滴	TRUE		

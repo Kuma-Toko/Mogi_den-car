@@ -18,15 +18,21 @@ const NAV_BY_ROLE: Record<Role, { sub: string; items: NavItem[] }> = {
   },
   TEACHER: {
     sub: "教員 症例管理",
-    items: [{ href: "/teacher/cases", label: "症例一覧・作成" }],
+    items: [
+      { href: "/teacher/dashboard", label: "重症度モニタ" },
+      { href: "/teacher/cases", label: "症例一覧・作成" },
+    ],
   },
   ADMIN: {
     sub: "管理者",
     items: [
+      { href: "/teacher/dashboard", label: "重症度モニタ" },
       { href: "/teacher/cases", label: "症例一覧・作成" },
       { href: "/admin/drugs", label: "薬剤マスター" },
       { href: "/admin/lab-items", label: "検査項目マスター" },
       { href: "/admin/templates", label: "病態テンプレート" },
+      { href: "/admin/drug-effects", label: "薬剤影響ルール" },
+      { href: "/admin/pathogens", label: "原因菌マスター" },
       { href: "/admin/audit-logs", label: "監査ログ" },
     ],
   },

@@ -2,12 +2,24 @@ import "server-only";
 import { Type } from "@google/genai";
 import type { Case, Vital } from "@prisma/client";
 import { generateWithFallback } from "@/lib/gemini";
+import {
+  ANTIBIOTIC_COVERAGE_LEVEL_LABEL,
+  COVERAGE_SUSCEPTIBILITY_LABEL,
+  type AntibioticCoverageResult,
+} from "@/lib/infection-engine";
 
 export type TreatmentEvaluationOrder = {
   orderType: string;
   label: string;
   detail: string | null;
   orderedAt: Date;
+};
+
+// 標的治療フェーズ（培養で原因菌が確定した後）向けの採点用事実。原因菌未割当・培養未確定の症例では
+// null（呼び出し側=engine.tsのloadTargetedTherapyContextが判定する）。
+export type TargetedTherapyContext = {
+  pathogenName: string;
+  coverage: AntibioticCoverageResult;
 };
 
 type EvalCase = Pick<Case, "title" | "patientName" | "patientAge" | "patientGender" | "createdAt">;
@@ -34,6 +46,27 @@ function formatOrderLine(order: TreatmentEvaluationOrder, caseStartAt: Date): st
   return `- [${typeLabel}] ${order.label}${detailText ? `（${detailText}）` : ""}（症例開始から約${elapsedHours}時間後）`;
 }
 
+function formatTargetedTherapySection(ctx: TargetedTherapyContext | null): string {
+  if (!ctx) return "";
+  const { pathogenName, coverage } = ctx;
+  const detailLines =
+    coverage.details.length > 0
+      ? coverage.details
+          .map((d) => `- ${d.drugLabel}（${d.subCategory}）: ${COVERAGE_SUSCEPTIBILITY_LABEL[d.susceptibility]}`)
+          .join("\n")
+      : "（抗菌薬オーダーはまだありません）";
+  return `
+
+# 標的治療フェーズ（培養検査で原因菌が確定済み。学生への結果開示状況とは別に、採点用の確定事実として提供）
+- 確定した原因菌: ${pathogenName}
+- 現在の抗菌薬オーダーと原因菌に対する感受性:
+${detailLines}
+- カバレッジ判定: ${ANTIBIOTIC_COVERAGE_LEVEL_LABEL[coverage.level]}
+- この判定を踏まえること。原因菌に感受性のある抗菌薬でカバーできていない場合（不適切・部分的）は、
+  他の治療が行われていても改善は見込みにくいため appropriatenessScore を相応に低く評価すること。
+`;
+}
+
 function buildEvaluationPrompt(params: {
   caseRecord: EvalCase;
   templateName: string;
@@ -42,8 +75,9 @@ function buildEvaluationPrompt(params: {
   problems: { label: string; isPrimary: boolean }[];
   orders: TreatmentEvaluationOrder[];
   latestVital: Vital | null;
+  targetedTherapy: TargetedTherapyContext | null;
 }): string {
-  const { caseRecord, templateName, templateDescription, guideline, problems, orders, latestVital } = params;
+  const { caseRecord, templateName, templateDescription, guideline, problems, orders, latestVital, targetedTherapy } = params;
 
   const problemLines =
     problems.length > 0 ? problems.map((p) => `- ${p.label}${p.isPrimary ? "（主病態）" : ""}`).join("\n") : "（未登録）";
@@ -76,7 +110,7 @@ ${guideline}
 
 # 学生がこれまでに行った治療系オーダー（時系列順）
 ${orderLines}
-
+${formatTargetedTherapySection(targetedTherapy)}
 # 採点ルール
 1. appropriatenessScoreは「今の治療方針をこのまま続けた場合、患者の状態が単位時間あたりどれだけ改善/悪化するか」を
    表す連続的な指標として0〜100の整数で評価する（一時点の絶対評価ではなく、今後の推移の速さを表すことに注意）。
@@ -105,6 +139,7 @@ export async function evaluateTreatment(params: {
   problems: { label: string; isPrimary: boolean }[];
   orders: TreatmentEvaluationOrder[];
   latestVital: Vital | null;
+  targetedTherapy: TargetedTherapyContext | null;
 }): Promise<TreatmentEvaluationResult> {
   const prompt = buildEvaluationPrompt(params);
 

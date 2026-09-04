@@ -47,6 +47,7 @@ export const orderTypeOrderLabel: Record<OrderType, string> = {
 export const orderStatusLabel: Record<OrderStatus, string> = {
   ORDERED: "オーダー済",
   RESULT_PENDING: "結果待ち",
+  RESULT_PRELIMINARY: "速報結果あり",
   RESULT_AVAILABLE: "結果あり",
   ADMINISTERED: "実施済",
   ACTIVE: "有効",
@@ -56,6 +57,7 @@ export const orderStatusLabel: Record<OrderStatus, string> = {
 export const orderStatusBadgeClass: Record<OrderStatus, string> = {
   ORDERED: "blue",
   RESULT_PENDING: "amber",
+  RESULT_PRELIMINARY: "blue",
   RESULT_AVAILABLE: "red",
   ADMINISTERED: "teal",
   ACTIVE: "teal",

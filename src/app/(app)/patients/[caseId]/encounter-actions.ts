@@ -5,26 +5,13 @@ import { db } from "@/lib/db";
 import { requireCaseAccess } from "@/lib/case-access";
 import { generatePatientReply } from "@/lib/gemini";
 import { logAudit } from "@/lib/audit";
-import type { EncounterRole } from "@prisma/client";
+import { loadEncounterLog, type EncounterLogItem } from "@/lib/encounter-log";
 
-export type EncounterMessageView = {
-  id: string;
-  role: EncounterRole;
-  content: string;
-  createdAt: string;
-};
-
-function toView(m: { id: string; role: EncounterRole; content: string; createdAt: Date }): EncounterMessageView {
-  return { id: m.id, role: m.role, content: m.content, createdAt: m.createdAt.toISOString() };
-}
+export type EncounterMessageView = EncounterLogItem;
 
 export async function getEncounterMessages(caseId: string): Promise<EncounterMessageView[]> {
   await requireCaseAccess(caseId);
-  const messages = await db.encounterMessage.findMany({
-    where: { caseId },
-    orderBy: { createdAt: "asc" },
-  });
-  return messages.map(toView);
+  return loadEncounterLog(caseId);
 }
 
 // 学生の発言をAI（模擬患者役）に送り、応答を1往復分DBへ保存して最新の会話ログを返す。

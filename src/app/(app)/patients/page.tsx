@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { formatJaDateTime, formatRelative } from "@/lib/format";
 import { redirect } from "next/navigation";
 import { reconcileCasesForStudent } from "@/lib/engine";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { dischargeCase } from "./actions";
 
 export default async function PatientsPage() {
   const user = await getCurrentUser();
@@ -12,7 +14,10 @@ export default async function PatientsPage() {
   await reconcileCasesForStudent(user.id);
 
   const cases = await db.case.findMany({
-    where: { status: { not: "DRAFT" }, assignments: { some: { studentId: user.id } } },
+    where: {
+      status: { not: "DRAFT" },
+      assignments: { some: { studentId: user.id, dischargedAt: null } },
+    },
     include: {
       problems: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1 },
       orders: { orderBy: { orderedAt: "desc" }, take: 20 },
@@ -40,7 +45,7 @@ export default async function PatientsPage() {
     if (c.status === "SIMULATING") {
       return <span className="badge blue">演習中</span>;
     }
-    if (c.orders.some((o) => o.status === "RESULT_AVAILABLE")) {
+    if (c.orders.some((o) => o.status === "RESULT_AVAILABLE" || o.status === "RESULT_PRELIMINARY")) {
       return <span className="badge red">新規結果あり</span>;
     }
     if (c.orders.some((o) => o.status === "RESULT_PENDING")) {
@@ -84,9 +89,14 @@ export default async function PatientsPage() {
         <div className="card">
           <div className="card-h">
             担当患者
-            <Link href="/patients/pool" className="btn ghost" style={{ fontSize: 11 }}>
-              ＋ 症例プールから追加
-            </Link>
+            <div style={{ display: "flex", gap: 6 }}>
+              <Link href="/patients/discharged" className="btn ghost" style={{ fontSize: 11 }}>
+                退院済み患者
+              </Link>
+              <Link href="/patients/pool" className="btn ghost" style={{ fontSize: 11 }}>
+                ＋ 症例プールから追加
+              </Link>
+            </div>
           </div>
           <div className="card-b" style={{ padding: 0 }}>
             {cases.length === 0 ? (
@@ -102,6 +112,7 @@ export default async function PatientsPage() {
                     <th>主なプロブレム</th>
                     <th>状態</th>
                     <th>最終更新</th>
+                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -122,6 +133,19 @@ export default async function PatientsPage() {
                       <td>{c.problems[0]?.label ?? "—"}</td>
                       <td>{statusBadge(c)}</td>
                       <td>{lastUpdated(c)}</td>
+                      <td>
+                        <form>
+                          <ConfirmButton
+                            formAction={dischargeCase.bind(null, c.id)}
+                            confirmText={`${c.patientName}を退院させますか？（担当患者一覧から外れます）`}
+                            className="btn ghost"
+                            actionLabel="退院させる"
+                            actionClassName="btn primary"
+                          >
+                            退院
+                          </ConfirmButton>
+                        </form>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

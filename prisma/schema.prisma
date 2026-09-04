@@ -84,6 +84,7 @@ enum OrderType {
 enum OrderStatus {
   ORDERED // オーダー済
   RESULT_PENDING // 結果待ち
+  RESULT_PRELIMINARY // 速報結果あり（培養のグラム染色等、確定結果はまだ）
   RESULT_AVAILABLE // 結果あり
   ADMINISTERED // 実施済
   ACTIVE // 有効（一般指示など）
@@ -146,12 +147,9 @@ model Case {
 
   visibilityScope String? // 公開範囲の説明
 
-  crisisMode           CrisisMode  @default(LETHAL) // 危機シナリオ未救命時の扱い。テンプレートにcrisisが未定義なら実質無視される
+  crisisMode           CrisisMode  @default(LETHAL) // 危機シナリオ未救命時の扱い。主病態にcrisisRescueが未定義なら実質無視される
   crisisState          CrisisState @default(STABLE)
-  crisisStartedAt      DateTime? // 危機シナリオ発生時刻（猶予時間・救命オーダー判定の起点）
-  // 危機シナリオの発動条件が「連続して」満たされ始めた時刻。条件を満たさなくなった時点でnullに戻る。
-  // (今の時刻 - crisisConditionSince) >= TemplateCrisisScenario.sustainMinutes になって初めてCRITICALへ遷移する
-  crisisConditionSince DateTime?
+  crisisStartedAt      DateTime? // 危機シナリオ発生時刻（救命オーダー判定の起点）
 
   historyScript String? // 問診AI用の台本。現病歴・既往歴・アレルギー・生活歴等、学生の質問に対する根拠情報
   examScript    String? // 身体診察AI用の台本。視診・触診・打診・聴診など系統別の所見
@@ -171,15 +169,17 @@ model Case {
   vitals               Vital[]
   notifications        Notification[]
   treatmentEvaluations TreatmentEvaluation[]
+  crisisTriggerProgress CaseCrisisTriggerProgress[]
 }
 
 model CaseAssignment {
-  id         String   @id @default(cuid())
-  caseId     String
-  case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  studentId  String
-  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  assignedAt DateTime @default(now())
+  id           String    @id @default(cuid())
+  caseId       String
+  case         Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assignedAt   DateTime  @default(now())
+  dischargedAt DateTime? // 退院日時。null=担当中、値あり=退院済み（担当患者一覧からは除外し、退院済み患者として保持）
 
   @@unique([caseId, studentId])
 }
@@ -202,6 +202,10 @@ model CaseDiseaseLink {
   // （physiology-engine.tsのcomputeCaseSeverityAtTime参照）
   aiSeverityRatePerHour Float?
   sortOrder          Int      @default(0)
+  // 感染症エンジン: この疾患リンクの「真の原因菌」。感染症系テンプレート(isInfectious)でのみ教員が設定する。
+  // 未設定(null)の場合、培養オーダーは原因菌モデルを使わず既存の固定サンプル文にフォールバックする。
+  pathogenId String?
+  pathogen   PathogenMaster? @relation(fields: [pathogenId], references: [id], onDelete: SetNull)
 
   @@unique([caseId, templateId])
 }
@@ -276,9 +280,62 @@ model DrugCategoryMaster {
   sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
 
-  links DrugCategoryLink[]
+  links                    DrugCategoryLink[]
+  pathogenSusceptibilities PathogenSusceptibility[]
+  effectRules              DrugEffectRule[]
 
   @@unique([majorCategory, subCategory])
+}
+
+// 薬効カテゴリ(DrugCategoryMaster)が検査値・バイタルへ与える影響。1カテゴリが複数の対象
+// (検査値・バイタルを問わず)へ影響してよい。疾患由来の値（重症度別パターン）とは独立した経路で、
+// 疾患計算後の値へこのルールのshiftValueを単純加算する(薬剤どうしの相互作用は考慮しない)。
+// 用量非依存の二値効果（投与中/非投与）として設計し、onsetDelayHoursの経過後に全量が即座に反映される
+// （実臨床の緩やかな発現カーブは再現しない）。
+model DrugEffectRule {
+  id              String             @id @default(cuid())
+  categoryId      String
+  category        DrugCategoryMaster @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  targetType      String // "lab" | "vital"
+  target          String // targetType=labなら検査コード(LabItemMaster.code。緩やかな参照)、targetType=vitalならVitalPointのキー(例: pulse)
+  shiftValue      Float? // 基準値への加算量(数値化できる対象。例: PTなら+12秒、脈拍なら-15)
+  effectText      String? // 定性所見への追記文(数値化できない所見用。現行20組み合わせでは未使用だが将来の拡張枠)
+  onsetDelayHours Float              @default(0) // オーダーから効果発現までの時間(投与直後に反映するなら0)
+  note            String? // 管理画面向けメモ(医学的根拠の記録用)
+  sortOrder       Int                @default(0)
+  createdAt       DateTime           @default(now())
+
+  @@unique([categoryId, targetType, target])
+}
+
+// 感染症エンジンが「症例の真の原因菌」として扱う原因菌マスター。
+// 培養オーダーのグラム染色プレビュー開示にはgramStainを使う（同定確定前の所見として）。
+model PathogenMaster {
+  id        String   @id @default(cuid())
+  name      String   @unique // 例: 肺炎球菌 (Streptococcus pneumoniae)
+  gramStain String? // グラム染色区分。例: "グラム陽性球菌"。マイコプラズマ等、通常染色されない菌はnull
+  note      String? // 補足（臨床像・好発部位など、教員向けの参考情報）
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  susceptibilities PathogenSusceptibility[]
+  caseDiseaseLinks CaseDiseaseLink[]
+}
+
+// 原因菌 × 抗菌薬系統(DrugCategoryMaster)の感受性。感染症エンジンが「この抗菌薬は
+// 原因菌をカバーしているか」を判定するのに使う。該当する行が無い(菌,系統)の組は
+// 「カバーしない(R相当)」とみなす — 感受性が明確な組み合わせだけを陽性データとして
+// 保持し、網羅的にR行を作らない方針（データ量を抑えるため）。
+model PathogenSusceptibility {
+  id             String             @id @default(cuid())
+  pathogenId     String
+  pathogen       PathogenMaster     @relation(fields: [pathogenId], references: [id], onDelete: Cascade)
+  categoryId     String
+  category       DrugCategoryMaster @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  susceptibility String // "S"(感受性あり) | "I"(中間・単剤では不十分等) | "R"(耐性)
+  note           String? // 補足（例: "髄液移行に留意" 等、任意）
+
+  @@unique([pathogenId, categoryId])
 }
 
 // 薬剤とカテゴリの多対多リンク。1薬剤が複数カテゴリ(例: 配合剤)に属してよい。
@@ -319,6 +376,9 @@ model LabItemMaster {
   sampleResult String? // 定性的な模擬結果文（画像所見・培養結果など、数値化しない項目用）
   sampleValues String? // JSON配列（LabValue[]）。数値項目の既定値。病態テンプレート対象外/未設定の症例でのフォールバックに使用
   sortOrder    Int     @default(0) // オーダー画面での表示順（昇順）。同値の場合は元の並びを維持
+  // true: 培養系検査（血液培養等）。感染症エンジンによる多段階結果開示
+  // (速報=グラム染色相当 → 確定=原因菌同定+感受性検査)の対象になる。
+  isCulture    Boolean @default(false)
   orders       Order[]
 }
 
@@ -342,18 +402,29 @@ model DiseaseTemplate {
   // AI治療評価（都度、治療オーダーの内容をGeminiに包括評価させ重症度カーブへ反映する仕組み）の採点ルーブリック。
   // 教員が「期待される治療方針・評価基準」を自由記述で登録する。未設定（null/空文字）のテンプレートではAI評価は発火しない。
   aiEvaluationGuideline String?
+  // true: 感染症エンジンの対象テンプレート。症例作成画面で疾患ごとに「真の原因菌」を選択できるようになる。
+  isInfectious    Boolean  @default(false)
   createdByUserId String?
   createdBy       User?    @relation("TemplateCreator", fields: [createdByUserId], references: [id])
   createdAt       DateTime @default(now())
 
-  diseaseLinks CaseDiseaseLink[]
-  labPatterns  TemplateLabPattern[]
-  crisis       TemplateCrisisScenario?
+  diseaseLinks   CaseDiseaseLink[]
+  labPatterns    TemplateLabPattern[]
+  // このテンプレート自身の状態を監視し、条件を満たすと他の危機病態(テンプレート)をアタッチする発火設定。
+  // 1テンプレートが複数件持てる(条件による分岐。例: 重症度基準で敗血症性ショックへ、SpO2基準で呼吸不全へ)。
+  crisisTriggers TemplateCrisisScenario[] @relation("CrisisWatcher")
+  // このテンプレートが「危機病態」としてアタッチされる場合の救命設定(単一)。通常疾患としてのみ使うテンプレートはnull。
+  crisisRescue   CrisisRescueConfig?      @relation("CrisisRescueTarget")
+  // 他のどのテンプレートの発火条件から狙われているか(参照用)
+  triggeredBy    TemplateCrisisScenario[] @relation("CrisisTarget")
 }
 
 // 生理モデルの基礎値（バイタルのみ）。症例・疾患に関係なく1行だけ存在するシングルトン。
 // 各病態モデルのperSeverity寄与はこの基礎値に単純加算される。検査値の基礎値はLabItemMaster.sampleValues/
 // sampleResultを流用するため、こちらにはバイタルのみを持つ。
+// PhysiologyBaselineBandがこの症例の年齢・性別に該当しない場合のフォールバック値としても使う（下記参照）。
+// また各病態テンプレートのperSeverity値は「この基準値」を基準にスケーリングされて解釈されるため、
+// これ自体が全年齢・全性別のスケール計算における参照点（基準の“標準成人”）を兼ねる。
 model BasePhysiologyModel {
   id          String   @id @default("default")
   temperature Float    @default(36.5)
@@ -362,6 +433,27 @@ model BasePhysiologyModel {
   pulse       Int      @default(75)
   spo2        Int      @default(98)
   respRate    Int      @default(16)
+  updatedAt   DateTime @updatedAt
+}
+
+// 年齢・性別ごとの基礎生理値の上書き。症例のpatientAge/patientGenderに応じて、該当する帯域があれば
+// BasePhysiologyModelの代わりにこちらの値を基準値として使う（該当なしならBasePhysiologyModelへフォールバック）。
+// genderは"男性"|"女性"|"共通"（Case.patientGenderの表記に合わせる。"共通"は男女とも該当）。
+// 年齢帯が重複する場合、性別が完全一致する行を優先し、次に"共通"の行を使う。
+model PhysiologyBaselineBand {
+  id          String   @id @default(cuid())
+  label       String // 管理画面表示用ラベル（例:"乳児","成人男性" 等）
+  minAge      Int // 対象年齢の下限（含む）
+  maxAge      Int // 対象年齢の上限（含む）
+  gender      String // "男性" | "女性" | "共通"
+  temperature Float
+  systolicBp  Int
+  diastolicBp Int
+  pulse       Int
+  spo2        Int
+  respRate    Int
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
@@ -397,20 +489,20 @@ model TemplateLabPatternValue {
   sortOrder Int                @default(0)
 }
 
-// 病態テンプレートに紐づく急変シナリオ。1テンプレートにつき最大1件（未設定ならcrisisMode設定に関わらず急変は発生しない）。
+// 病態テンプレートに紐づく危機シナリオの発火条件(watcher視点)。1テンプレートが複数件持てる(条件分岐)。
+// 発火すると、targetTemplateId のテンプレートを危機病態としてCaseDiseaseLinkへアタッチし、主病態に昇格させる。
 model TemplateCrisisScenario {
-  id                 String          @id @default(cuid())
-  templateId         String          @unique
-  template           DiseaseTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  name               String
-  // トリガー条件が連続して満たされてからCRITICALへ遷移するまでの猶予（分）。0＝従来通り瞬間発火。
-  sustainMinutes     Int             @default(0)
-  windowMinutes      Int
-  postRescueSeverity Int
-  crisisVitals       String // JSON文字列（VitalPoint）
+  id               String          @id @default(cuid())
+  templateId       String // このテンプレート自身の状態を監視する(watcher)
+  template         DiseaseTemplate @relation("CrisisWatcher", fields: [templateId], references: [id], onDelete: Cascade)
+  targetTemplateId String // 条件成立時にアタッチ・主病態昇格させる危機病態
+  targetTemplate   DiseaseTemplate @relation("CrisisTarget", fields: [targetTemplateId], references: [id])
+  // トリガー条件が連続して満たされてからCRITICALへ遷移するまでの猶予（分）。0＝瞬間発火。
+  sustainMinutes   Int             @default(0)
+  sortOrder        Int             @default(0) // 複数分岐がある場合の表示・評価順
 
-  triggers      CrisisTriggerRow[]
-  rescueActions CrisisRescueActionRow[]
+  triggers CrisisTriggerRow[]
+  progress CaseCrisisTriggerProgress[]
 }
 
 // 急変シナリオの発動条件（いずれか1つで発動=OR）
@@ -427,15 +519,40 @@ model CrisisTriggerRow {
   sortOrder  Int                    @default(0)
 }
 
-// 急変シナリオから脱するための救命オーダー（いずれか1つで脱出=OR）
+// 症例ごとに、危機シナリオの発火条件(TemplateCrisisScenario)が「連続して」満たされ始めた時刻を追跡する。
+// 1テンプレートが複数の分岐を持てるため、症例単位ではなく(症例,シナリオ)単位で持続時間を追跡する。
+// 条件を満たさなくなった時点で行を削除する。(今の時刻 - conditionSince) >= scenario.sustainMinutes で発火。
+model CaseCrisisTriggerProgress {
+  id             String                 @id @default(cuid())
+  caseId         String
+  case           Case                   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  scenarioId     String
+  scenario       TemplateCrisisScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  conditionSince DateTime
+
+  @@unique([caseId, scenarioId])
+}
+
+// 危機病態(アタッチされる側のテンプレート)自身の救命設定。1テンプレートにつき最大1件。
+// 複数の元疾患・複数の分岐が同じ危機病態を指すことがあり得るため、「治り方」は危機病態自身の性質として一定にする。
+model CrisisRescueConfig {
+  id                 String          @id @default(cuid())
+  templateId         String          @unique
+  template           DiseaseTemplate @relation("CrisisRescueTarget", fields: [templateId], references: [id], onDelete: Cascade)
+  postRescueSeverity Int
+
+  rescueActions CrisisRescueActionRow[]
+}
+
+// 危機病態から脱するための救命オーダー（いずれか1つで脱出=OR）
 model CrisisRescueActionRow {
-  id                String                 @id @default(cuid())
-  scenarioId        String
-  scenario          TemplateCrisisScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  id                String             @id @default(cuid())
+  rescueConfigId    String
+  rescueConfig      CrisisRescueConfig @relation(fields: [rescueConfigId], references: [id], onDelete: Cascade)
   label             String
   drugCategories    String // JSON文字列（string[]）
   procedureKeywords String // JSON文字列（string[]）
-  sortOrder         Int                    @default(0)
+  sortOrder         Int                @default(0)
 }
 
 // AI治療評価1回分。オーダー提出をきっかけに作成され（PENDING）、バックグラウンドでGeminiの評価結果を書き戻す（COMPLETED/FAILED）。
@@ -476,11 +593,17 @@ model Order {
   drug            DrugMaster?    @relation(fields: [drugId], references: [id])
   status          OrderStatus    @default(ORDERED)
   orderedAt       DateTime       @default(now())
+  // 培養系検査(LabItemMaster.isCulture)のみ使用。速報(グラム染色相当)を反映する時刻。
+  // 通常検査ではnull（resultReadyAtのみで単一段階の結果反映）。
+  preliminaryResultReadyAt DateTime?
   resultReadyAt   DateTime?
   resultText      String?
   resultValues    String? // JSON配列（LabValue[]）。数値項目の構造化結果。H/L判定・色分け表示に使用
   rpGroupId       String? // Rp単位でまとめるための識別子。同じRpに含まれる複数薬剤オーダーが共有する
   rpLabel         String? // 表示用のRp番号（例: "Rp.1"）
+  // 処方・注射オーダーの中止時刻（症例時刻）。null=継続中。中止後は薬剤影響エンジンの対象から外れる
+  // （statusをDISCONTINUEDに更新すると同時にセットする）。
+  discontinuedAt  DateTime?
 }
 
 model Vital {

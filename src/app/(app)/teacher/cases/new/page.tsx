@@ -11,13 +11,17 @@ export default async function NewCasePage() {
   if (!user) redirect("/login");
   if (user.role === "STUDENT") redirect("/patients");
 
-  const templates = await db.diseaseTemplate.findMany({ orderBy: { createdAt: "asc" } });
+  const [templates, pathogens] = await Promise.all([
+    db.diseaseTemplate.findMany({ orderBy: { createdAt: "asc" } }),
+    db.pathogenMaster.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
+  ]);
 
   const templateProps = templates.map((t) => ({
     id: t.id,
     name: t.name,
     description: t.description,
     defaultParams: parsePhysiologyParams(t.defaultParams),
+    isInfectious: t.isInfectious,
   }));
 
   return (
@@ -27,7 +31,7 @@ export default async function NewCasePage() {
         <div className="meta">{formatJaDateTime(new Date())}</div>
       </div>
       <div className="content">
-        <CaseForm templates={templateProps} action={createCase} />
+        <CaseForm templates={templateProps} pathogens={pathogens} action={createCase} />
       </div>
     </>
   );

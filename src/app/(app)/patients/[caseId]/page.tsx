@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requireCaseAccess } from "@/lib/case-access";
-import { findPrimaryDiseaseLink, loadTemplateConfig, reconcileCase } from "@/lib/engine";
-import { getCaseClockNow } from "@/lib/physiology-engine";
+import { findPrimaryDiseaseLink, getCurrentPrimarySeverity, reconcileCase } from "@/lib/engine";
 import { db } from "@/lib/db";
 import { CrisisBanner } from "./CrisisBanner";
 import { SummaryTab } from "./SummaryTab";
@@ -46,11 +45,9 @@ export default async function CaseDetailPage({
     include: { diseaseLinks: { include: { template: true }, orderBy: { sortOrder: "asc" } } },
   });
   const primaryDiseaseLink = crisisCaseRecord ? findPrimaryDiseaseLink(crisisCaseRecord.diseaseLinks) : null;
-  const crisisConfig = await loadTemplateConfig(primaryDiseaseLink?.template.key);
-  const crisisElapsedMinutes =
-    crisisCaseRecord?.crisisStartedAt && crisisCaseRecord.crisisState !== "STABLE"
-      ? (getCaseClockNow(crisisCaseRecord).getTime() - crisisCaseRecord.crisisStartedAt.getTime()) / 60_000
-      : 0;
+  // 危機病態も発火後は主病態そのものになるため、専用の名前フィールドは持たず主病態テンプレートの名前を使う。
+  const crisisSeverity =
+    crisisCaseRecord && crisisCaseRecord.crisisState !== "STABLE" ? await getCurrentPrimarySeverity(caseId) : null;
 
   const primaryProblem = await db.problem.findFirst({
     where: { caseId },
@@ -74,9 +71,8 @@ export default async function CaseDetailPage({
           <CrisisBanner
             crisisState={crisisCaseRecord.crisisState}
             crisisMode={crisisCaseRecord.crisisMode}
-            scenarioName={crisisConfig?.crisis?.name ?? "急変"}
-            elapsedMinutes={crisisElapsedMinutes}
-            windowMinutes={crisisConfig?.crisis?.windowMinutes ?? 0}
+            scenarioName={primaryDiseaseLink?.template.name ?? "急変"}
+            severity={crisisSeverity}
           />
         )}
         <div className="patient-strip">

@@ -4,6 +4,9 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { formatJaDateTimeShort } from "@/lib/format";
 import { sendEncounterMessage, type EncounterMessageView } from "./encounter-actions";
 
+const ROLE_LABEL = { STUDENT: "学生", PATIENT: "患者", SYSTEM: "システム" } as const;
+const ROLE_CLASS = { STUDENT: "student", PATIENT: "patient", SYSTEM: "system" } as const;
+
 export function EncounterChat({ caseId, initialMessages }: { caseId: string; initialMessages: EncounterMessageView[] }) {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
@@ -35,10 +38,10 @@ export function EncounterChat({ caseId, initialMessages }: { caseId: string; ini
           <div className="empty-note">患者への質問（例:「いつから咳が出ていますか？」）や、診察の内容（例:「腹部を触診します」）を入力してください。</div>
         ) : (
           messages.map((m) => (
-            <div key={m.id} className={`chat-msg ${m.role === "STUDENT" ? "student" : "patient"}`}>
+            <div key={m.id} className={`chat-msg ${ROLE_CLASS[m.role]}`}>
               <div className="chat-bubble">
                 <div className="chat-meta">
-                  {m.role === "STUDENT" ? "学生" : "患者"}　{formatJaDateTimeShort(new Date(m.createdAt))}
+                  {ROLE_LABEL[m.role]}　{formatJaDateTimeShort(new Date(m.createdAt))}
                 </div>
                 {m.content}
               </div>

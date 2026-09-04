@@ -1,12 +1,12 @@
-import { db } from "@/lib/db";
 import { formatJaDateTimeShort } from "@/lib/format";
+import { loadEncounterLog } from "@/lib/encounter-log";
+
+const ROLE_LABEL = { STUDENT: "学生", PATIENT: "患者", SYSTEM: "システム" } as const;
+const ROLE_CLASS = { STUDENT: "student", PATIENT: "patient", SYSTEM: "system" } as const;
 
 // カルテ記載中に参照できる、問診・身体診察AIチャットの読み取り専用ログ（スクロール表示）。
 export async function EncounterLogPanel({ caseId }: { caseId: string }) {
-  const messages = await db.encounterMessage.findMany({
-    where: { caseId },
-    orderBy: { createdAt: "asc" },
-  });
+  const messages = await loadEncounterLog(caseId);
 
   return (
     <div className="card">
@@ -17,10 +17,10 @@ export async function EncounterLogPanel({ caseId }: { caseId: string }) {
         ) : (
           <div className="chat-log chat-log-compact">
             {messages.map((m) => (
-              <div key={m.id} className={`chat-msg ${m.role === "STUDENT" ? "student" : "patient"}`}>
+              <div key={m.id} className={`chat-msg ${ROLE_CLASS[m.role]}`}>
                 <div className="chat-bubble">
                   <div className="chat-meta">
-                    {m.role === "STUDENT" ? "学生" : "患者"}　{formatJaDateTimeShort(m.createdAt)}
+                    {ROLE_LABEL[m.role]}　{formatJaDateTimeShort(new Date(m.createdAt))}
                   </div>
                   {m.content}
                 </div>

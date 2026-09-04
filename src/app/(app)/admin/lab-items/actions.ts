@@ -14,6 +14,7 @@ function readFields(formData: FormData) {
     subcategory: String(formData.get("subcategory") ?? "").trim() || null,
     unit: String(formData.get("unit") ?? "").trim() || null,
     sampleResult: String(formData.get("sampleResult") ?? "").trim() || null,
+    isCulture: formData.get("isCulture") === "on",
   };
 }
 

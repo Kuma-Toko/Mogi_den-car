@@ -7,11 +7,15 @@ export function ConfirmButton({
   confirmText,
   className,
   children,
+  actionLabel = "削除する",
+  actionClassName = "btn danger",
 }: {
   formAction: (formData: FormData) => void;
   confirmText: string;
   className?: string;
   children: React.ReactNode;
+  actionLabel?: string;
+  actionClassName?: string;
 }) {
   const [confirming, setConfirming] = useState(false);
 
@@ -26,8 +30,8 @@ export function ConfirmButton({
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
       <span style={{ fontSize: 11, color: "var(--red)" }}>{confirmText}</span>
-      <button type="submit" formAction={formAction} className="btn danger">
-        削除する
+      <button type="submit" formAction={formAction} className={actionClassName}>
+        {actionLabel}
       </button>
       <button type="button" className="btn ghost" onClick={() => setConfirming(false)}>
         取消

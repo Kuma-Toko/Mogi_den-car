@@ -62,6 +62,7 @@ function readCaseFields(formData: FormData) {
     .map((s) => s.trim())
     .filter(Boolean);
   const physiologyParamsByTemplate: Record<string, PhysiologyParams> = {};
+  const pathogenIdByTemplate: Record<string, string | null> = {};
   for (const templateId of diseaseTemplateIds) {
     physiologyParamsByTemplate[templateId] = {
       initialTempSlider: Number(formData.get(`tpl_${templateId}_initialTempSlider`) ?? 50),
@@ -69,6 +70,7 @@ function readCaseFields(formData: FormData) {
       initialSpo2Slider: Number(formData.get(`tpl_${templateId}_initialSpo2Slider`) ?? 50),
       severitySlider: Number(formData.get(`tpl_${templateId}_severitySlider`) ?? 50),
     };
+    pathogenIdByTemplate[templateId] = String(formData.get(`tpl_${templateId}_pathogenId`) ?? "").trim() || null;
   }
 
   return {
@@ -90,6 +92,7 @@ function readCaseFields(formData: FormData) {
     sharingMode,
     assigneeLoginIds,
     physiologyParamsByTemplate,
+    pathogenIdByTemplate,
   };
 }
 
@@ -131,6 +134,7 @@ export async function createCase(formData: FormData) {
     sharingMode,
     assigneeLoginIds,
     physiologyParamsByTemplate,
+    pathogenIdByTemplate,
   } = readCaseFields(formData);
 
   if (!title || !patientName) return;
@@ -174,6 +178,7 @@ export async function createCase(formData: FormData) {
           templateId,
           isPrimary: templateId === primaryTemplateId,
           physiologyParams: JSON.stringify(physiologyParamsByTemplate[templateId]),
+          pathogenId: pathogenIdByTemplate[templateId] ?? null,
           sortOrder: i,
         })),
       });
@@ -231,6 +236,7 @@ export async function updateCase(caseId: string, formData: FormData) {
     sharingMode,
     assigneeLoginIds,
     physiologyParamsByTemplate,
+    pathogenIdByTemplate,
   } = readCaseFields(formData);
   // 区分（caseType）はcaseCode採番・時間進行モードと結びついているため作成後は変更不可。
 
@@ -273,10 +279,17 @@ export async function updateCase(caseId: string, formData: FormData) {
       const templateId = diseaseTemplateIds[i];
       const isPrimary = templateId === primaryTemplateId;
       const physiologyParamsJson = JSON.stringify(physiologyParamsByTemplate[templateId]);
+      const pathogenId = pathogenIdByTemplate[templateId] ?? null;
       await tx.caseDiseaseLink.upsert({
         where: { caseId_templateId: { caseId, templateId } },
-        update: { isPrimary, physiologyParams: physiologyParamsJson, sortOrder: i },
-        create: { caseId, templateId, isPrimary, physiologyParams: physiologyParamsJson, sortOrder: i },
+        // update()はスカラーFKを受け付けないため（[[project_mogi_dencal_prisma7_notes]]参照）nested syntaxを使う
+        update: {
+          isPrimary,
+          physiologyParams: physiologyParamsJson,
+          sortOrder: i,
+          pathogen: pathogenId ? { connect: { id: pathogenId } } : { disconnect: true },
+        },
+        create: { caseId, templateId, isPrimary, physiologyParams: physiologyParamsJson, pathogenId, sortOrder: i },
       });
     }
 

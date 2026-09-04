@@ -5,7 +5,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { loadEngineLinkedLabCodes } from "@/lib/engine";
 import { createLabItem, deleteLabItem, updateLabItem } from "./actions";
 
-const COLS = "0.9fr 1.3fr 1fr 1fr 0.6fr 1.8fr auto";
+const COLS = "0.9fr 1.3fr 1fr 1fr 0.6fr 0.6fr 1.8fr auto";
 
 export default async function AdminLabItemsPage({
   searchParams,
@@ -48,6 +48,7 @@ export default async function AdminLabItemsPage({
               <div>カテゴリ</div>
               <div>サブカテゴリ</div>
               <div>単位</div>
+              <div>培養</div>
               <div>模擬結果文（既定）</div>
               <div></div>
             </div>
@@ -65,6 +66,9 @@ export default async function AdminLabItemsPage({
                 <input name="category" defaultValue={item.category} required />
                 <input name="subcategory" defaultValue={item.subcategory ?? ""} />
                 <input name="unit" defaultValue={item.unit ?? ""} />
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 0" }} title="感染症エンジンの多段階培養結果(速報→確定)の対象にする">
+                  <input type="checkbox" name="isCulture" defaultChecked={item.isCulture} />
+                </label>
                 <input name="sampleResult" defaultValue={item.sampleResult ?? ""} />
                 <div className="actions">
                   <button type="submit" className="btn">
@@ -106,6 +110,12 @@ export default async function AdminLabItemsPage({
               <div className="field">
                 <label htmlFor="unit">単位（任意）</label>
                 <input id="unit" name="unit" placeholder="例: ng/mL" />
+              </div>
+              <div className="field">
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                  <input type="checkbox" name="isCulture" />
+                  培養系検査（感染症エンジンの多段階結果開示の対象にする）
+                </label>
               </div>
               <div className="field" style={{ gridColumn: "1 / -1" }}>
                 <label htmlFor="sampleResult">模擬結果文（既定・任意）</label>

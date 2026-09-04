@@ -2,7 +2,9 @@ import { db } from "@/lib/db";
 import { formatJaDateTimeShort } from "@/lib/format";
 import { orderStatusBadgeClass, orderStatusLabel, orderTypeLabel } from "@/lib/labels";
 import { packageInsertSearchUrl } from "@/lib/packageInsert";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { OrderCard } from "./OrderCard";
+import { discontinueOrder } from "./actions";
 
 const DRUG_ORDER_TYPES = new Set(["MEDICATION", "INJECTION"]);
 
@@ -37,6 +39,20 @@ function groupOrders(orders: OrderRow[]): OrderRow[][] {
     groups.get(key)!.push(o);
   }
   return keys.map((k) => groups.get(k)!);
+}
+
+function DiscontinueButton({ caseId, orderId }: { caseId: string; orderId: string }) {
+  return (
+    <ConfirmButton
+      formAction={discontinueOrder.bind(null, caseId, orderId)}
+      confirmText="このオーダーを中止しますか？"
+      className="btn ghost"
+      actionLabel="中止する"
+      actionClassName="btn danger"
+    >
+      中止
+    </ConfirmButton>
+  );
 }
 
 export async function OrdersTab({ caseId }: { caseId: string }) {
@@ -86,6 +102,9 @@ export async function OrdersTab({ caseId }: { caseId: string }) {
                               </a>
                             </div>
                             <span className={`badge ${orderStatusBadgeClass[o.status]}`}>{orderStatusLabel[o.status]}</span>
+                            {DRUG_ORDER_TYPES.has(o.orderType) && !o.discontinuedAt && (
+                              <DiscontinueButton caseId={caseId} orderId={o.id} />
+                            )}
                           </div>
                           {note && <div className="rp-drug-note">{note}</div>}
                         </div>
@@ -121,6 +140,9 @@ export async function OrdersTab({ caseId }: { caseId: string }) {
                     </div>
                   </div>
                   <span className={`badge ${orderStatusBadgeClass[first.status]}`}>{orderStatusLabel[first.status]}</span>
+                  {DRUG_ORDER_TYPES.has(first.orderType) && !first.discontinuedAt && (
+                    <DiscontinueButton caseId={caseId} orderId={first.id} />
+                  )}
                 </div>
               );
             })

@@ -18,7 +18,10 @@ type Template = {
   name: string;
   description: string | null;
   defaultParams: PhysiologyParams;
+  isInfectious: boolean;
 };
+
+type Pathogen = { id: string; name: string };
 
 export type CaseFormInitial = {
   status: CaseStatus;
@@ -39,6 +42,7 @@ export type CaseFormInitial = {
   sharingMode: "SOLO" | "TEAM";
   crisisMode: CrisisMode;
   physiologyParamsByTemplate: Record<string, PhysiologyParams>;
+  pathogenIdByTemplate: Record<string, string>;
   assigneeLoginIds: string;
 };
 
@@ -52,11 +56,13 @@ const CRISIS_MODES: { value: CrisisMode; label: string }[] = [
 
 export function CaseForm({
   templates,
+  pathogens,
   mode = "create",
   action,
   initial,
 }: {
   templates: Template[];
+  pathogens: Pathogen[];
   mode?: "create" | "edit";
   action: (formData: FormData) => void | Promise<void>;
   initial?: CaseFormInitial;
@@ -75,6 +81,10 @@ export function CaseForm({
   // 疾患ごとのスライダー値。編集時は保存済みの値を、新規選択時はそのテンプレートの既定値を初期値にする。
   const [physiologyValuesByTemplate, setPhysiologyValuesByTemplate] = useState<Record<string, PhysiologyParams>>(
     () => initial?.physiologyParamsByTemplate ?? {}
+  );
+  // 感染症エンジン: isInfectiousなテンプレートごとに割り当てる「真の原因菌」。未選択は空文字（=未割り当て）。
+  const [pathogenIdByTemplate, setPathogenIdByTemplate] = useState<Record<string, string>>(
+    () => initial?.pathogenIdByTemplate ?? {}
   );
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -284,6 +294,26 @@ ${context}
                     {t.name}
                     {primaryTemplateId === t.id && <span className="badge teal" style={{ fontSize: 10 }}>主病態</span>}
                   </div>
+                  {t.isInfectious && (
+                    <div className="field" style={{ marginBottom: 8, maxWidth: 360 }}>
+                      <label>原因菌（感染症エンジン。任意）</label>
+                      <select
+                        name={`tpl_${t.id}_pathogenId`}
+                        value={pathogenIdByTemplate[t.id] ?? ""}
+                        onChange={(e) => setPathogenIdByTemplate((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                      >
+                        <option value="">未設定（従来通りの固定サンプル結果）</option>
+                        {pathogens.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div style={{ fontSize: 11, color: "var(--ink-soft)", marginTop: 4 }}>
+                        設定すると、培養系検査（血液培養等）がこの原因菌に基づく速報→確定の2段階結果（感受性検査つき）を返すようになります。
+                      </div>
+                    </div>
+                  )}
                   <PhysiologySliders
                     initial={physiologyValuesByTemplate[t.id] ?? t.defaultParams}
                     namePrefix={`tpl_${t.id}_`}

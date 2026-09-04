@@ -7,14 +7,18 @@ import { requireCaseAccess } from "@/lib/case-access";
 import { normalizeDrugName } from "@/lib/drugName";
 import { logAudit } from "@/lib/audit";
 import {
+  computeDrugEffectsAt,
   computeResultReadyAt,
   createPendingTreatmentEvaluationIfNeeded,
+  findCasePathogenId,
   loadDiseaseContributionsAt,
+  loadDrugEffectRules,
   processTreatmentEvaluation,
   reconcileCase,
   resolveLabResult,
 } from "@/lib/engine";
 import { getCaseClockNow } from "@/lib/physiology-engine";
+import { CULTURE_FINAL_DELAY_HOURS, CULTURE_PRELIMINARY_DELAY_HOURS } from "@/lib/infection-engine";
 
 // 紹介状（診療情報提供書）の構造化項目。KarteEntry.detailにJSON文字列として保存する。
 export type ReferralDetail = {
@@ -257,6 +261,9 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
   const orderedAt = getCaseClockNow(caseRecord);
   const immediate = caseRecord.resultTiming === "IMMEDIATE";
   const resultReadyAt = computeResultReadyAt(caseRecord.resultTiming, orderedAt);
+  // 感染症エンジン: 原因菌が割り当てられた症例では、培養系検査(isCulture)は症例のIMMEDIATE/DELAYED設定に
+  // 関わらず常に多段階(速報→確定)の現実的な培養日数で結果を反映する（下のLABオーダー作成時に分岐）。
+  const casePathogenId = findCasePathogenId(caseRecord.diseaseLinks);
 
   const treatmentOrders = await db.order.findMany({
     where: { caseId, orderType: { in: ["MEDICATION", "INJECTION", "PROCEDURE"] } },
@@ -265,7 +272,8 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
       orderType: true,
       label: true,
       detail: true,
-      drug: { select: { categoryLinks: { select: { category: { select: { majorCategory: true } } } } } },
+      discontinuedAt: true,
+      drug: { select: { categoryLinks: { select: { categoryId: true, category: { select: { majorCategory: true } } } } } },
     },
   });
 
@@ -290,6 +298,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
         caseRecord.crisisState === "STABLE" ? undefined : 100
       )
     : [];
+  const labDrugEffects = immediate ? computeDrugEffectsAt(treatmentOrders, await loadDrugEffectRules(), resultReadyAt) : null;
 
   let immediateResultCount = 0;
   const rpCounters = { MEDICATION: 0, INJECTION: 0 };
@@ -300,8 +309,11 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
         const labItem = labItemMap.get(item.labItemId);
         if (!labItem) continue;
 
-        const result = immediate ? resolveLabResult(labContributions, labItem) : null;
         const imaging = item.imaging;
+        // 感染症エンジン: 原因菌が割り当てられた症例の培養系検査は、症例のIMMEDIATE/DELAYED設定を無視して
+        // 常に多段階(速報→確定)の現実的な培養日数で結果を反映する（immediateでも即時結果は返さない）。
+        const useCultureTiming = labItem.isCulture && !!casePathogenId;
+        const result = immediate && !useCultureTiming ? resolveLabResult(labContributions, labItem, labDrugEffects ?? undefined) : null;
 
         await tx.order.create({
           data: {
@@ -319,14 +331,19 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
                   mriSequences: imaging.mriSequences && imaging.mriSequences.length > 0 ? imaging.mriSequences : undefined,
                 })
               : null,
-            status: immediate ? "RESULT_AVAILABLE" : "RESULT_PENDING",
+            status: useCultureTiming ? "RESULT_PENDING" : immediate ? "RESULT_AVAILABLE" : "RESULT_PENDING",
             orderedAt,
-            resultReadyAt,
+            preliminaryResultReadyAt: useCultureTiming
+              ? new Date(orderedAt.getTime() + CULTURE_PRELIMINARY_DELAY_HOURS * 3_600_000)
+              : null,
+            resultReadyAt: useCultureTiming
+              ? new Date(orderedAt.getTime() + CULTURE_FINAL_DELAY_HOURS * 3_600_000)
+              : resultReadyAt,
             resultText: result?.text ?? null,
             resultValues: result?.values ? JSON.stringify(result.values) : null,
           },
         });
-        if (immediate) {
+        if (immediate && !useCultureTiming) {
           immediateResultCount++;
           await tx.notification.create({
             data: { userId: user.id, caseId, message: `${labItem.name} の結果が出ました。` },
@@ -478,6 +495,25 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
 
   revalidatePath(`/patients/${caseId}`);
   refresh();
+}
+
+// 処方・注射オーダーの中止。discontinuedAt（症例時刻）をセットすると、薬剤影響エンジンは
+// それ以降その薬剤カテゴリを「非投与」として扱う（過去に確定済みの検査結果は既存の疾患エンジンと同じく
+// スナップショットのため遡って変わらない）。
+export async function discontinueOrder(caseId: string, orderId: string) {
+  const { user, case: caseRecord } = await requireCaseAccess(caseId);
+
+  const order = await db.order.findUnique({ where: { id: orderId } });
+  if (!order || order.caseId !== caseId) return;
+  if (order.orderType !== "MEDICATION" && order.orderType !== "INJECTION") return;
+  if (order.discontinuedAt) return; // 既に中止済み
+
+  const discontinuedAt = getCaseClockNow(caseRecord);
+  await db.order.update({ where: { id: orderId }, data: { status: "DISCONTINUED", discontinuedAt } });
+  await logAudit({ userId: user.id, action: "discontinue_order", targetType: "Order", targetId: orderId });
+
+  await reconcileCase(caseId);
+  revalidatePath(`/patients/${caseId}`);
 }
 
 export async function advanceSimTime(caseId: string, hours: number) {

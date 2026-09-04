@@ -142,6 +142,7 @@ async function main() {
       unit: null,
       sampleResult: "グラム陽性球菌を少数検出（同定検査中）",
       sampleValues: null,
+      isCulture: true,
     },
     {
       code: "H8039",
@@ -557,6 +558,7 @@ async function main() {
       name: "感染症（肺炎・敗血症系）",
       description: "発熱・炎症反応・酸素化の経時変化",
       defaultParams: { initialTempSlider: 78, improvementSpeedSlider: 45, initialSpo2Slider: 55, severitySlider: 65 },
+      isInfectious: true,
     },
     {
       key: "heart_failure",
@@ -648,6 +650,7 @@ async function main() {
         description: t.description,
         isCommon: true,
         defaultParams: JSON.stringify(t.defaultParams),
+        isInfectious: "isInfectious" in t ? t.isInfectious : false,
       },
     });
     templates[t.key] = rec;
@@ -658,6 +661,24 @@ async function main() {
     update: {},
     create: { id: "default" },
   });
+
+  // 年齢・性別ごとの基礎生理値（暫定値）。初回のみ投入し、以降は管理画面での編集を尊重して一切上書きしない
+  // （countチェックで既存行があればスキップ。LabItemMasterの手動編集がmigrate dev再実行で巻き戻った事故を踏まえた対応）。
+  // 値は教育用の目安（一般的な年齢別バイタル基準の概算）であり、医学監修は未実施。ユーザー側で今後調整予定。
+  if ((await db.physiologyBaselineBand.count()) === 0) {
+    await db.physiologyBaselineBand.createMany({
+      data: [
+        { label: "乳児(0歳)", minAge: 0, maxAge: 0, gender: "共通", temperature: 37.0, systolicBp: 80, diastolicBp: 50, pulse: 130, spo2: 98, respRate: 40, sortOrder: 0 },
+        { label: "幼児(1-5歳)", minAge: 1, maxAge: 5, gender: "共通", temperature: 37.0, systolicBp: 95, diastolicBp: 60, pulse: 110, spo2: 98, respRate: 26, sortOrder: 1 },
+        { label: "学童(6-12歳)", minAge: 6, maxAge: 12, gender: "共通", temperature: 36.8, systolicBp: 105, diastolicBp: 65, pulse: 90, spo2: 98, respRate: 20, sortOrder: 2 },
+        { label: "思春期(13-17歳)", minAge: 13, maxAge: 17, gender: "共通", temperature: 36.7, systolicBp: 115, diastolicBp: 70, pulse: 80, spo2: 98, respRate: 16, sortOrder: 3 },
+        { label: "成人男性(18-64歳)", minAge: 18, maxAge: 64, gender: "男性", temperature: 36.5, systolicBp: 122, diastolicBp: 76, pulse: 70, spo2: 98, respRate: 15, sortOrder: 4 },
+        { label: "成人女性(18-64歳)", minAge: 18, maxAge: 64, gender: "女性", temperature: 36.6, systolicBp: 114, diastolicBp: 70, pulse: 76, spo2: 98, respRate: 16, sortOrder: 5 },
+        { label: "高齢男性(65歳以上)", minAge: 65, maxAge: 120, gender: "男性", temperature: 36.2, systolicBp: 135, diastolicBp: 78, pulse: 68, spo2: 96, respRate: 17, sortOrder: 6 },
+        { label: "高齢女性(65歳以上)", minAge: 65, maxAge: 120, gender: "女性", temperature: 36.3, systolicBp: 130, diastolicBp: 74, pulse: 72, spo2: 96, respRate: 18, sortOrder: 7 },
+      ],
+    });
+  }
 
   async function ensureCase(input: {
     caseCode: string;

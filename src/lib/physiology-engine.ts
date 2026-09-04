@@ -14,9 +14,12 @@ export type VitalPoint = {
 };
 
 // 疾患の影響は基礎生理モデルへの増減量（perSeverity * severity/100）のみを持つ。基礎値(base)は
-// BasePhysiologyModel（症例・疾患非依存の1行）が持ち、生理モデルがそこへ全疾患分を単純加算する。
+// BasePhysiologyModel（症例・疾患非依存の1行）またはPhysiologyBaselineBand（年齢・性別該当時）が持ち、
+// 生理モデルがそこへ全疾患分を単純加算する。perSeverityの数値自体はBasePhysiologyModel（標準成人）を
+// 基準に定義されているため、患者の実際の基礎値がそれと異なる場合はaggregateVitals内でスケーリングしてから加算する
+// （例: 小児は基礎脈拍が高いため、同じ「重症度100で+40」でも標準成人より大きく増減させる）。
 type VitalCoefficients = {
-  perSeverity: VitalPoint; // 重症度100あたりの増減量
+  perSeverity: VitalPoint; // 重症度100あたりの増減量（BasePhysiologyModelを基準とした値）
 };
 
 type TextPatternSet = { kind: "text"; patterns: Record<SeverityTier, string> };
@@ -49,27 +52,35 @@ export type CrisisRescueAction = {
   procedureKeywords?: string[];
 };
 
-export type CrisisScenario = {
-  name: string; // 表示名（例: "心室細動・心停止"）
+// このテンプレート自身の状態を監視し、条件を満たすと危機病態(targetTemplateKey)をアタッチ・主病態に
+// 昇格させる発火条件(watcher視点)。1テンプレートが複数件持てる(条件による分岐)。
+export type CrisisTriggerConfig = {
+  id: string; // TemplateCrisisScenario.id。CaseCrisisTriggerProgressで持続時間を追跡するためのキー
+  targetTemplateKey: string;
+  targetTemplateName: string;
   triggers: CrisisTrigger[]; // いずれか1つで発動（OR）
   // トリガー条件が連続して満たされてからCRITICALへ遷移するまでの猶予（分）。0＝瞬間発火。
   sustainMinutes: number;
-  windowMinutes: number; // 発動後この時間内に救命オーダーがなければ死亡（crisisMode=LETHALの場合）
-  rescueActions: CrisisRescueAction[]; // いずれか1つのオーダーで危機を脱する
-  crisisVitals: VitalPoint; // 危機発生中（CRITICAL/DECEASED）は通常の重症度カーブでなくこの固定値を表示
+};
+
+// 危機病態(アタッチされる側のテンプレート)自身の救命設定。1テンプレートにつき最大1件。
+export type CrisisRescueConfig = {
   postRescueSeverity: number; // 救命成功後にリセットする重症度
+  rescueActions: CrisisRescueAction[]; // いずれか1つのオーダーで危機を脱する
 };
 
 // vitals/labPatterns/treatmentはDiseaseTemplate（vitalsConfig/treatmentConfig列、TemplateLabPattern等の関連テーブル）から、
-// crisisはTemplateCrisisScenario（未設定ならnull＝そのテンプレートには急変シナリオがない）から、
-// engine.tsのloadTemplateConfigが組み立てる。以降の計算ロジックはこの形に一本化されたconfigだけを見る。
+// crisisTriggers/crisisRescueはTemplateCrisisScenario/CrisisRescueConfig（未設定ならcrisisTriggers=[]・
+// crisisRescue=null）から、engine.tsのloadTemplateConfigが組み立てる。以降の計算ロジックはこの形に
+// 一本化されたconfigだけを見る。
 export type TemplateConfig = {
   treatment: TreatmentTrigger;
   vitals: VitalCoefficients;
   // 検査項目コード（LabItemMaster.code）ごとの重症度別所見パターン。
   // 数値化できる項目はvalues（H/L判定・色分け表示の対象）、画像所見・培養結果などの定性的な項目はtextを使う。
   labPatterns: Record<string, PatternSet>;
-  crisis: CrisisScenario | null;
+  crisisTriggers: CrisisTriggerConfig[]; // sortOrder順。空配列＝このテンプレートには発火条件が無い
+  crisisRescue: CrisisRescueConfig | null; // このテンプレートが危機病態として使われる場合の救命設定
 };
 
 // 管理画面で新規に急変シナリオを作成する際の猶予時間の初期値。現実の急変対応時間より大幅に長いが、
@@ -165,6 +176,35 @@ export function findActiveOxygenBoost(orders: TreatmentOrder[], atTime: Date): n
   return latest ? (OXYGEN_SPO2_BOOST[latest.selection] ?? 0) : 0;
 }
 
+// 一般指示カテゴリ「バイタル測定」の選択肢ごとの記録間隔（時間）。選択肢の文言はGeneralOrderDialog.tsxの
+// プリセットと対応させる。学生・教員がこのオーダーで測定頻度を指示でき、重症度に応じて2〜8時間ごとの
+// 幅で調節する（ユーザー指示: 手動調節可能にしたい）。
+export const VITALS_INTERVAL_HOURS_BY_SELECTION: Record<string, number> = {
+  "2時間ごと（1日12回）": 2,
+  "4時間ごと（1日6回）": 4,
+  "8時間ごと（1日3回）": 8,
+};
+
+// 指定時刻の時点で有効なバイタル測定指示（時刻以前の最新の一般指示「バイタル測定」オーダー）による
+// 記録間隔（時間）を返す。オーダーが無ければnull（呼び出し側が既定間隔にフォールバックする）。
+export function findActiveVitalsIntervalHours(orders: TreatmentOrder[], atTime: Date): number | null {
+  let latest: { orderedAt: Date; selection: string } | null = null;
+  for (const order of orders) {
+    if (order.orderType !== "GENERAL" || order.orderedAt > atTime) continue;
+    let detail: { category?: string; selection?: string } = {};
+    if (order.detail) {
+      try {
+        detail = JSON.parse(order.detail);
+      } catch {
+        continue;
+      }
+    }
+    if (detail.category !== "バイタル測定") continue;
+    if (!latest || order.orderedAt > latest.orderedAt) latest = { orderedAt: order.orderedAt, selection: detail.selection ?? "" };
+  }
+  return latest ? (VITALS_INTERVAL_HOURS_BY_SELECTION[latest.selection] ?? null) : null;
+}
+
 export function computeSeverityAt(params: {
   baseSeverity: number;
   improvementSpeedSlider: number;
@@ -223,12 +263,27 @@ export type DiseaseContribution = { config: TemplateConfig; severity: number };
 // 生理モデル: 基礎生理モデル(base)に、活性中の全疾患それぞれの(perSeverity * 自分の重症度/100)を
 // 単純加算して最終的なバイタルを算出する。oxygenBoostは酸素投与によるSpO2上乗せ幅
 // （findActiveOxygenBoostの戻り値）。省略時は0（酸素投与なし）。
-export function aggregateVitals(base: VitalPoint, contributions: DiseaseContribution[], oxygenBoost = 0): VitalPoint {
+// perSeverityの数値はreference（=BasePhysiologyModel、標準成人の基礎値）を基準に定義されているため、
+// 実際の患者の基礎値(base)がreferenceと異なる場合は(base/reference)の比率でperSeverityをスケーリングしてから
+// 加算する（例: 小児は基礎脈拍が標準成人より高いため、同じ「重症度100で+40」がより大きな増減として反映される）。
+// baseがreferenceと一致する場合（年齢・性別に該当する帯域が無い症例）は比率が1になり、従来と同じ結果になる。
+export function aggregateVitals(
+  base: VitalPoint,
+  reference: VitalPoint,
+  contributions: DiseaseContribution[],
+  oxygenBoost = 0,
+  drugShifts: Partial<Record<keyof VitalPoint, number>> = {}
+): VitalPoint {
   const round1 = (v: number) => Math.round(v * 10) / 10;
   const round0 = (v: number) => Math.round(v);
+  const scaleFactor = (field: keyof VitalPoint) => (reference[field] !== 0 ? base[field] / reference[field] : 1);
   const sumField = (field: keyof VitalPoint) =>
     base[field] +
-    contributions.reduce((total, c) => total + c.config.vitals.perSeverity[field] * (clamp(c.severity, 0, 100) / 100), 0);
+    contributions.reduce(
+      (total, c) => total + c.config.vitals.perSeverity[field] * scaleFactor(field) * (clamp(c.severity, 0, 100) / 100),
+      0
+    ) +
+    (drugShifts[field] ?? 0);
   const spo2WithoutO2 = clamp(round0(sumField("spo2")), 70, 100);
   return {
     temperature: round1(sumField("temperature")),
@@ -288,7 +343,7 @@ export function aggregateLabResult(
 
 // severityBaselineAtは重症度カーブの起点。通常は疾患アタッチ時刻相当だが、
 // 危機シナリオからの救命成功時やAI治療評価時にその時刻へ更新され、以降はそこを新たな起点として
-// 重症度が再計算される（救命前の治療オーダーはこの新しい起点以降のものだけを見る）。
+// 重症度が再計算される。
 export function computeCaseSeverityAtTime(
   diseaseLink: Pick<CaseDiseaseLink, "physiologyParams" | "severityBaselineAt" | "aiSeverityRatePerHour">,
   orders: TreatmentOrder[],
@@ -308,8 +363,24 @@ export function computeCaseSeverityAtTime(
     return clamp(params.severitySlider + diseaseLink.aiSeverityRatePerHour * hoursSinceBaseline, 0, 100);
   }
 
-  const relevantOrders = orders.filter((o) => o.orderedAt >= baselineAt);
-  const treatmentStartAt = findTreatmentStartAt(relevantOrders, config.treatment);
+  // リセット直前の時点で既に治療開始条件を満たしていた場合（＝救命成功や急変アタッチをまたいで
+  // 治療が継続している場合）、baselineAt以降のオーダーだけを見ると新規の治療開始オーダーが無く
+  // 「未治療」と誤判定されてしまう（UNTREATED_DRIFT_PER_HOURで悪化し続け、100に張り付いて
+  // 二度と改善しなくなる）。その場合はbaselineAt自体を治療開始時刻とみなし、治療継続中の扱いを
+  // 引き継ぐ（＝重症度はbaselineAtの値からそのまま減衰を続ける。新起点以降に該当オーダーが
+  // 実際にあればそちらを優先し、従来通りその時刻を治療開始時刻とする）。
+  const alreadyTreatedBeforeBaseline =
+    findTreatmentStartAt(
+      orders.filter((o) => o.orderedAt <= baselineAt),
+      config.treatment
+    ) !== null;
+  const treatmentStartAt = alreadyTreatedBeforeBaseline
+    ? baselineAt
+    : findTreatmentStartAt(
+        orders.filter((o) => o.orderedAt >= baselineAt),
+        config.treatment
+      );
+
   return computeSeverityAt({
     baseSeverity: params.severitySlider,
     improvementSpeedSlider: params.improvementSpeedSlider,
@@ -319,20 +390,93 @@ export function computeCaseSeverityAtTime(
   });
 }
 
+// ── 薬剤影響エンジン ──────────────────────────────────────────────────────
+// 疾患由来の値（上記のaggregateVitals/aggregateLabResult）とは独立した経路で、薬剤カテゴリ
+// (DrugCategoryMaster)ごとの検査値・バイタル影響(DrugEffectRule)を疾患計算後の値へ単純加算する。
+// 用量非依存の二値効果（投与中/非投与）として設計し、onsetDelayHoursの経過後に全量が即座に反映される
+// （実臨床の緩やかな発現カーブは再現しない）。薬剤どうしの相互作用は考慮せず、該当ルールを単純加算する。
+
+// DBのDrugEffectRuleをDB非依存の形にしたもの。targetはtargetType=labならLabItemMaster.code、
+// targetType=vitalならVitalPointのキー。
+export type DrugEffectRule = {
+  categoryId: string;
+  targetType: "lab" | "vital";
+  target: string;
+  shiftValue: number | null;
+  effectText: string | null;
+  onsetDelayHours: number;
+};
+
+// 薬剤影響エンジンが判定対象とする1件の処方・注射オーダー。categoryIdsはその薬剤が属する全カテゴリ
+// (1薬剤が複数カテゴリに属してよいため配列)。discontinuedAtが設定されaTime以前なら、そのオーダーは
+// 中止済みとして対象から除外する。
+export type DrugOrderForEffect = {
+  orderedAt: Date;
+  discontinuedAt: Date | null;
+  categoryIds: string[];
+};
+
+// atTime時点で「発現済み(オーダー時刻+onsetDelayHoursを経過)かつ中止されていない」オーダーが1件でも
+// 存在するルールだけを返す。同一ルールに該当オーダーが複数あっても(例: 同薬効の薬剤を複数処方)、
+// 用量非依存の設計のため重複計上はしない(filterで1回だけ含まれる)。
+export function resolveActiveDrugEffects<R extends DrugEffectRule>(orders: DrugOrderForEffect[], rules: R[], atTime: Date): R[] {
+  return rules.filter((rule) =>
+    orders.some((order) => {
+      if (!order.categoryIds.includes(rule.categoryId)) return false;
+      if (order.discontinuedAt && order.discontinuedAt <= atTime) return false;
+      const onsetAt = order.orderedAt.getTime() + rule.onsetDelayHours * 3_600_000;
+      return atTime.getTime() >= onsetAt;
+    })
+  );
+}
+
+export type ActiveDrugEffects = {
+  vitalShifts: Partial<Record<keyof VitalPoint, number>>;
+  labShifts: Record<string, number>;
+  labTexts: Record<string, string[]>;
+};
+
+// 発現中のルール一覧を、バイタル・検査値それぞれの加算量へ集約する。同じ対象に複数ルールが該当する場合
+// (例: ACE阻害薬とK保持性利尿薬を併用しどちらもKへ影響)は単純加算する。
+export function summarizeDrugEffects(activeRules: DrugEffectRule[]): ActiveDrugEffects {
+  const vitalShifts: Partial<Record<keyof VitalPoint, number>> = {};
+  const labShifts: Record<string, number> = {};
+  const labTexts: Record<string, string[]> = {};
+  for (const rule of activeRules) {
+    if (rule.targetType === "vital") {
+      const field = rule.target as keyof VitalPoint;
+      vitalShifts[field] = (vitalShifts[field] ?? 0) + (rule.shiftValue ?? 0);
+    } else {
+      if (rule.shiftValue !== null) labShifts[rule.target] = (labShifts[rule.target] ?? 0) + rule.shiftValue;
+      if (rule.effectText) (labTexts[rule.target] ??= []).push(rule.effectText);
+    }
+  }
+  return { vitalShifts, labShifts, labTexts };
+}
+
+// 薬剤影響(検査値側)を、疾患計算済みの結果(またはマスター既定値)へ後から加算する。数値を持たない項目
+// (培養結果など定性のみ)には数値加算せず、所見文だけ追記する。shiftが0かつtextsが空ならそのまま返す。
+export function applyDrugLabEffect(result: DynamicLabResult, shift: number, texts: string[]): DynamicLabResult {
+  if (shift === 0 && texts.length === 0) return result;
+  const values = result.values ? result.values.map((v) => ({ ...v, value: Math.round((v.value + shift) * 1000) / 1000 })) : null;
+  const baseText = values ? formatLabValues(values) : result.text;
+  return { text: texts.length > 0 ? [baseText, ...texts].join("\n") : baseText, values };
+}
+
 function compareOp(value: number, op: ">=" | "<=", threshold: number): boolean {
   return op === ">=" ? value >= threshold : value <= threshold;
 }
 
-// 危機シナリオの発動条件を判定する。lab/vitalは実際にオーダーされた結果ではなく、生理モデルが
+// 1つの発火条件(分岐)の判定を行う。lab/vitalは実際にオーダーされた結果ではなく、生理モデルが
 // 集約した後の「真の」値（呼び出し側が事前に計算して渡すaggregatedVitals/resolveAggregatedLabValue経由）
 // を参照する（未オーダーでも急変しうる）。severityは主病態自身の重症度を見る。
 export function evaluateCrisisTriggers(
-  crisis: CrisisScenario,
+  crisisTrigger: CrisisTriggerConfig,
   primarySeverity: number,
   aggregatedVitals: VitalPoint,
   resolveAggregatedLabValue: (code: string, label?: string) => number | null
 ): boolean {
-  return crisis.triggers.some((trigger) => {
+  return crisisTrigger.triggers.some((trigger) => {
     if (trigger.type === "severity") return compareOp(primarySeverity, trigger.op, trigger.value);
     if (trigger.type === "vital") return compareOp(aggregatedVitals[trigger.field], trigger.op, trigger.value);
     const value = resolveAggregatedLabValue(trigger.code, trigger.label);
@@ -341,11 +485,11 @@ export function evaluateCrisisTriggers(
 }
 
 // crisisStartedAt以降のオーダーに、いずれかのrescueActionsに該当するものがあるか（＝救命に成功したか）
-export function findCrisisRescueAt(orders: TreatmentOrder[], scenario: CrisisScenario, crisisStartedAt: Date): Date | null {
+export function findCrisisRescueAt(orders: TreatmentOrder[], rescueConfig: CrisisRescueConfig, crisisStartedAt: Date): Date | null {
   const eligibleOrders = orders.filter((o) => o.orderedAt >= crisisStartedAt);
   const combinedTrigger: TreatmentTrigger = {
-    drugCategories: scenario.rescueActions.flatMap((a) => a.drugCategories ?? []),
-    procedureKeywords: scenario.rescueActions.flatMap((a) => a.procedureKeywords ?? []),
+    drugCategories: rescueConfig.rescueActions.flatMap((a) => a.drugCategories ?? []),
+    procedureKeywords: rescueConfig.rescueActions.flatMap((a) => a.procedureKeywords ?? []),
   };
   return findTreatmentStartAt(eligibleOrders, combinedTrigger);
 }

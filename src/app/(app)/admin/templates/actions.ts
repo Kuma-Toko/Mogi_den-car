@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { DEFAULT_PHYSIOLOGY_PARAMS } from "@/lib/physiology";
+import type { VitalPoint } from "@/lib/physiology-engine";
 import { VITAL_FIELDS } from "@/lib/vital-fields";
 
 function readParams(formData: FormData) {
@@ -25,6 +26,7 @@ export async function createTemplate(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
   const isCommon = formData.get("isCommon") === "on";
+  const isInfectious = formData.get("isInfectious") === "on";
   if (!key || !name) return;
 
   const existing = await db.diseaseTemplate.findUnique({ where: { key } });
@@ -33,7 +35,7 @@ export async function createTemplate(formData: FormData) {
   }
 
   const created = await db.diseaseTemplate.create({
-    data: { key, name, description, isCommon, defaultParams: JSON.stringify(readParams(formData)) },
+    data: { key, name, description, isCommon, isInfectious, defaultParams: JSON.stringify(readParams(formData)) },
   });
   await logAudit({ userId: user.id, action: "master_template_create", targetType: "DiseaseTemplate", targetId: created.id });
 
@@ -46,11 +48,12 @@ export async function updateTemplate(id: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
   const isCommon = formData.get("isCommon") === "on";
+  const isInfectious = formData.get("isInfectious") === "on";
   if (!name) return;
 
   await db.diseaseTemplate.update({
     where: { id },
-    data: { name, description, isCommon, defaultParams: JSON.stringify(readParams(formData)) },
+    data: { name, description, isCommon, isInfectious, defaultParams: JSON.stringify(readParams(formData)) },
   });
   await logAudit({ userId: user.id, action: "master_template_update", targetType: "DiseaseTemplate", targetId: id });
 
@@ -60,10 +63,15 @@ export async function updateTemplate(id: string, formData: FormData) {
 export async function deleteTemplate(id: string) {
   const user = await requireAdmin();
 
-  // 症例がこのテンプレートをアタッチ中（CaseDiseaseLink経由）なら削除できないよう事前に確認する
-  // （外部キーはON DELETE RESTRICTのため、確認なしでも例外にはなるが、事前にエラーメッセージで案内する）。
-  const usageCount = await db.caseDiseaseLink.count({ where: { templateId: id } });
-  if (usageCount > 0) {
+  // 症例がこのテンプレートをアタッチ中（CaseDiseaseLink経由）、または他テンプレートの発火条件が
+  // このテンプレートを危機病態として指している（TemplateCrisisScenario.targetTemplateId経由）なら
+  // 削除できないよう事前に確認する（外部キーはON DELETE RESTRICTのため、確認なしでも例外にはなるが、
+  // 事前にエラーメッセージで案内する）。
+  const [usageCount, crisisTargetUsageCount] = await Promise.all([
+    db.caseDiseaseLink.count({ where: { templateId: id } }),
+    db.templateCrisisScenario.count({ where: { targetTemplateId: id } }),
+  ]);
+  if (usageCount > 0 || crisisTargetUsageCount > 0) {
     redirect("/admin/templates?error=in_use");
   }
 
@@ -75,8 +83,8 @@ export async function deleteTemplate(id: string) {
 
 // ── 病態エンジン設定（治療開始条件・バイタル係数） ──────────────────────────────
 
-function readVitalPoint(formData: FormData, prefix: string) {
-  const point: Record<string, number> = {};
+function readVitalPoint(formData: FormData, prefix: string): VitalPoint {
+  const point = {} as VitalPoint;
   for (const f of VITAL_FIELDS) {
     point[f.key] = Number(formData.get(`${prefix}_${f.key}`) ?? 0);
   }
@@ -123,6 +131,53 @@ export async function updateBasePhysiologyModel(formData: FormData) {
     create: { id: "default", ...point },
   });
   await logAudit({ userId: user.id, action: "master_base_physiology_update", targetType: "BasePhysiologyModel", targetId: "default" });
+
+  revalidatePath("/admin/templates");
+}
+
+// ── 年齢・性別による基礎値の調整（PhysiologyBaselineBand） ──────────────────────────
+// 症例のpatientAge/patientGenderが該当する帯域があれば、基礎生理モデルの代わりにこちらの値を基準値として使う
+// （該当なしなら基礎生理モデルへフォールバック）。genderは"男性"|"女性"|"共通"（"共通"は両方に該当）。
+
+function readPhysiologyBaselineBandFields(formData: FormData) {
+  return {
+    label: String(formData.get("label") ?? "").trim(),
+    minAge: Math.round(Number(formData.get("minAge") ?? NaN)),
+    maxAge: Math.round(Number(formData.get("maxAge") ?? NaN)),
+    gender: String(formData.get("gender") ?? "共通"),
+    ...readVitalPoint(formData, "band"),
+  };
+}
+
+export async function createPhysiologyBaselineBand(formData: FormData) {
+  const user = await requireAdmin();
+
+  const fields = readPhysiologyBaselineBandFields(formData);
+  if (!fields.label || !Number.isFinite(fields.minAge) || !Number.isFinite(fields.maxAge) || fields.minAge > fields.maxAge) return;
+
+  const maxSort = await db.physiologyBaselineBand.aggregate({ _max: { sortOrder: true } });
+  const created = await db.physiologyBaselineBand.create({ data: { ...fields, sortOrder: (maxSort._max.sortOrder ?? -1) + 1 } });
+  await logAudit({ userId: user.id, action: "master_physiology_baseline_band_create", targetType: "PhysiologyBaselineBand", targetId: created.id });
+
+  revalidatePath("/admin/templates");
+}
+
+export async function updatePhysiologyBaselineBand(id: string, formData: FormData) {
+  const user = await requireAdmin();
+
+  const fields = readPhysiologyBaselineBandFields(formData);
+  if (!fields.label || !Number.isFinite(fields.minAge) || !Number.isFinite(fields.maxAge) || fields.minAge > fields.maxAge) return;
+
+  await db.physiologyBaselineBand.update({ where: { id }, data: fields });
+  await logAudit({ userId: user.id, action: "master_physiology_baseline_band_update", targetType: "PhysiologyBaselineBand", targetId: id });
+
+  revalidatePath("/admin/templates");
+}
+
+export async function deletePhysiologyBaselineBand(id: string) {
+  const user = await requireAdmin();
+  await db.physiologyBaselineBand.delete({ where: { id } });
+  await logAudit({ userId: user.id, action: "master_physiology_baseline_band_delete", targetType: "PhysiologyBaselineBand", targetId: id });
 
   revalidatePath("/admin/templates");
 }
@@ -254,49 +309,81 @@ export async function deleteLabPatternValue(id: string) {
   revalidatePath("/admin/templates");
 }
 
-// ── 急変シナリオ（crisis） ──────────────────────────────────────────────────
+// ── 発火条件（TemplateCrisisScenario、watcher視点。1テンプレートが複数件持てる=条件分岐） ──────
 
-function readCrisisScenarioFields(formData: FormData) {
+function readCrisisTriggerScenarioFields(formData: FormData) {
   return {
-    name: String(formData.get("name") ?? "").trim(),
+    targetTemplateId: String(formData.get("targetTemplateId") ?? "").trim(),
     sustainMinutes: Math.max(0, Math.round(Number(formData.get("sustainMinutes") ?? 0))),
-    windowMinutes: Math.max(1, Math.round(Number(formData.get("windowMinutes") ?? 480))),
-    postRescueSeverity: Math.min(100, Math.max(0, Math.round(Number(formData.get("postRescueSeverity") ?? 50)))),
-    crisisVitals: JSON.stringify(readVitalPoint(formData, "crisisVitals")),
   };
 }
 
-export async function createCrisisScenario(templateId: string, formData: FormData) {
+export async function createCrisisTriggerScenario(templateId: string, formData: FormData) {
   const user = await requireAdmin();
 
-  const fields = readCrisisScenarioFields(formData);
-  if (!fields.name) return;
+  const fields = readCrisisTriggerScenarioFields(formData);
+  if (!fields.targetTemplateId) return;
 
-  const existing = await db.templateCrisisScenario.findUnique({ where: { templateId } });
-  if (existing) return; // 1テンプレート1シナリオ
-
-  const created = await db.templateCrisisScenario.create({ data: { templateId, ...fields } });
-  await logAudit({ userId: user.id, action: "master_crisis_scenario_create", targetType: "TemplateCrisisScenario", targetId: created.id });
+  const maxSort = await db.templateCrisisScenario.aggregate({ where: { templateId }, _max: { sortOrder: true } });
+  const created = await db.templateCrisisScenario.create({
+    data: { templateId, ...fields, sortOrder: (maxSort._max.sortOrder ?? -1) + 1 },
+  });
+  await logAudit({ userId: user.id, action: "master_crisis_trigger_scenario_create", targetType: "TemplateCrisisScenario", targetId: created.id });
 
   revalidatePath("/admin/templates");
 }
 
-export async function updateCrisisScenario(id: string, formData: FormData) {
+export async function updateCrisisTriggerScenario(id: string, formData: FormData) {
   const user = await requireAdmin();
 
-  const fields = readCrisisScenarioFields(formData);
-  if (!fields.name) return;
+  const fields = readCrisisTriggerScenarioFields(formData);
+  if (!fields.targetTemplateId) return;
 
   await db.templateCrisisScenario.update({ where: { id }, data: fields });
-  await logAudit({ userId: user.id, action: "master_crisis_scenario_update", targetType: "TemplateCrisisScenario", targetId: id });
+  await logAudit({ userId: user.id, action: "master_crisis_trigger_scenario_update", targetType: "TemplateCrisisScenario", targetId: id });
 
   revalidatePath("/admin/templates");
 }
 
-export async function deleteCrisisScenario(id: string) {
+export async function deleteCrisisTriggerScenario(id: string) {
   const user = await requireAdmin();
   await db.templateCrisisScenario.delete({ where: { id } });
-  await logAudit({ userId: user.id, action: "master_crisis_scenario_delete", targetType: "TemplateCrisisScenario", targetId: id });
+  await logAudit({ userId: user.id, action: "master_crisis_trigger_scenario_delete", targetType: "TemplateCrisisScenario", targetId: id });
+
+  revalidatePath("/admin/templates");
+}
+
+// ── 救命設定（CrisisRescueConfig、危機病態=targetテンプレート自身の性質。1テンプレートにつき最大1件） ──
+
+export async function createCrisisRescueConfig(templateId: string, formData: FormData) {
+  const user = await requireAdmin();
+
+  const postRescueSeverity = Math.min(100, Math.max(0, Math.round(Number(formData.get("postRescueSeverity") ?? 50))));
+
+  const existing = await db.crisisRescueConfig.findUnique({ where: { templateId } });
+  if (existing) return; // 1テンプレート1件
+
+  const created = await db.crisisRescueConfig.create({ data: { templateId, postRescueSeverity } });
+  await logAudit({ userId: user.id, action: "master_crisis_rescue_config_create", targetType: "CrisisRescueConfig", targetId: created.id });
+
+  revalidatePath("/admin/templates");
+}
+
+export async function updateCrisisRescueConfig(id: string, formData: FormData) {
+  const user = await requireAdmin();
+
+  const postRescueSeverity = Math.min(100, Math.max(0, Math.round(Number(formData.get("postRescueSeverity") ?? 50))));
+
+  await db.crisisRescueConfig.update({ where: { id }, data: { postRescueSeverity } });
+  await logAudit({ userId: user.id, action: "master_crisis_rescue_config_update", targetType: "CrisisRescueConfig", targetId: id });
+
+  revalidatePath("/admin/templates");
+}
+
+export async function deleteCrisisRescueConfig(id: string) {
+  const user = await requireAdmin();
+  await db.crisisRescueConfig.delete({ where: { id } });
+  await logAudit({ userId: user.id, action: "master_crisis_rescue_config_delete", targetType: "CrisisRescueConfig", targetId: id });
 
   revalidatePath("/admin/templates");
 }
@@ -365,15 +452,15 @@ function readRescueActionFields(formData: FormData) {
   };
 }
 
-export async function addCrisisRescueAction(scenarioId: string, formData: FormData) {
+export async function addCrisisRescueAction(rescueConfigId: string, formData: FormData) {
   const user = await requireAdmin();
 
   const fields = readRescueActionFields(formData);
   if (!fields.label) return;
 
-  const maxSort = await db.crisisRescueActionRow.aggregate({ where: { scenarioId }, _max: { sortOrder: true } });
+  const maxSort = await db.crisisRescueActionRow.aggregate({ where: { rescueConfigId }, _max: { sortOrder: true } });
   const created = await db.crisisRescueActionRow.create({
-    data: { scenarioId, ...fields, sortOrder: (maxSort._max.sortOrder ?? -1) + 1 },
+    data: { rescueConfigId, ...fields, sortOrder: (maxSort._max.sortOrder ?? -1) + 1 },
   });
   await logAudit({ userId: user.id, action: "master_crisis_rescue_action_create", targetType: "CrisisRescueActionRow", targetId: created.id });
 

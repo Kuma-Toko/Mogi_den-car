@@ -176,6 +176,32 @@ textarea {
   background: var(--blue-tint);
   color: var(--blue);
 }
+.badge.dark {
+  background: var(--ink);
+  color: #fff;
+}
+
+.severity-meter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.severity-meter .bar {
+  width: 60px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+.severity-meter .bar > span {
+  display: block;
+  height: 100%;
+}
+.severity-meter .n {
+  font-weight: 700;
+  font-size: 12px;
+  width: 22px;
+}
 
 .card {
   background: var(--panel);
@@ -1014,6 +1040,9 @@ dialog.order-dialog::backdrop {
 .chat-msg.patient {
   justify-content: flex-start;
 }
+.chat-msg.system {
+  justify-content: center;
+}
 .chat-bubble {
   max-width: 78%;
   border-radius: 10px;
@@ -1030,6 +1059,12 @@ dialog.order-dialog::backdrop {
 }
 .chat-msg.patient .chat-bubble {
   background: var(--line-soft);
+}
+.chat-msg.system .chat-bubble {
+  max-width: 92%;
+  background: var(--amber-tint);
+  border-color: var(--amber);
+  text-align: center;
 }
 .chat-bubble-loading {
   color: var(--ink-soft);

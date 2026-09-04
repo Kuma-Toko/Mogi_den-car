@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma, PhysiologyBaselineBand } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatJaDateTime } from "@/lib/format";
@@ -11,23 +11,29 @@ import {
   addCrisisRescueAction,
   addCrisisTrigger,
   addLabPatternValue,
-  createCrisisScenario,
+  createCrisisRescueConfig,
+  createCrisisTriggerScenario,
   createLabPattern,
+  createPhysiologyBaselineBand,
   createTemplate,
   deleteCrisisRescueAction,
-  deleteCrisisScenario,
+  deleteCrisisRescueConfig,
   deleteCrisisTrigger,
+  deleteCrisisTriggerScenario,
   deleteLabPattern,
   deleteLabPatternValue,
+  deletePhysiologyBaselineBand,
   deleteTemplate,
   updateAiEvaluationGuideline,
   updateCrisisRescueAction,
-  updateCrisisScenario,
+  updateCrisisRescueConfig,
   updateCrisisTrigger,
+  updateCrisisTriggerScenario,
   updateLabPatternCode,
   updateLabPatternText,
   updateLabPatternValue,
   updateBasePhysiologyModel,
+  updatePhysiologyBaselineBand,
   updateTemplate,
   updateTemplateEngineConfig,
 } from "./actions";
@@ -39,12 +45,14 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 const TEMPLATE_INCLUDE = {
   labPatterns: { include: { values: { orderBy: { sortOrder: "asc" as const } } }, orderBy: { sortOrder: "asc" as const } },
-  crisis: {
+  crisisTriggers: {
     include: {
       triggers: { orderBy: { sortOrder: "asc" as const } },
-      rescueActions: { orderBy: { sortOrder: "asc" as const } },
+      targetTemplate: { select: { id: true, name: true } },
     },
+    orderBy: { sortOrder: "asc" as const },
   },
+  crisisRescue: { include: { rescueActions: { orderBy: { sortOrder: "asc" as const } } } },
 } satisfies Prisma.DiseaseTemplateInclude;
 
 type TemplateWithRelations = Prisma.DiseaseTemplateGetPayload<{ include: typeof TEMPLATE_INCLUDE }>;
@@ -61,6 +69,7 @@ export default async function AdminTemplatesPage({
 
   const templates = await db.diseaseTemplate.findMany({ orderBy: { createdAt: "asc" }, include: TEMPLATE_INCLUDE });
   const basePhysiology = await db.basePhysiologyModel.findUnique({ where: { id: "default" } });
+  const baselineBands = await db.physiologyBaselineBand.findMany({ orderBy: { sortOrder: "asc" } });
 
   return (
     <>
@@ -108,6 +117,8 @@ export default async function AdminTemplatesPage({
           </div>
         </div>
 
+        <PhysiologyBaselineBandSection bands={baselineBands} />
+
         <div style={{ fontSize: 11.5, color: "var(--ink-soft)", marginBottom: 14 }}>
           <span className="badge amber" style={{ marginRight: 6 }}>
             エンジン未対応
@@ -141,6 +152,13 @@ export default async function AdminTemplatesPage({
                     <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
                       <input type="checkbox" name="isCommon" defaultChecked={t.isCommon} />
                       共通テンプレートとして全教員に公開する
+                    </label>
+                  </div>
+                  <div className="field">
+                    <label>感染症エンジン</label>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                      <input type="checkbox" name="isInfectious" defaultChecked={t.isInfectious} />
+                      症例作成画面で「真の原因菌」を選択できるようにする
                     </label>
                   </div>
                   <div className="field" style={{ gridColumn: "1 / -1" }}>
@@ -206,7 +224,7 @@ export default async function AdminTemplatesPage({
 
               <AiEvaluationSection template={t} />
               <LabPatternsSection template={t} />
-              <CrisisSection template={t} />
+              <CrisisSection template={t} allTemplates={templates} />
             </div>
           );
         })}
@@ -231,6 +249,12 @@ export default async function AdminTemplatesPage({
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
                   <input type="checkbox" name="isCommon" defaultChecked />
                   共通テンプレートとして全教員に公開する
+                </label>
+              </div>
+              <div className="field">
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                  <input type="checkbox" name="isInfectious" />
+                  症例作成画面で「真の原因菌」を選択できるようにする
                 </label>
               </div>
             </div>
@@ -278,6 +302,115 @@ function VitalPointGrid({
             />
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function PhysiologyBaselineBandSection({ bands }: { bands: PhysiologyBaselineBand[] }) {
+  return (
+    <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card-h">年齢・性別による基礎値の調整</div>
+      <div className="card-b">
+        <div style={{ fontSize: 11.5, color: "var(--ink-soft)", marginBottom: 8 }}>
+          症例の年齢・性別が該当する帯域があれば、上の基礎生理モデルの代わりにこちらの値を基準値として使う（該当する帯域が無ければ上へフォールバック）。
+          年齢が複数の帯域に該当する場合、性別が完全一致する行を優先し、次に「共通」の行を使う。
+          また、各病態テンプレートの「重症度100あたりの増減量」は上の基礎生理モデルを基準に定義されているため、実際の基礎値がそれと異なる場合は
+          （実際の基礎値 ÷ 基礎生理モデルの値）の比率でスケーリングしてから加算する（例: 小児は基礎脈拍が高い分、同じ増減量でもより大きく変化する）。
+        </div>
+
+        {bands.length === 0 && (
+          <div className="empty-note" style={{ marginBottom: 8 }}>
+            帯域は未設定です（全症例が上の基礎生理モデルをそのまま使用します）。
+          </div>
+        )}
+
+        {bands.map((b) => (
+          <form
+            key={b.id}
+            action={updatePhysiologyBaselineBand.bind(null, b.id)}
+            className="mrow-group"
+            style={{ marginBottom: 10, border: "1px solid var(--line-soft)", borderRadius: 8, padding: 10 }}
+          >
+            <div className="form-grid" style={{ marginBottom: 8, alignItems: "end" }}>
+              <div className="field">
+                <label>ラベル</label>
+                <input name="label" defaultValue={b.label} required />
+              </div>
+              <div className="field">
+                <label>最小年齢</label>
+                <input name="minAge" type="number" defaultValue={b.minAge} min={0} max={120} required />
+              </div>
+              <div className="field">
+                <label>最大年齢</label>
+                <input name="maxAge" type="number" defaultValue={b.maxAge} min={0} max={120} required />
+              </div>
+              <div className="field">
+                <label>性別</label>
+                <select name="gender" defaultValue={b.gender}>
+                  <option value="共通">共通</option>
+                  <option value="男性">男性</option>
+                  <option value="女性">女性</option>
+                </select>
+              </div>
+            </div>
+            <VitalPointGrid
+              prefix="band"
+              title="基準値"
+              defaults={{
+                temperature: b.temperature,
+                systolicBp: b.systolicBp,
+                diastolicBp: b.diastolicBp,
+                pulse: b.pulse,
+                spo2: b.spo2,
+                respRate: b.respRate,
+              }}
+            />
+            <div style={{ textAlign: "right", marginTop: 8 }}>
+              <button type="submit" className="btn primary" style={{ marginRight: 6 }}>
+                保存
+              </button>
+              <ConfirmButton
+                formAction={deletePhysiologyBaselineBand.bind(null, b.id)}
+                confirmText={`「${b.label}」を削除しますか？`}
+                className="btn danger"
+              >
+                削除
+              </ConfirmButton>
+            </div>
+          </form>
+        ))}
+
+        <form action={createPhysiologyBaselineBand} style={{ background: "var(--line-soft)", padding: 10, borderRadius: 8 }}>
+          <div className="form-grid" style={{ marginBottom: 8, alignItems: "end" }}>
+            <div className="field">
+              <label>ラベル</label>
+              <input name="label" required placeholder="例: 幼児(1-5歳)" />
+            </div>
+            <div className="field">
+              <label>最小年齢</label>
+              <input name="minAge" type="number" min={0} max={120} required />
+            </div>
+            <div className="field">
+              <label>最大年齢</label>
+              <input name="maxAge" type="number" min={0} max={120} required />
+            </div>
+            <div className="field">
+              <label>性別</label>
+              <select name="gender" defaultValue="共通">
+                <option value="共通">共通</option>
+                <option value="男性">男性</option>
+                <option value="女性">女性</option>
+              </select>
+            </div>
+          </div>
+          <VitalPointGrid prefix="band" title="基準値" />
+          <div style={{ textAlign: "right", marginTop: 8 }}>
+            <button type="submit" className="btn primary">
+              帯域を追加
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -456,205 +589,219 @@ function LabPatternsSection({ template }: { template: TemplateWithRelations }) {
   );
 }
 
-function CrisisSection({ template }: { template: TemplateWithRelations }) {
-  const crisis = template.crisis;
+function CrisisTriggerRowForm({
+  action,
+  defaults,
+  onDelete,
+}: {
+  action: (formData: FormData) => void | Promise<void>;
+  defaults?: { type: string; code: string | null; label: string | null; field: string | null; op: string; value: number };
+  onDelete?: (formData: FormData) => void | Promise<void>;
+}) {
+  return (
+    <form action={action} className="mrow" style={{ gridTemplateColumns: "0.8fr 1fr 1fr 0.7fr 0.8fr auto", minWidth: 560 }}>
+      <select name="type" defaultValue={defaults?.type ?? "severity"}>
+        <option value="severity">重症度</option>
+        <option value="lab">検査値</option>
+        <option value="vital">バイタル</option>
+      </select>
+      <input name="code" defaultValue={defaults?.code ?? ""} placeholder="検査コード(検査値のとき)" />
+      <input name="label" defaultValue={defaults?.label ?? ""} placeholder="ラベル(任意、複数値の検査のとき)" />
+      <select name="field" defaultValue={defaults?.field ?? ""}>
+        <option value="">(バイタルのとき選択)</option>
+        {VITAL_FIELDS.map((f) => (
+          <option key={f.key} value={f.key}>
+            {f.label}
+          </option>
+        ))}
+      </select>
+      <span style={{ display: "flex", gap: 4 }}>
+        <select name="op" defaultValue={defaults?.op ?? ">="}>
+          <option value=">=">以上</option>
+          <option value="<=">以下</option>
+        </select>
+        <input name="value" type="number" step="any" defaultValue={defaults?.value} placeholder={defaults ? undefined : "閾値"} style={{ width: 70 }} required />
+      </span>
+      <span className="actions">
+        <button type="submit" className="btn" style={{ padding: "4px 8px", fontSize: 11 }}>
+          {defaults ? "保存" : "条件を追加"}
+        </button>
+        {onDelete && (
+          <button type="submit" formAction={onDelete} className="btn danger" style={{ padding: "4px 8px", fontSize: 11 }}>
+            削除
+          </button>
+        )}
+      </span>
+    </form>
+  );
+}
 
-  if (!crisis) {
-    return (
-      <div className="card-b" style={{ borderTop: "1px solid var(--line-soft)" }}>
-        <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6 }}>
-          急変シナリオ（未設定 — このテンプレートでは急変は発生しません）
-        </div>
-        <form action={createCrisisScenario.bind(null, template.id)}>
-          <div className="form-grid" style={{ marginBottom: 8 }}>
-            <div className="field">
-              <label>シナリオ名</label>
-              <input name="name" required placeholder="例: 敗血症性ショック・心停止" />
-            </div>
-            <div className="field">
-              <label>持続時間（分）— この時間だけ発動条件が連続して満たされたらCRITICALへ</label>
-              <input name="sustainMinutes" type="number" defaultValue={0} min={0} />
-            </div>
-            <div className="field">
-              <label>猶予時間（分）</label>
-              <input name="windowMinutes" type="number" defaultValue={480} min={1} />
-            </div>
-            <div className="field">
-              <label>救命成功後の重症度（0-100）</label>
-              <input name="postRescueSeverity" type="number" defaultValue={50} min={0} max={100} />
-            </div>
-          </div>
-          <VitalPointGrid prefix="crisisVitals" title="急変中に固定表示するバイタル" />
-          <div style={{ textAlign: "right", marginTop: 8 }}>
-            <button type="submit" className="btn primary">
-              急変シナリオを作成
-            </button>
-          </div>
-        </form>
-      </div>
-    );
-  }
-
-  const crisisVitals = JSON.parse(crisis.crisisVitals) as Record<string, number>;
+function CrisisSection({
+  template,
+  allTemplates,
+}: {
+  template: TemplateWithRelations;
+  allTemplates: { id: string; name: string }[];
+}) {
+  const rescue = template.crisisRescue;
 
   return (
     <div className="card-b" style={{ borderTop: "1px solid var(--line-soft)" }}>
-      <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-        急変シナリオ
-        {crisis.rescueActions.length === 0 && (
-          <span className="badge red">救命アクション未設定（脱出不能）</span>
-        )}
-        {crisis.triggers.length === 0 && <span className="badge amber">発動条件未設定（発生しません）</span>}
+      <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6 }}>
+        発火条件（この病態の状態を監視し、条件を満たすと指定した危機病態をアタッチ・主病態に昇格させる。複数の分岐を追加できる）
       </div>
-
-      <form action={updateCrisisScenario.bind(null, crisis.id)} style={{ marginBottom: 12 }}>
-        <div className="form-grid" style={{ marginBottom: 8 }}>
-          <div className="field">
-            <label>シナリオ名</label>
-            <input name="name" defaultValue={crisis.name} required />
-          </div>
-          <div className="field">
-            <label>持続時間（分）— この時間だけ発動条件が連続して満たされたらCRITICALへ</label>
-            <input name="sustainMinutes" type="number" defaultValue={crisis.sustainMinutes} min={0} />
-          </div>
-          <div className="field">
-            <label>猶予時間（分）</label>
-            <input name="windowMinutes" type="number" defaultValue={crisis.windowMinutes} min={1} />
-          </div>
-          <div className="field">
-            <label>救命成功後の重症度（0-100）</label>
-            <input name="postRescueSeverity" type="number" defaultValue={crisis.postRescueSeverity} min={0} max={100} />
-          </div>
+      {template.crisisTriggers.length === 0 && (
+        <div className="empty-note" style={{ marginBottom: 8 }}>
+          発火条件は未設定です（この病態から急変は発生しません）。
         </div>
-        <VitalPointGrid prefix="crisisVitals" title="急変中に固定表示するバイタル" defaults={crisisVitals} />
-        <div style={{ textAlign: "right", marginTop: 8 }}>
-          <button type="submit" className="btn primary">
-            シナリオを保存
-          </button>{" "}
-          <ConfirmButton
-            formAction={deleteCrisisScenario.bind(null, crisis.id)}
-            confirmText={`「${crisis.name}」を削除しますか？（発動条件・救命アクションも全て削除されます）`}
-            className="btn danger"
-          >
-            シナリオを削除
-          </ConfirmButton>
-        </div>
-      </form>
+      )}
 
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 11, color: "var(--ink-soft)", marginBottom: 4 }}>発動条件（いずれか1つで発動）</div>
-        {crisis.triggers.map((tr) => (
-          <form
-            key={tr.id}
-            action={updateCrisisTrigger.bind(null, tr.id)}
-            className="mrow"
-            style={{ gridTemplateColumns: "0.8fr 1fr 1fr 0.7fr 0.8fr auto", minWidth: 560 }}
-          >
-            <select name="type" defaultValue={tr.type}>
-              <option value="severity">重症度</option>
-              <option value="lab">検査値</option>
-              <option value="vital">バイタル</option>
-            </select>
-            <input name="code" defaultValue={tr.code ?? ""} placeholder="検査コード(検査値のとき)" />
-            <input name="label" defaultValue={tr.label ?? ""} placeholder="ラベル(任意、複数値の検査のとき)" />
-            <select name="field" defaultValue={tr.field ?? ""}>
-              <option value="">(バイタルのとき選択)</option>
-              {VITAL_FIELDS.map((f) => (
-                <option key={f.key} value={f.key}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-            <span style={{ display: "flex", gap: 4 }}>
-              <select name="op" defaultValue={tr.op}>
-                <option value=">=">以上</option>
-                <option value="<=">以下</option>
-              </select>
-              <input name="value" type="number" step="any" defaultValue={tr.value} style={{ width: 70 }} required />
-            </span>
-            <span className="actions">
-              <button type="submit" className="btn" style={{ padding: "4px 8px", fontSize: 11 }}>
-                保存
-              </button>
-              <button
-                type="submit"
-                formAction={deleteCrisisTrigger.bind(null, tr.id)}
-                className="btn danger"
-                style={{ padding: "4px 8px", fontSize: 11 }}
-              >
-                削除
-              </button>
-            </span>
+      {template.crisisTriggers.map((scenario) => (
+        <div key={scenario.id} className="mrow-group" style={{ marginBottom: 10, border: "1px solid var(--line-soft)", borderRadius: 8, padding: 10 }}>
+          <form action={updateCrisisTriggerScenario.bind(null, scenario.id)} style={{ marginBottom: 8 }}>
+            <div className="form-grid" style={{ marginBottom: 8, alignItems: "end" }}>
+              <div className="field">
+                <label>危機病態（アタッチ先テンプレート）</label>
+                <select name="targetTemplateId" defaultValue={scenario.targetTemplateId} required>
+                  {allTemplates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>持続時間（分）— この時間だけ発動条件が連続して満たされたらCRITICALへ</label>
+                <input name="sustainMinutes" type="number" defaultValue={scenario.sustainMinutes} min={0} />
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <button type="submit" className="btn primary" style={{ marginRight: 6 }}>
+                  保存
+                </button>
+                <ConfirmButton
+                  formAction={deleteCrisisTriggerScenario.bind(null, scenario.id)}
+                  confirmText={`「${scenario.targetTemplate.name}」への発火条件（この分岐）を削除しますか？`}
+                  className="btn danger"
+                >
+                  分岐を削除
+                </ConfirmButton>
+              </div>
+            </div>
           </form>
-        ))}
-        <form
-          action={addCrisisTrigger.bind(null, crisis.id)}
-          className="mrow"
-          style={{ gridTemplateColumns: "0.8fr 1fr 1fr 0.7fr 0.8fr auto", minWidth: 560, background: "var(--line-soft)" }}
-        >
-          <select name="type" defaultValue="severity">
-            <option value="severity">重症度</option>
-            <option value="lab">検査値</option>
-            <option value="vital">バイタル</option>
-          </select>
-          <input name="code" placeholder="検査コード(検査値のとき)" />
-          <input name="label" placeholder="ラベル(任意)" />
-          <select name="field" defaultValue="">
-            <option value="">(バイタルのとき選択)</option>
-            {VITAL_FIELDS.map((f) => (
-              <option key={f.key} value={f.key}>
-                {f.label}
+
+          <div style={{ fontSize: 11, color: "var(--ink-soft)", marginBottom: 4 }}>発動条件（いずれか1つで発動）</div>
+          {scenario.triggers.map((tr) => (
+            <CrisisTriggerRowForm
+              key={tr.id}
+              action={updateCrisisTrigger.bind(null, tr.id)}
+              defaults={tr}
+              onDelete={deleteCrisisTrigger.bind(null, tr.id)}
+            />
+          ))}
+          <CrisisTriggerRowForm action={addCrisisTrigger.bind(null, scenario.id)} />
+        </div>
+      ))}
+
+      <form action={createCrisisTriggerScenario.bind(null, template.id)} className="form-grid" style={{ background: "var(--line-soft)", padding: 10, borderRadius: 8, alignItems: "end" }}>
+        <div className="field">
+          <label>危機病態（アタッチ先テンプレート）</label>
+          <select name="targetTemplateId" required defaultValue="">
+            <option value="" disabled>
+              選択してください
+            </option>
+            {allTemplates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
               </option>
             ))}
           </select>
-          <span style={{ display: "flex", gap: 4 }}>
-            <select name="op" defaultValue=">=">
-              <option value=">=">以上</option>
-              <option value="<=">以下</option>
-            </select>
-            <input name="value" type="number" step="any" placeholder="閾値" style={{ width: 70 }} required />
-          </span>
-          <span className="actions">
-            <button type="submit" className="btn">
-              条件を追加
-            </button>
-          </span>
-        </form>
-      </div>
-
-      <div>
-        <div style={{ fontSize: 11, color: "var(--ink-soft)", marginBottom: 4 }}>救命アクション（いずれか1つのオーダーで脱出）</div>
-        {crisis.rescueActions.map((ra) => (
-          <form key={ra.id} action={updateCrisisRescueAction.bind(null, ra.id)} className="alias-add-form" style={{ marginBottom: 6 }}>
-            <input name="label" defaultValue={ra.label} placeholder="表示名" style={{ width: 140 }} required />
-            <input
-              name="drugCategories"
-              defaultValue={(JSON.parse(ra.drugCategories) as string[]).join(", ")}
-              placeholder="薬剤大分類(カンマ区切り)"
-              style={{ width: 160 }}
-            />
-            <input
-              name="procedureKeywords"
-              defaultValue={(JSON.parse(ra.procedureKeywords) as string[]).join(", ")}
-              placeholder="処置キーワード(カンマ区切り)"
-              style={{ width: 160 }}
-            />
-            <button type="submit" className="btn">
-              保存
-            </button>
-            <button type="submit" formAction={deleteCrisisRescueAction.bind(null, ra.id)} className="btn danger">
-              削除
-            </button>
-          </form>
-        ))}
-        <form action={addCrisisRescueAction.bind(null, crisis.id)} className="alias-add-form">
-          <input name="label" placeholder="表示名" style={{ width: 140 }} required />
-          <input name="drugCategories" placeholder="薬剤大分類(カンマ区切り)" style={{ width: 160 }} />
-          <input name="procedureKeywords" placeholder="処置キーワード(カンマ区切り)" style={{ width: 160 }} />
-          <button type="submit" className="btn">
-            救命アクションを追加
+        </div>
+        <div className="field">
+          <label>持続時間（分）</label>
+          <input name="sustainMinutes" type="number" defaultValue={0} min={0} />
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <button type="submit" className="btn primary">
+            分岐を追加
           </button>
-        </form>
+        </div>
+      </form>
+
+      <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px dashed var(--line-soft)" }}>
+        <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+          救命設定（この病態が危機病態としてアタッチされた場合の性質）
+          {rescue && rescue.rescueActions.length === 0 && <span className="badge red">救命アクション未設定（脱出不能）</span>}
+        </div>
+
+        {!rescue ? (
+          <form action={createCrisisRescueConfig.bind(null, template.id)}>
+            <div className="field" style={{ marginBottom: 8, maxWidth: 260 }}>
+              <label>救命成功後の重症度（0-100）</label>
+              <input name="postRescueSeverity" type="number" defaultValue={50} min={0} max={100} />
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <button type="submit" className="btn primary">
+                救命設定を作成
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <form action={updateCrisisRescueConfig.bind(null, rescue.id)} style={{ marginBottom: 12 }}>
+              <div className="form-grid" style={{ marginBottom: 8, alignItems: "end" }}>
+                <div className="field">
+                  <label>救命成功後の重症度（0-100）</label>
+                  <input name="postRescueSeverity" type="number" defaultValue={rescue.postRescueSeverity} min={0} max={100} />
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <button type="submit" className="btn primary" style={{ marginRight: 6 }}>
+                    保存
+                  </button>
+                  <ConfirmButton
+                    formAction={deleteCrisisRescueConfig.bind(null, rescue.id)}
+                    confirmText="救命設定を削除しますか？（救命アクションも全て削除されます）"
+                    className="btn danger"
+                  >
+                    削除
+                  </ConfirmButton>
+                </div>
+              </div>
+            </form>
+
+            <div style={{ fontSize: 11, color: "var(--ink-soft)", marginBottom: 4 }}>救命アクション（いずれか1つのオーダーで脱出）</div>
+            {rescue.rescueActions.map((ra) => (
+              <form key={ra.id} action={updateCrisisRescueAction.bind(null, ra.id)} className="alias-add-form" style={{ marginBottom: 6 }}>
+                <input name="label" defaultValue={ra.label} placeholder="表示名" style={{ width: 140 }} required />
+                <input
+                  name="drugCategories"
+                  defaultValue={(JSON.parse(ra.drugCategories) as string[]).join(", ")}
+                  placeholder="薬剤大分類(カンマ区切り)"
+                  style={{ width: 160 }}
+                />
+                <input
+                  name="procedureKeywords"
+                  defaultValue={(JSON.parse(ra.procedureKeywords) as string[]).join(", ")}
+                  placeholder="処置キーワード(カンマ区切り)"
+                  style={{ width: 160 }}
+                />
+                <button type="submit" className="btn">
+                  保存
+                </button>
+                <button type="submit" formAction={deleteCrisisRescueAction.bind(null, ra.id)} className="btn danger">
+                  削除
+                </button>
+              </form>
+            ))}
+            <form action={addCrisisRescueAction.bind(null, rescue.id)} className="alias-add-form">
+              <input name="label" placeholder="表示名" style={{ width: 140 }} required />
+              <input name="drugCategories" placeholder="薬剤大分類(カンマ区切り)" style={{ width: 160 }} />
+              <input name="procedureKeywords" placeholder="処置キーワード(カンマ区切り)" style={{ width: 160 }} />
+              <button type="submit" className="btn">
+                救命アクションを追加
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
