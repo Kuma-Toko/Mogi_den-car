@@ -206,6 +206,10 @@ model CaseDiseaseLink {
   // 未設定(null)の場合、培養オーダーは原因菌モデルを使わず既存の固定サンプル文にフォールバックする。
   pathogenId String?
   pathogen   PathogenMaster? @relation(fields: [pathogenId], references: [id], onDelete: SetNull)
+  // 感染症エンジン: この疾患で培養陽性になりうる検体部位(LabItemMaster.specimenSite)のJSON配列(string[])。
+  // null=制限なし(既存挙動。どの培養系検査でも原因菌を開示)。空配列は「どこにも該当しない」という意味になり
+  // nullとは異なるため、教員画面では明示的にON/OFFを切り替えるUIにする。pathogenId未設定なら無視される。
+  relevantSpecimenSites String?
 
   @@unique([caseId, templateId])
 }
@@ -379,6 +383,12 @@ model LabItemMaster {
   // true: 培養系検査（血液培養等）。感染症エンジンによる多段階結果開示
   // (速報=グラム染色相当 → 確定=原因菌同定+感受性検査)の対象になる。
   isCulture    Boolean @default(false)
+  // 検体採取部位。isCulture項目でのみ使用。語彙: blood/sputum/throat/urine/stool/pus/vaginal。
+  // CaseDiseaseLink.relevantSpecimenSitesとの妥当性判定に使う。null=部位を問わない（例: 薬剤感受性検査）。
+  specimenSite String?
+  // 検査方式。isCulture項目でのみ使用。null(既定)="GENERAL"のほか"AFB"(抗酸菌)/"STOOL"(便培養、塗抹段階なし)/
+  // "TOXIN"(毒素検出、感受性パネルなし)/"SUSCEPTIBILITY"(薬剤感受性検査単体)。infection-engine.tsのgetCultureDelayHours等が参照する。
+  microbiologyKind String?
   orders       Order[]
 }
 
@@ -404,6 +414,9 @@ model DiseaseTemplate {
   aiEvaluationGuideline String?
   // true: 感染症エンジンの対象テンプレート。症例作成画面で疾患ごとに「真の原因菌」を選択できるようになる。
   isInfectious    Boolean  @default(false)
+  // true: 危機病態（急変シナリオ）として扱うテンプレート。急変の自動アタッチ先として使うほか、
+  // 症例作成時に最初から危機病態として選ぶこともできる（症例作成フォームの選択肢からは除外しない）。
+  isCrisisPathology Boolean @default(false)
   createdByUserId String?
   createdBy       User?    @relation("TemplateCreator", fields: [createdByUserId], references: [id])
   createdAt       DateTime @default(now())

@@ -27,6 +27,7 @@ export async function createTemplate(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim() || null;
   const isCommon = formData.get("isCommon") === "on";
   const isInfectious = formData.get("isInfectious") === "on";
+  const isCrisisPathology = formData.get("isCrisisPathology") === "on";
   if (!key || !name) return;
 
   const existing = await db.diseaseTemplate.findUnique({ where: { key } });
@@ -35,7 +36,7 @@ export async function createTemplate(formData: FormData) {
   }
 
   const created = await db.diseaseTemplate.create({
-    data: { key, name, description, isCommon, isInfectious, defaultParams: JSON.stringify(readParams(formData)) },
+    data: { key, name, description, isCommon, isInfectious, isCrisisPathology, defaultParams: JSON.stringify(readParams(formData)) },
   });
   await logAudit({ userId: user.id, action: "master_template_create", targetType: "DiseaseTemplate", targetId: created.id });
 
@@ -49,11 +50,12 @@ export async function updateTemplate(id: string, formData: FormData) {
   const description = String(formData.get("description") ?? "").trim() || null;
   const isCommon = formData.get("isCommon") === "on";
   const isInfectious = formData.get("isInfectious") === "on";
+  const isCrisisPathology = formData.get("isCrisisPathology") === "on";
   if (!name) return;
 
   await db.diseaseTemplate.update({
     where: { id },
-    data: { name, description, isCommon, isInfectious, defaultParams: JSON.stringify(readParams(formData)) },
+    data: { name, description, isCommon, isInfectious, isCrisisPathology, defaultParams: JSON.stringify(readParams(formData)) },
   });
   await logAudit({ userId: user.id, action: "master_template_update", targetType: "DiseaseTemplate", targetId: id });
 

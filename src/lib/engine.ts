@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 import type { Case, CaseDiseaseLink, DiseaseTemplate, LabItemMaster, OrderType } from "@prisma/client";
 import {
   aggregateLabResult,
@@ -34,6 +35,7 @@ import { formatLabValues, type LabValue } from "@/lib/lab-reference-ranges";
 import { evaluateTreatment, type TargetedTherapyContext } from "@/lib/ai-treatment-evaluation";
 import {
   evaluateAntibioticCoverage,
+  isSpecimenSiteRelevant,
   resolveCultureFinalResult,
   resolveCulturePreliminaryResult,
   type ActiveAntibioticCategory,
@@ -123,6 +125,15 @@ export async function loadEngineLinkedLabCodes(): Promise<Set<string>> {
 // （通常は感染症系テンプレートが1つだけ該当する想定）。どのリンクにも設定が無ければnull。
 export function findCasePathogenId(diseaseLinks: { pathogenId: string | null }[]): string | null {
   return diseaseLinks.find((l) => l.pathogenId)?.pathogenId ?? null;
+}
+
+// findCasePathogenIdと対になる検体部位制限。原因菌を持つ疾患リンクのrelevantSpecimenSitesを返す
+// （通常は原因菌を持つリンクが1つだけの想定なので、findCasePathogenIdと同じ行を探す）。
+// null＝制限なし（isSpecimenSiteRelevantが常にtrueを返す）。
+export function findCaseRelevantSpecimenSites(diseaseLinks: { pathogenId: string | null; relevantSpecimenSites: string | null }[]): string[] | null {
+  const link = diseaseLinks.find((l) => l.pathogenId);
+  if (!link?.relevantSpecimenSites) return null;
+  return parseStringArray(link.relevantSpecimenSites);
 }
 
 export async function loadPathogenProfile(pathogenId: string): Promise<PathogenProfile | null> {
@@ -373,7 +384,9 @@ async function loadActiveAntibioticCategories(caseId: string): Promise<ActiveAnt
       drug: {
         select: {
           categoryLinks: {
-            where: { category: { majorCategory: "抗菌薬" } },
+            // 抗結核薬は結核菌の感受性データを持たせるため対象に含める（loadPathogenProfileの
+            // subCategory解決とPathogenSusceptibility側の分類軸を揃える必要がある）。
+            where: { category: { majorCategory: { in: ["抗菌薬", "抗結核薬"] } } },
             select: { category: { select: { subCategory: true, majorCategory: true } } },
           },
         },
@@ -390,9 +403,10 @@ async function loadActiveAntibioticCategories(caseId: string): Promise<ActiveAnt
   return result;
 }
 
-// AI治療評価（標的治療フェーズ）向け: 症例に原因菌が割り当てられ、かつ培養の確定結果(RESULT_AVAILABLE)が
-// 開示済みの場合のみ、現在の抗菌薬オーダーの原因菌カバレッジを判定して返す。原因菌未割当・培養未確定
-// （＝学生がまだ原因菌を知り得ない経験的治療フェーズ）ではnullを返し、AIの採点材料に含めない
+// AI治療評価（標的治療フェーズ）向け: 症例に原因菌が割り当てられ、かつ「妥当な検体部位」の培養の
+// 確定結果(RESULT_AVAILABLE)が開示済みの場合のみ、現在の抗菌薬オーダーの原因菌カバレッジを判定して返す。
+// 原因菌未割当・培養未確定（＝学生がまだ原因菌を知り得ない経験的治療フェーズ）、または部位不一致で
+// 陰性確定しただけの培養しかない場合はnullを返し、AIの採点材料に含めない
 // （既存の大分類ベースの二値判定のみで評価される、従来どおりの挙動を維持する）。
 async function loadTargetedTherapyContext(
   caseRecord: Pick<CaseForEngine, "id" | "diseaseLinks">
@@ -400,10 +414,12 @@ async function loadTargetedTherapyContext(
   const casePathogenId = findCasePathogenId(caseRecord.diseaseLinks);
   if (!casePathogenId) return null;
 
-  const cultureRevealed = await db.order.findFirst({
+  const relevantSites = findCaseRelevantSpecimenSites(caseRecord.diseaseLinks);
+  const revealedCultureOrders = await db.order.findMany({
     where: { caseId: caseRecord.id, status: "RESULT_AVAILABLE", labItem: { isCulture: true } },
-    select: { id: true },
+    select: { labItem: { select: { specimenSite: true } } },
   });
+  const cultureRevealed = revealedCultureOrders.some((o) => isSpecimenSiteRelevant(relevantSites, o.labItem?.specimenSite ?? null));
   if (!cultureRevealed) return null;
 
   const pathogen = await loadPathogenProfile(casePathogenId);
@@ -411,6 +427,48 @@ async function loadTargetedTherapyContext(
 
   const activeCategories = await loadActiveAntibioticCategories(caseRecord.id);
   return { pathogenName: pathogen.name, coverage: evaluateAntibioticCoverage(pathogen, activeCategories) };
+}
+
+const PRESCRIPTION_DURATION_DAYS_RE = /^(\d+)日分$/;
+
+// 定期処方（dosingType==="定期"）のうち、指定日数（duration、例: "5日分"）を症例の時計で
+// 経過したものを自動的に中止扱いにする。頓用（回数指定）・注射・点滴は対象外
+// （日数という概念を持たないため）。discontinuedAtには「今」ではなく計算済みの正確な
+// 期限時刻を入れる（以降の重症度・バイタル計算がその時刻を基準に治療終了を反映できるようにするため）。
+export async function reconcileExpiredPrescriptions(caseId: string): Promise<void> {
+  const caseRecord = await loadCaseForEngine(caseId);
+  if (!caseRecord || caseRecord.crisisState === "DECEASED") return;
+  const clockNow = getCaseClockNow(caseRecord);
+
+  const active = await db.order.findMany({
+    where: { caseId, orderType: "MEDICATION", discontinuedAt: null },
+  });
+
+  for (const order of active) {
+    if (!order.detail) continue;
+    let detail: { dosingType?: string; duration?: string };
+    try {
+      detail = JSON.parse(order.detail);
+    } catch {
+      continue;
+    }
+    if (detail.dosingType !== "定期" || !detail.duration) continue;
+    const match = detail.duration.match(PRESCRIPTION_DURATION_DAYS_RE);
+    if (!match) continue;
+
+    const days = Number(match[1]);
+    const expiresAt = new Date(order.orderedAt.getTime() + days * 24 * 3_600_000);
+    if (expiresAt > clockNow) continue;
+
+    await db.order.update({ where: { id: order.id }, data: { status: "DISCONTINUED", discontinuedAt: expiresAt } });
+    await logAudit({
+      userId: order.orderedByUserId,
+      action: "auto_discontinue_prescription",
+      targetType: "Order",
+      targetId: order.id,
+      detail: { expiresAt },
+    });
+  }
 }
 
 // 遅延型オーダーのうち反映時刻を過ぎたものを「結果あり」に更新し、通知を発行する。
@@ -440,13 +498,22 @@ export async function reconcileCaseResults(caseId: string): Promise<void> {
 
   const casePathogenId = findCasePathogenId(caseRecord.diseaseLinks);
   const pathogen = casePathogenId ? await loadPathogenProfile(casePathogenId) : null;
+  const relevantSites = findCaseRelevantSpecimenSites(caseRecord.diseaseLinks);
+  // 検体部位が症例にとって妥当な注文だけに原因菌を反映する。部位不一致の注文は「原因菌未割り当て」と
+  // 同じフォールバック経路（LabItemMaster.sampleResult表示）に合流させる。
+  const effectivePathogenFor = (labItem: { specimenSite: string | null } | null) =>
+    isSpecimenSiteRelevant(relevantSites, labItem?.specimenSite ?? null) ? pathogen : null;
   // 通常検査(非培養)の最終結果解決にのみ必要。培養系は原因菌モデルベースでオーダー履歴を見ないため省略可。
   const needsTreatmentOrders = dueFinal.some((o) => !o.labItem?.isCulture);
   const treatmentOrders = needsTreatmentOrders ? await loadTreatmentOrders(caseId) : [];
   const drugEffectRules = needsTreatmentOrders ? await loadDrugEffectRules() : [];
 
   for (const order of duePrelim) {
-    const text = resolveCulturePreliminaryResult(pathogen, order.labItem?.sampleResult ?? null);
+    const text = resolveCulturePreliminaryResult(
+      effectivePathogenFor(order.labItem),
+      order.labItem?.sampleResult ?? null,
+      order.labItem?.microbiologyKind ?? null
+    );
     await db.order.update({ where: { id: order.id }, data: { status: "RESULT_PRELIMINARY", resultText: text } });
     await db.notification.create({
       data: { userId: order.orderedByUserId, caseId, message: `${order.label} の速報結果が出ました。` },
@@ -456,7 +523,10 @@ export async function reconcileCaseResults(caseId: string): Promise<void> {
   for (const order of dueFinal) {
     let result: LabResult;
     if (order.labItem?.isCulture) {
-      result = { text: resolveCultureFinalResult(pathogen, order.labItem.sampleResult), values: null };
+      result = {
+        text: resolveCultureFinalResult(effectivePathogenFor(order.labItem), order.labItem.sampleResult, order.labItem.microbiologyKind),
+        values: null,
+      };
     } else {
       const atTime = order.resultReadyAt ?? new Date();
       result = await resolveLabResultForCase(caseRecord, treatmentOrders, drugEffectRules, order.labItem, atTime);
@@ -705,6 +775,19 @@ export async function getCurrentPrimarySeverity(caseId: string): Promise<number 
   return computeCaseSeverityAtTime(primaryLink, treatmentOrders, config, clockNow);
 }
 
+// 症例の全病態（主病態以外も含む）について、現在時刻における重症度を計算する。
+// 教員・管理者向けの病態管理UI（重症度の一覧表示）用。
+export async function getDiseaseLinkSeverities(caseId: string): Promise<Map<string, number | null>> {
+  const caseRecord = await loadCaseForEngine(caseId);
+  if (!caseRecord) return new Map();
+  const treatmentOrders = await loadTreatmentOrders(caseId);
+  const clockNow = getCaseClockNow(caseRecord);
+  const contributions = await loadDiseaseContributionsAt(caseRecord.diseaseLinks, treatmentOrders, clockNow);
+  const severities = new Map<string, number | null>(caseRecord.diseaseLinks.map((l) => [l.id, null]));
+  for (const c of contributions) severities.set(c.link.id, c.severity);
+  return severities;
+}
+
 async function notifyAssignedStudents(caseId: string, message: string): Promise<void> {
   const assignments = await db.caseAssignment.findMany({
     where: { caseId, dischargedAt: null },
@@ -715,6 +798,7 @@ async function notifyAssignedStudents(caseId: string, message: string): Promise<
 }
 
 export async function reconcileCase(caseId: string): Promise<void> {
+  await reconcileExpiredPrescriptions(caseId);
   await reconcileCaseResults(caseId);
   await reconcileCaseCrisis(caseId);
   await reconcileCaseVitals(caseId);

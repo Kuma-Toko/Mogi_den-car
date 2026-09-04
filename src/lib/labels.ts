@@ -84,6 +84,8 @@ export const auditActionLabel: Record<string, string> = {
   master_template_create: "病態テンプレートを登録",
   master_template_update: "病態テンプレートを更新",
   master_template_delete: "病態テンプレートを削除",
+  auto_discontinue_prescription: "処方を自動中止（日数超過）",
+  order_edit_rp: "処方・注射オーダーを編集",
 };
 
 export const auditTargetTypeLabel: Record<string, string> = {

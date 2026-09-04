@@ -108,12 +108,19 @@ export function OrderCard({
               if (item.kind === "MEDICATION_RP" || item.kind === "INJECTION_RP") {
                 const rpNumber = rpNumberFor(cart, i);
                 const typeLabel = orderTypeLabel[item.kind === "INJECTION_RP" ? "INJECTION" : "MEDICATION"];
-                const shared = item.kind === "INJECTION_RP" ? item.rate : item.instruction;
+                const shared =
+                  item.kind === "INJECTION_RP"
+                    ? [item.rate, item.startTime].filter(Boolean).join("　")
+                    : item.instruction;
+                const subTag =
+                  item.kind === "INJECTION_RP"
+                    ? item.administrationType
+                    : [item.dosingType, item.duration].filter(Boolean).join("・");
                 return (
                   <div className="order-item rp-cart-item" key={i}>
                     <div>
                       <div className="name">
-                        Rp.{rpNumber}（{typeLabel}）
+                        Rp.{rpNumber}（{typeLabel}）　{subTag}
                       </div>
                       {item.drugs.map((d, di) => (
                         <div className="sub" key={di}>

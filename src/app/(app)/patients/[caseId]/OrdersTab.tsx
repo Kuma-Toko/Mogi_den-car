@@ -4,6 +4,7 @@ import { orderStatusBadgeClass, orderStatusLabel, orderTypeLabel } from "@/lib/l
 import { packageInsertSearchUrl } from "@/lib/packageInsert";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { OrderCard } from "./OrderCard";
+import { EditRpDialog } from "./EditRpDialog";
 import { discontinueOrder } from "./actions";
 
 const DRUG_ORDER_TYPES = new Set(["MEDICATION", "INJECTION"]);
@@ -11,10 +12,31 @@ const DRUG_ORDER_TYPES = new Set(["MEDICATION", "INJECTION"]);
 type OrderRow = Awaited<ReturnType<typeof loadOrders>>[number];
 
 function loadOrders(caseId: string) {
-  return db.order.findMany({ where: { caseId }, orderBy: { orderedAt: "desc" } });
+  return db.order.findMany({
+    where: { caseId },
+    orderBy: { orderedAt: "desc" },
+    include: { drug: { select: { name: true } } },
+  });
 }
 
-type OrderDetail = { comment?: string; instruction?: string; rate?: string; note?: string };
+type OrderDetail = {
+  comment?: string;
+  instruction?: string;
+  rate?: string;
+  note?: string;
+  count?: string;
+  dosingType?: string;
+  duration?: string;
+  administrationType?: string;
+  startTime?: string;
+};
+
+// countは"${qty}${unit}"の形式でDrugOrderDialog.tsxが生成しているため、先頭の数値と単位に分解する。
+function splitCount(count: string | undefined): { qty: string; unit: string } {
+  if (!count) return { qty: "", unit: "" };
+  const m = count.match(/^(\d+(?:\.\d+)?)(.*)$/);
+  return m ? { qty: m[1], unit: m[2] } : { qty: "", unit: "" };
+}
 
 function parseDetail(detail: string | null): OrderDetail {
   if (!detail) return {};
@@ -78,12 +100,20 @@ export async function OrdersTab({ caseId }: { caseId: string }) {
             groups.map((group) => {
               const first = group[0];
               if (first.rpGroupId) {
-                const { instruction, rate, comment } = parseDetail(first.detail);
-                const shared = rate || instruction;
+                const { instruction, rate, comment, dosingType, duration, administrationType, startTime } = parseDetail(
+                  first.detail
+                );
+                const shared =
+                  first.orderType === "INJECTION" ? [rate, startTime].filter(Boolean).join("　") : instruction;
+                const subTag =
+                  first.orderType === "INJECTION"
+                    ? administrationType
+                    : [dosingType, duration].filter(Boolean).join("・");
                 return (
                   <div className="rp-block" key={first.rpGroupId}>
                     <div className="rp-block-h">
                       {first.rpLabel}（{orderTypeLabel[first.orderType]}）　{formatJaDateTimeShort(first.orderedAt)}
+                      {subTag && <>　{subTag}</>}
                     </div>
                     {group.map((o) => {
                       const { note } = parseDetail(o.detail);
@@ -112,6 +142,28 @@ export async function OrdersTab({ caseId }: { caseId: string }) {
                     })}
                     {(shared || comment) && (
                       <div className="rp-instruction">{[shared, comment].filter(Boolean).join("　/　")}</div>
+                    )}
+                    {DRUG_ORDER_TYPES.has(first.orderType) && group.every((o) => !o.discontinuedAt) && (
+                      <div style={{ marginTop: 6 }}>
+                        <EditRpDialog
+                          caseId={caseId}
+                          rpGroupId={first.rpGroupId}
+                          orderType={first.orderType as "MEDICATION" | "INJECTION"}
+                          rpLabel={first.rpLabel ?? orderTypeLabel[first.orderType]}
+                          lines={group.map((o) => {
+                            const d = parseDetail(o.detail);
+                            const { qty, unit } = splitCount(d.count);
+                            return { orderId: o.id, drugLabel: o.drug?.name ?? o.label, qty, unit, note: d.note ?? "" };
+                          })}
+                          instruction={instruction ?? ""}
+                          dosingType={(dosingType as "定期" | "頓用") ?? "定期"}
+                          duration={duration ?? ""}
+                          administrationType={(administrationType as "単回静注" | "持続点滴") ?? "単回静注"}
+                          rate={rate ?? ""}
+                          startTime={startTime ?? ""}
+                          comment={comment ?? ""}
+                        />
+                      </div>
                     )}
                   </div>
                 );

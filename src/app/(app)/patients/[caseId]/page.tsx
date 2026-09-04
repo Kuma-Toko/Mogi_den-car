@@ -12,6 +12,7 @@ import { OrdersTab } from "./OrdersTab";
 import { ResultsTab } from "./ResultsTab";
 import { VitalsTab } from "./VitalsTab";
 import { SimTimeControl } from "./SimTimeControl";
+import { DischargeTab } from "./DischargeTab";
 
 const TABS = [
   { key: "summary", label: "サマリ" },
@@ -21,20 +22,26 @@ const TABS = [
   { key: "orders", label: "オーダー" },
   { key: "results", label: "検査結果" },
   { key: "vitals", label: "バイタル・経過" },
+  { key: "discharge", label: "退院" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
+
+const ERROR_MESSAGES: Record<string, string> = {
+  last_disease: "症例には最低1件の病態が必要なため、最後の病態は削除できません。",
+};
 
 export default async function CaseDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ caseId: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; error?: string }>;
 }) {
   const { caseId } = await params;
-  const { tab: tabParam } = await searchParams;
-  const { case: caseRecord } = await requireCaseAccess(caseId);
+  const { tab: tabParam, error } = await searchParams;
+  const { user, case: caseRecord } = await requireCaseAccess(caseId);
+  const canManage = user.role !== "STUDENT";
 
   await reconcileCase(caseId);
 
@@ -67,6 +74,11 @@ export default async function CaseDetailPage({
         </div>
       </div>
       <div className="content">
+        {error && ERROR_MESSAGES[error] && (
+          <div className="banner-error" style={{ marginBottom: 14 }}>
+            {ERROR_MESSAGES[error]}
+          </div>
+        )}
         {crisisCaseRecord && crisisCaseRecord.crisisState !== "STABLE" && (
           <CrisisBanner
             crisisState={crisisCaseRecord.crisisState}
@@ -95,7 +107,7 @@ export default async function CaseDetailPage({
           ))}
         </div>
 
-        {tab === "summary" && <SummaryTab caseId={caseId} />}
+        {tab === "summary" && <SummaryTab caseId={caseId} canManageDiseases={canManage} />}
         {tab === "karte" && <KarteTab caseId={caseId} />}
         {tab === "karte-entry" && (
           <div className="split">
@@ -107,6 +119,9 @@ export default async function CaseDetailPage({
         {tab === "orders" && <OrdersTab caseId={caseId} />}
         {tab === "results" && <ResultsTab caseId={caseId} />}
         {tab === "vitals" && <VitalsTab caseId={caseId} />}
+        {tab === "discharge" && (
+          <DischargeTab caseId={caseId} currentUserId={user.id} currentUserRole={user.role} />
+        )}
       </div>
     </>
   );

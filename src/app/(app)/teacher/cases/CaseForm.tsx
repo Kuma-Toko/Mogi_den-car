@@ -11,6 +11,7 @@ import {
 } from "@/lib/physiology";
 import { PhysiologySliders } from "@/components/PhysiologySliders";
 import { caseTypeLabel } from "@/lib/labels";
+import { SPECIMEN_SITE_LABELS } from "@/lib/infection-engine";
 import type { CaseStatus, CaseType, CrisisMode } from "@prisma/client";
 
 type Template = {
@@ -43,6 +44,7 @@ export type CaseFormInitial = {
   crisisMode: CrisisMode;
   physiologyParamsByTemplate: Record<string, PhysiologyParams>;
   pathogenIdByTemplate: Record<string, string>;
+  relevantSpecimenSitesByTemplate: Record<string, string[] | null>;
   assigneeLoginIds: string;
 };
 
@@ -86,6 +88,26 @@ export function CaseForm({
   const [pathogenIdByTemplate, setPathogenIdByTemplate] = useState<Record<string, string>>(
     () => initial?.pathogenIdByTemplate ?? {}
   );
+  // 感染症エンジン: 検体部位の制限。キーが存在しない(undefined)＝制限なし（既存挙動）。
+  // キーが存在し配列（空配列も含む）＝その検体部位のみで原因菌を開示する。
+  const [relevantSpecimenSitesByTemplate, setRelevantSpecimenSitesByTemplate] = useState<Record<string, string[] | null>>(
+    () => initial?.relevantSpecimenSitesByTemplate ?? {}
+  );
+  function toggleSiteRestriction(templateId: string, enabled: boolean) {
+    setRelevantSpecimenSitesByTemplate((prev) => {
+      const next = { ...prev };
+      if (enabled) next[templateId] = prev[templateId] ?? [];
+      else delete next[templateId];
+      return next;
+    });
+  }
+  function toggleSite(templateId: string, site: string) {
+    setRelevantSpecimenSitesByTemplate((prev) => {
+      const current = prev[templateId] ?? [];
+      const nextSites = current.includes(site) ? current.filter((s) => s !== site) : [...current, site];
+      return { ...prev, [templateId]: nextSites };
+    });
+  }
 
   const formRef = useRef<HTMLFormElement>(null);
   const [copiedKind, setCopiedKind] = useState<"history" | "exam" | null>(null);
@@ -312,6 +334,31 @@ ${context}
                       <div style={{ fontSize: 11, color: "var(--ink-soft)", marginTop: 4 }}>
                         設定すると、培養系検査（血液培養等）がこの原因菌に基づく速報→確定の2段階結果（感受性検査つき）を返すようになります。
                       </div>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 12 }}>
+                        <input
+                          type="checkbox"
+                          name={`tpl_${t.id}_specimenSiteRestricted`}
+                          checked={relevantSpecimenSitesByTemplate[t.id] != null}
+                          onChange={(e) => toggleSiteRestriction(t.id, e.target.checked)}
+                        />
+                        特定の検体でのみ検出されるようにする（未設定＝どの培養系検査でも原因菌を開示）
+                      </label>
+                      {relevantSpecimenSitesByTemplate[t.id] != null && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", marginTop: 6, paddingLeft: 4 }}>
+                          {Object.entries(SPECIMEN_SITE_LABELS).map(([site, label]) => (
+                            <label key={site} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+                              <input
+                                type="checkbox"
+                                name={`tpl_${t.id}_relevantSpecimenSites`}
+                                value={site}
+                                checked={(relevantSpecimenSitesByTemplate[t.id] ?? []).includes(site)}
+                                onChange={() => toggleSite(t.id, site)}
+                              />
+                              {label}
+                            </label>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                   <PhysiologySliders

@@ -3,9 +3,10 @@ import { db } from "@/lib/db";
 import { formatJaDateTime } from "@/lib/format";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { loadEngineLinkedLabCodes } from "@/lib/engine";
+import { SPECIMEN_SITE_LABELS, MICROBIOLOGY_KIND_LABELS } from "@/lib/infection-engine";
 import { createLabItem, deleteLabItem, updateLabItem } from "./actions";
 
-const COLS = "0.9fr 1.3fr 1fr 1fr 0.6fr 0.6fr 1.8fr auto";
+const COLS = "0.9fr 1.3fr 1fr 1fr 0.6fr 0.6fr 0.9fr 0.9fr 1.8fr auto";
 
 export default async function AdminLabItemsPage({
   searchParams,
@@ -49,6 +50,8 @@ export default async function AdminLabItemsPage({
               <div>サブカテゴリ</div>
               <div>単位</div>
               <div>培養</div>
+              <div>検体部位</div>
+              <div>検査方式</div>
               <div>模擬結果文（既定）</div>
               <div></div>
             </div>
@@ -69,6 +72,24 @@ export default async function AdminLabItemsPage({
                 <label style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 0" }} title="感染症エンジンの多段階培養結果(速報→確定)の対象にする">
                   <input type="checkbox" name="isCulture" defaultChecked={item.isCulture} />
                 </label>
+                <select name="specimenSite" defaultValue={item.specimenSite ?? ""} title="検体採取部位（培養系検査のみ使用）">
+                  <option value="">（部位を問わない）</option>
+                  {Object.entries(SPECIMEN_SITE_LABELS).map(([site, label]) => (
+                    <option key={site} value={site}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <select name="microbiologyKind" defaultValue={item.microbiologyKind ?? ""} title="検査方式（培養系検査のみ使用）">
+                  <option value="">（既定・一般細菌）</option>
+                  {Object.entries(MICROBIOLOGY_KIND_LABELS)
+                    .filter(([kind]) => kind !== "GENERAL")
+                    .map(([kind, label]) => (
+                      <option key={kind} value={kind}>
+                        {label}
+                      </option>
+                    ))}
+                </select>
                 <input name="sampleResult" defaultValue={item.sampleResult ?? ""} />
                 <div className="actions">
                   <button type="submit" className="btn">
@@ -116,6 +137,30 @@ export default async function AdminLabItemsPage({
                   <input type="checkbox" name="isCulture" />
                   培養系検査（感染症エンジンの多段階結果開示の対象にする）
                 </label>
+              </div>
+              <div className="field">
+                <label htmlFor="specimenSite">検体部位（培養系検査のみ・任意）</label>
+                <select id="specimenSite" name="specimenSite" defaultValue="">
+                  <option value="">（部位を問わない）</option>
+                  {Object.entries(SPECIMEN_SITE_LABELS).map(([site, label]) => (
+                    <option key={site} value={site}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="microbiologyKind">検査方式（培養系検査のみ・任意）</label>
+                <select id="microbiologyKind" name="microbiologyKind" defaultValue="">
+                  <option value="">（既定・一般細菌）</option>
+                  {Object.entries(MICROBIOLOGY_KIND_LABELS)
+                    .filter(([kind]) => kind !== "GENERAL")
+                    .map(([kind, label]) => (
+                      <option key={kind} value={kind}>
+                        {label}
+                      </option>
+                    ))}
+                </select>
               </div>
               <div className="field" style={{ gridColumn: "1 / -1" }}>
                 <label htmlFor="sampleResult">模擬結果文（既定・任意）</label>

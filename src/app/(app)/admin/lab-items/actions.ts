@@ -15,6 +15,8 @@ function readFields(formData: FormData) {
     unit: String(formData.get("unit") ?? "").trim() || null,
     sampleResult: String(formData.get("sampleResult") ?? "").trim() || null,
     isCulture: formData.get("isCulture") === "on",
+    specimenSite: String(formData.get("specimenSite") ?? "").trim() || null,
+    microbiologyKind: String(formData.get("microbiologyKind") ?? "").trim() || null,
   };
 }
 

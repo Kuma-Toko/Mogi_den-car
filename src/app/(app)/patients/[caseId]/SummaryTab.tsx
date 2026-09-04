@@ -1,6 +1,10 @@
 import { db } from "@/lib/db";
 import { formatJaDateTimeShort } from "@/lib/format";
 import { karteEntryTypeBadgeClass, karteEntryTypeLabel, orderStatusBadgeClass, orderStatusLabel, orderTypeLabel } from "@/lib/labels";
+import { getDiseaseLinkSeverities } from "@/lib/engine";
+import { getSeverityTier, type SeverityTier } from "@/lib/physiology-engine";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { updateDiseaseLinkSeverity, deleteDiseaseLink } from "./actions";
 
 function scoreBadgeClass(score: number): string {
   if (score >= 70) return "teal";
@@ -8,15 +12,22 @@ function scoreBadgeClass(score: number): string {
   return "red";
 }
 
-export async function SummaryTab({ caseId }: { caseId: string }) {
-  const [problems, latestNote, recentOrders, evaluations] = await Promise.all([
+const TIER_LABEL: Record<SeverityTier, string> = { mild: "軽症", moderate: "中等症", severe: "重症" };
+
+export async function SummaryTab({ caseId, canManageDiseases }: { caseId: string; canManageDiseases: boolean }) {
+  const [problems, latestNote, recentOrders, evaluations, diseaseLinks, severities] = await Promise.all([
     db.problem.findMany({ where: { caseId }, orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }] }),
     db.karteEntry.findFirst({ where: { caseId }, orderBy: { createdAt: "desc" }, include: { author: true } }),
     db.order.findMany({ where: { caseId }, orderBy: { orderedAt: "desc" }, take: 5 }),
     db.treatmentEvaluation.findMany({ where: { caseId, status: "COMPLETED" }, orderBy: { completedAt: "desc" }, take: 5 }),
+    canManageDiseases
+      ? db.caseDiseaseLink.findMany({ where: { caseId }, include: { template: true }, orderBy: { sortOrder: "asc" } })
+      : Promise.resolve([]),
+    canManageDiseases ? getDiseaseLinkSeverities(caseId) : Promise.resolve(new Map<string, number | null>()),
   ]);
 
   return (
+    <>
     <div className="split">
       <div className="card">
         <div className="card-h">プロブレムリスト</div>
@@ -115,5 +126,78 @@ export async function SummaryTab({ caseId }: { caseId: string }) {
         )}
       </div>
     </div>
+
+    {canManageDiseases && (
+      <div className="card">
+        <div className="card-h">病態の管理（教員・管理者のみ）</div>
+        <div className="card-b">
+          {diseaseLinks.length === 0 ? (
+            <div className="empty-note">病態が登録されていません。</div>
+          ) : (
+            diseaseLinks.map((link) => {
+              const severity = severities.get(link.id) ?? null;
+              const tier = severity !== null ? getSeverityTier(severity) : null;
+              return (
+                <div
+                  key={link.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    flexWrap: "wrap",
+                    padding: "8px 0",
+                    borderBottom: "1px solid var(--line-soft)",
+                  }}
+                >
+                  <span style={{ fontSize: 12.5, fontWeight: 600, minWidth: 140 }}>
+                    {link.template.name}
+                    {link.isPrimary && (
+                      <span className="badge teal" style={{ marginLeft: 6, fontSize: 10 }}>
+                        主病態
+                      </span>
+                    )}
+                  </span>
+                  <span style={{ fontSize: 12, color: "var(--ink-soft)", minWidth: 90 }}>
+                    {severity !== null && tier ? `重症度 ${Math.round(severity)}（${TIER_LABEL[tier]}）` : "重症度 —"}
+                  </span>
+                  <form
+                    action={updateDiseaseLinkSeverity.bind(null, caseId, link.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    <input
+                      type="number"
+                      name="severity"
+                      min={0}
+                      max={100}
+                      defaultValue={severity !== null ? Math.round(severity) : 50}
+                      style={{ width: 64 }}
+                    />
+                    <button type="submit" className="btn" style={{ fontSize: 11, padding: "4px 8px" }}>
+                      重症度を変更
+                    </button>
+                  </form>
+                  {diseaseLinks.length > 1 ? (
+                    <form>
+                      <ConfirmButton
+                        formAction={deleteDiseaseLink.bind(null, caseId, link.id)}
+                        confirmText={`「${link.template.name}」を削除しますか？`}
+                        className="btn ghost"
+                        actionLabel="削除する"
+                        actionClassName="btn danger"
+                      >
+                        削除
+                      </ConfirmButton>
+                    </form>
+                  ) : (
+                    <span style={{ fontSize: 11, color: "var(--ink-soft)" }}>最後の病態のため削除できません</span>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    )}
+    </>
   );
 }

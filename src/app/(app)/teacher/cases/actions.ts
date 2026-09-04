@@ -63,6 +63,7 @@ function readCaseFields(formData: FormData) {
     .filter(Boolean);
   const physiologyParamsByTemplate: Record<string, PhysiologyParams> = {};
   const pathogenIdByTemplate: Record<string, string | null> = {};
+  const relevantSpecimenSitesByTemplate: Record<string, string[] | null> = {};
   for (const templateId of diseaseTemplateIds) {
     physiologyParamsByTemplate[templateId] = {
       initialTempSlider: Number(formData.get(`tpl_${templateId}_initialTempSlider`) ?? 50),
@@ -71,6 +72,11 @@ function readCaseFields(formData: FormData) {
       severitySlider: Number(formData.get(`tpl_${templateId}_severitySlider`) ?? 50),
     };
     pathogenIdByTemplate[templateId] = String(formData.get(`tpl_${templateId}_pathogenId`) ?? "").trim() || null;
+    // 検体部位制限: チェックボックスがONのときだけ配列（空配列もありうる）、OFFならnull（=制限なし、既存挙動）。
+    const specimenSiteRestricted = formData.get(`tpl_${templateId}_specimenSiteRestricted`) != null;
+    relevantSpecimenSitesByTemplate[templateId] = specimenSiteRestricted
+      ? formData.getAll(`tpl_${templateId}_relevantSpecimenSites`).map((v) => String(v))
+      : null;
   }
 
   return {
@@ -93,6 +99,7 @@ function readCaseFields(formData: FormData) {
     assigneeLoginIds,
     physiologyParamsByTemplate,
     pathogenIdByTemplate,
+    relevantSpecimenSitesByTemplate,
   };
 }
 
@@ -135,6 +142,7 @@ export async function createCase(formData: FormData) {
     assigneeLoginIds,
     physiologyParamsByTemplate,
     pathogenIdByTemplate,
+    relevantSpecimenSitesByTemplate,
   } = readCaseFields(formData);
 
   if (!title || !patientName) return;
@@ -179,6 +187,8 @@ export async function createCase(formData: FormData) {
           isPrimary: templateId === primaryTemplateId,
           physiologyParams: JSON.stringify(physiologyParamsByTemplate[templateId]),
           pathogenId: pathogenIdByTemplate[templateId] ?? null,
+          relevantSpecimenSites:
+            relevantSpecimenSitesByTemplate[templateId] != null ? JSON.stringify(relevantSpecimenSitesByTemplate[templateId]) : null,
           sortOrder: i,
         })),
       });
@@ -237,6 +247,7 @@ export async function updateCase(caseId: string, formData: FormData) {
     assigneeLoginIds,
     physiologyParamsByTemplate,
     pathogenIdByTemplate,
+    relevantSpecimenSitesByTemplate,
   } = readCaseFields(formData);
   // 区分（caseType）はcaseCode採番・時間進行モードと結びついているため作成後は変更不可。
 
@@ -280,16 +291,20 @@ export async function updateCase(caseId: string, formData: FormData) {
       const isPrimary = templateId === primaryTemplateId;
       const physiologyParamsJson = JSON.stringify(physiologyParamsByTemplate[templateId]);
       const pathogenId = pathogenIdByTemplate[templateId] ?? null;
+      const relevantSpecimenSites =
+        relevantSpecimenSitesByTemplate[templateId] != null ? JSON.stringify(relevantSpecimenSitesByTemplate[templateId]) : null;
       await tx.caseDiseaseLink.upsert({
         where: { caseId_templateId: { caseId, templateId } },
-        // update()はスカラーFKを受け付けないため（[[project_mogi_dencal_prisma7_notes]]参照）nested syntaxを使う
+        // update()はスカラーFKを受け付けないため（[[project_mogi_dencal_prisma7_notes]]参照）pathogenIdのみnested syntaxを使う。
+        // relevantSpecimenSitesはFKではない素のString列なのでスカラーのまま渡せる。
         update: {
           isPrimary,
           physiologyParams: physiologyParamsJson,
+          relevantSpecimenSites,
           sortOrder: i,
           pathogen: pathogenId ? { connect: { id: pathogenId } } : { disconnect: true },
         },
-        create: { caseId, templateId, isPrimary, physiologyParams: physiologyParamsJson, pathogenId, sortOrder: i },
+        create: { caseId, templateId, isPrimary, physiologyParams: physiologyParamsJson, pathogenId, relevantSpecimenSites, sortOrder: i },
       });
     }
 

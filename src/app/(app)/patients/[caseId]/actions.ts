@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 import { refresh, revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireCaseAccess } from "@/lib/case-access";
 import { normalizeDrugName } from "@/lib/drugName";
@@ -17,8 +18,8 @@ import {
   reconcileCase,
   resolveLabResult,
 } from "@/lib/engine";
-import { getCaseClockNow } from "@/lib/physiology-engine";
-import { CULTURE_FINAL_DELAY_HOURS, CULTURE_PRELIMINARY_DELAY_HOURS } from "@/lib/infection-engine";
+import { getCaseClockNow, parsePhysiologyParams } from "@/lib/physiology-engine";
+import { getCultureDelayHours } from "@/lib/infection-engine";
 
 // 紹介状（診療情報提供書）の構造化項目。KarteEntry.detailにJSON文字列として保存する。
 export type ReferralDetail = {
@@ -152,8 +153,22 @@ export type ImagingContext = {
 
 export type CartItem =
   | { kind: "LAB"; labItemId: string; label: string; imaging?: ImagingContext }
-  | { kind: "MEDICATION_RP"; drugs: RpDrugLine[]; instruction: string; comment: string }
-  | { kind: "INJECTION_RP"; drugs: RpDrugLine[]; rate: string; comment: string }
+  | {
+      kind: "MEDICATION_RP";
+      drugs: RpDrugLine[];
+      instruction: string;
+      dosingType: "定期" | "頓用";
+      duration: string;
+      comment: string;
+    }
+  | {
+      kind: "INJECTION_RP";
+      drugs: RpDrugLine[];
+      administrationType: "単回静注" | "持続点滴";
+      rate: string;
+      startTime: string;
+      comment: string;
+    }
   | { kind: "GENERAL"; category: string; selection: string; comment: string }
   | { kind: "PROCEDURE"; category: string; selection: string; comment: string };
 
@@ -313,6 +328,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
         // 感染症エンジン: 原因菌が割り当てられた症例の培養系検査は、症例のIMMEDIATE/DELAYED設定を無視して
         // 常に多段階(速報→確定)の現実的な培養日数で結果を反映する（immediateでも即時結果は返さない）。
         const useCultureTiming = labItem.isCulture && !!casePathogenId;
+        const cultureDelay = useCultureTiming ? getCultureDelayHours(labItem.microbiologyKind) : null;
         const result = immediate && !useCultureTiming ? resolveLabResult(labContributions, labItem, labDrugEffects ?? undefined) : null;
 
         await tx.order.create({
@@ -333,11 +349,11 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
               : null,
             status: useCultureTiming ? "RESULT_PENDING" : immediate ? "RESULT_AVAILABLE" : "RESULT_PENDING",
             orderedAt,
-            preliminaryResultReadyAt: useCultureTiming
-              ? new Date(orderedAt.getTime() + CULTURE_PRELIMINARY_DELAY_HOURS * 3_600_000)
+            preliminaryResultReadyAt: cultureDelay
+              ? new Date(orderedAt.getTime() + cultureDelay.preliminary * 3_600_000)
               : null,
-            resultReadyAt: useCultureTiming
-              ? new Date(orderedAt.getTime() + CULTURE_FINAL_DELAY_HOURS * 3_600_000)
+            resultReadyAt: cultureDelay
+              ? new Date(orderedAt.getTime() + cultureDelay.final * 3_600_000)
               : resultReadyAt,
             resultText: result?.text ?? null,
             resultValues: result?.values ? JSON.stringify(result.values) : null,
@@ -354,6 +370,8 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
         const rpGroupId = crypto.randomUUID();
         const rpLabel = `Rp.${++rpCounters.MEDICATION}`;
         const instruction = item.instruction.trim();
+        const dosingType = item.dosingType;
+        const duration = item.duration.trim();
         const comment = item.comment.trim();
 
         for (const line of item.drugs) {
@@ -378,6 +396,8 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
                 count: count || undefined,
                 note: note || undefined,
                 instruction: instruction || undefined,
+                dosingType,
+                duration: duration || undefined,
                 comment: comment || undefined,
               }),
               status: "ADMINISTERED",
@@ -389,7 +409,9 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
         if (item.drugs.length === 0) continue;
         const rpGroupId = crypto.randomUUID();
         const rpLabel = `Rp.${++rpCounters.INJECTION}`;
+        const administrationType = item.administrationType;
         const rate = item.rate.trim();
+        const startTime = item.startTime.trim();
         const comment = item.comment.trim();
 
         for (const line of item.drugs) {
@@ -413,7 +435,9 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
                 route: drug.route,
                 count: count || undefined,
                 note: note || undefined,
+                administrationType,
                 rate: rate || undefined,
+                startTime: startTime || undefined,
                 comment: comment || undefined,
               }),
               status: "ADMINISTERED",
@@ -516,6 +540,94 @@ export async function discontinueOrder(caseId: string, orderId: string) {
   revalidatePath(`/patients/${caseId}`);
 }
 
+export type UpdateRpLinePayload = { orderId: string; countQty: string; countUnit: string; note: string };
+
+export type UpdateDrugOrderRpPayload =
+  | {
+      orderType: "MEDICATION";
+      instruction: string;
+      dosingType: "定期" | "頓用";
+      duration: string;
+      comment: string;
+      lines: UpdateRpLinePayload[];
+    }
+  | {
+      orderType: "INJECTION";
+      administrationType: "単回静注" | "持続点滴";
+      rate: string;
+      startTime: string;
+      comment: string;
+      lines: UpdateRpLinePayload[];
+    };
+
+function parseExistingDetail(json: string | null): Record<string, unknown> {
+  if (!json) return {};
+  try {
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
+}
+
+// 処方・注射Rpの既存項目を値のみ修正する（薬剤の追加・削除は対象外）。中止済みのRpは編集できない。
+export async function updateDrugOrderRp(caseId: string, rpGroupId: string, payload: UpdateDrugOrderRpPayload) {
+  const { user } = await requireCaseAccess(caseId);
+
+  const orders = await db.order.findMany({
+    where: { caseId, rpGroupId },
+    include: { drug: { select: { name: true } } },
+  });
+  if (orders.length === 0) return;
+  if (orders.some((o) => o.orderType !== payload.orderType)) return;
+  if (orders.some((o) => o.discontinuedAt)) return; // 中止済みのRpは編集不可
+
+  const lineMap = new Map(payload.lines.map((l) => [l.orderId, l]));
+  const comment = payload.comment.trim();
+
+  await db.$transaction(async (tx) => {
+    for (const order of orders) {
+      const line = lineMap.get(order.id);
+      if (!line) continue;
+
+      const countQty = line.countQty.trim();
+      const countUnit = line.countUnit.trim();
+      const note = line.note.trim();
+      const count = countQty ? `${countQty}${countUnit}` : "";
+      const drugName = order.drug?.name ?? order.label.split("　")[0];
+      const label = [drugName, count].filter(Boolean).join("　");
+      const existingRoute = (parseExistingDetail(order.detail) as { route?: string }).route;
+
+      const detail =
+        payload.orderType === "MEDICATION"
+          ? {
+              route: existingRoute,
+              count: count || undefined,
+              note: note || undefined,
+              instruction: payload.instruction.trim() || undefined,
+              dosingType: payload.dosingType,
+              duration: payload.duration.trim() || undefined,
+              comment: comment || undefined,
+            }
+          : {
+              route: existingRoute,
+              count: count || undefined,
+              note: note || undefined,
+              administrationType: payload.administrationType,
+              rate: payload.rate.trim() || undefined,
+              startTime: payload.startTime.trim() || undefined,
+              comment: comment || undefined,
+            };
+
+      await tx.order.update({ where: { id: order.id }, data: { label, detail: JSON.stringify(detail) } });
+    }
+  });
+
+  await logAudit({ userId: user.id, action: "order_edit_rp", targetType: "Order", targetId: rpGroupId });
+
+  await reconcileCase(caseId);
+  revalidatePath(`/patients/${caseId}`);
+}
+
 export async function advanceSimTime(caseId: string, hours: number) {
   const { user, case: caseRecord } = await requireCaseAccess(caseId);
   if (caseRecord.timeProgressMode !== "MANUAL") return;
@@ -534,4 +646,98 @@ export async function advanceSimTime(caseId: string, hours: number) {
   });
 
   revalidatePath(`/patients/${caseId}`);
+}
+
+// 教員・管理者が病態（CaseDiseaseLink）の重症度を直接上書きする。危機救命成功時・AI治療評価時と
+// 同じパターンで severityBaselineAt を現在時刻へリセットし、physiologyParams.severitySlider を
+// 新しい値に差し替える。aiSeverityRatePerHour は破棄する（以降は新しい起点から従来の自然経過に戻る）。
+export async function updateDiseaseLinkSeverity(caseId: string, linkId: string, formData: FormData) {
+  const { user, case: caseRecord } = await requireCaseAccess(caseId);
+  if (user.role === "STUDENT") return;
+
+  const link = await db.caseDiseaseLink.findUnique({ where: { id: linkId } });
+  if (!link || link.caseId !== caseId) return;
+
+  const severityRaw = Number(formData.get("severity"));
+  if (!Number.isFinite(severityRaw)) return;
+  const severity = Math.round(Math.min(100, Math.max(0, severityRaw)));
+
+  const params = parsePhysiologyParams(link.physiologyParams);
+  await db.caseDiseaseLink.update({
+    where: { id: linkId },
+    data: {
+      severityBaselineAt: getCaseClockNow(caseRecord),
+      aiSeverityRatePerHour: null,
+      physiologyParams: JSON.stringify({ ...params, severitySlider: severity }),
+    },
+  });
+  await logAudit({
+    userId: user.id,
+    action: "case_disease_severity_override",
+    targetType: "CaseDiseaseLink",
+    targetId: linkId,
+    detail: { severity },
+  });
+
+  await reconcileCase(caseId);
+  revalidatePath(`/patients/${caseId}`);
+}
+
+// 教員・管理者が病態（CaseDiseaseLink）を削除する。症例には最低1件の病態が必要なため、
+// 残り1件のときは削除できない（CaseFormの「病態テンプレートを1つ以上選択」ルールと整合）。
+// 削除対象が主病態だった場合は、残りのうち1件（sortOrder最小）を新たな主病態に昇格させる。
+export async function deleteDiseaseLink(caseId: string, linkId: string) {
+  const { user } = await requireCaseAccess(caseId);
+  if (user.role === "STUDENT") return;
+
+  const links = await db.caseDiseaseLink.findMany({ where: { caseId }, orderBy: { sortOrder: "asc" } });
+  const target = links.find((l) => l.id === linkId);
+  if (!target) return;
+  if (links.length <= 1) {
+    redirect(`/patients/${caseId}?tab=summary&error=last_disease`);
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.caseDiseaseLink.delete({ where: { id: linkId } });
+    if (target.isPrimary) {
+      const next = links.find((l) => l.id !== linkId);
+      if (next) await tx.caseDiseaseLink.update({ where: { id: next.id }, data: { isPrimary: true } });
+    }
+  });
+  await logAudit({ userId: user.id, action: "case_disease_delete", targetType: "CaseDiseaseLink", targetId: linkId });
+
+  await reconcileCase(caseId);
+  revalidatePath(`/patients/${caseId}`);
+}
+
+// 教員・管理者が任意の担当学生の退院/再入院を、症例個別画面から直接操作する
+// （学生自身による dischargeCase/readmitCase は src/app/(app)/patients/actions.ts 参照）。
+export async function dischargeAssignment(caseId: string, studentId: string) {
+  const { user } = await requireCaseAccess(caseId);
+  if (user.role === "STUDENT") return;
+
+  await db.caseAssignment.update({
+    where: { caseId_studentId: { caseId, studentId } },
+    data: { dischargedAt: new Date() },
+  });
+  await logAudit({ userId: user.id, action: "case_discharge", targetType: "Case", targetId: caseId, detail: { studentId } });
+
+  revalidatePath(`/patients/${caseId}`);
+  revalidatePath("/patients");
+  revalidatePath("/patients/discharged");
+}
+
+export async function readmitAssignment(caseId: string, studentId: string) {
+  const { user } = await requireCaseAccess(caseId);
+  if (user.role === "STUDENT") return;
+
+  await db.caseAssignment.update({
+    where: { caseId_studentId: { caseId, studentId } },
+    data: { dischargedAt: null },
+  });
+  await logAudit({ userId: user.id, action: "case_readmit", targetType: "Case", targetId: caseId, detail: { studentId } });
+
+  revalidatePath(`/patients/${caseId}`);
+  revalidatePath("/patients");
+  revalidatePath("/patients/discharged");
 }

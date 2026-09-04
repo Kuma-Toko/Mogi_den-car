@@ -177,11 +177,38 @@ const PATHOGENS: PathogenSeed[] = [
       "オキサセフェム系(セフェム系近縁)": "S",
     },
   },
+  // ── 検体別培養検査の拡張(呼吸器/消化器の特殊検査)向けに追加(抗酸菌塗抹培養・CD毒素・O157) ──
+  {
+    name: "結核菌 (Mycobacterium tuberculosis)",
+    gramStain: null,
+    note: "肺結核の起因菌。細胞壁の脂質(ミコール酸)が厚くグラム染色されず、抗酸菌染色(Ziehl-Neelsen染色)で検出する。培養に数週間を要する(本システムでは圧縮した日数で表現)。標準治療は多剤併用療法(抗結核薬)。",
+    susceptibilities: {
+      "抗結核薬": "S",
+    },
+  },
+  {
+    name: "Clostridioides difficile",
+    gramStain: "グラム陽性桿菌（嫌気性）",
+    note: "抗菌薬関連下痢症・偽膜性大腸炎の起因菌。毒素検出(トキシンB等)で診断し、通常の培養感受性パネルは行わない。治療は経口バンコマイシンまたはメトロニダゾール(データ上はグリコペプチド系=経口投与を想定)。",
+    susceptibilities: {
+      "グリコペプチド系": "S",
+    },
+  },
+  {
+    name: "腸管出血性大腸菌 O157:H7 (Escherichia coli O157:H7)",
+    gramStain: "グラム陰性桿菌",
+    note: "ベロ毒素(志賀毒素)産生性大腸菌。抗菌薬投与は毒素放出を介した溶血性尿毒症症候群(HUS)のリスクを高める可能性があり一般に推奨されない(対症療法が原則)。そのため感受性データは意図的に登録していない。",
+    susceptibilities: {},
+  },
 ];
 
 async function main() {
-  const antibioticCategories = await db.drugCategoryMaster.findMany({ where: { majorCategory: "抗菌薬" } });
-  const categoryIdBySubCategory = new Map(antibioticCategories.map((c) => [c.subCategory, c.id]));
+  // 抗結核薬は結核菌の感受性データ用に含める(loadActiveAntibioticCategories側のフィルタも同様に拡張済み)。
+  const antibioticCategories = await db.drugCategoryMaster.findMany({ where: { majorCategory: { in: ["抗菌薬", "抗結核薬"] } } });
+  // DrugCategoryMasterはsubCategoryがnullの行(大分類のみ、例: 抗結核薬)を持ちうる。
+  // loadPathogenProfile/loadActiveAntibioticCategories側と同じ「subCategory ?? majorCategory」の
+  // 実効名で解決しないとキーが一致しないため、ここでも同じフォールバックを揃える。
+  const categoryIdBySubCategory = new Map(antibioticCategories.map((c) => [c.subCategory ?? c.majorCategory, c.id]));
 
   let pathogensUpserted = 0;
   let susceptibilityRowsUpserted = 0;

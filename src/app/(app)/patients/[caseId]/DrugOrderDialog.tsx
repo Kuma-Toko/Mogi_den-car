@@ -6,16 +6,23 @@ import { orderTypeLabel } from "@/lib/labels";
 import { packageInsertSearchUrl } from "@/lib/packageInsert";
 import { searchDrugs, type CartItem, type DrugSearchResult, type RpDrugLine } from "./actions";
 
-const DOSE_UNITS = ["T", "mg", "g", "mL", "単位", "包"];
+// 処方は錠剤主体のため既定単位はT（錠）、注射はバイアル製剤が多いためV（バイアル）を既定にする。
+const DOSE_UNITS_MEDICATION = ["T", "mg", "g", "mL", "単位", "包"];
+const DOSE_UNITS_INJECTION = ["V", "mg", "g", "mL", "単位", "包"];
+
+const DOSING_TYPES = ["定期", "頓用"] as const;
+const ADMINISTRATION_TYPES = ["単回静注", "持続点滴"] as const;
+const BOLUS_METHODS = ["フラッシュ", "○分かけて"] as const;
+const DRIP_METHODS = ["○mL/hr", "○分かけて", "全開投与"] as const;
 
 // マスターの既定用量（例: "1錠", "2g"）を数量＋単位の入力欄に分解する。「錠」はT表記に正規化する。
-function parseDose(dose: string | null | undefined): { qty: string; unit: string } {
-  if (!dose) return { qty: "", unit: DOSE_UNITS[0] };
+function parseDose(dose: string | null | undefined, units: string[]): { qty: string; unit: string } {
+  if (!dose) return { qty: "", unit: units[0] };
   const m = dose.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
-  if (!m) return { qty: "", unit: DOSE_UNITS[0] };
+  if (!m) return { qty: "", unit: units[0] };
   const qty = m[1];
   const rawUnit = m[2].trim() === "錠" ? "T" : m[2].trim();
-  const unit = DOSE_UNITS.includes(rawUnit) ? rawUnit : DOSE_UNITS[0];
+  const unit = units.includes(rawUnit) ? rawUnit : units[0];
   return { qty, unit };
 }
 
@@ -39,12 +46,32 @@ export function DrugOrderDialog({
   const [results, setResults] = useState<DrugSearchResult[]>([]);
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [instruction, setInstruction] = useState(""); // 処方: 用法・投与方法
-  const [rate, setRate] = useState(""); // 注射・点滴: 投与速度（必須）
   const [comment, setComment] = useState("");
 
+  // 処方（MEDICATION）専用
+  const [dosingType, setDosingType] = useState<(typeof DOSING_TYPES)[number]>("定期");
+  const [durationQty, setDurationQty] = useState("");
+
+  // 注射・点滴（INJECTION）専用
+  const [administrationType, setAdministrationType] = useState<(typeof ADMINISTRATION_TYPES)[number]>("単回静注");
+  const [bolusMethod, setBolusMethod] = useState<(typeof BOLUS_METHODS)[number]>("フラッシュ");
+  const [bolusMinutes, setBolusMinutes] = useState("");
+  const [dripMethod, setDripMethod] = useState<(typeof DRIP_METHODS)[number]>("○mL/hr");
+  const [dripValue, setDripValue] = useState("");
+  const [startNow, setStartNow] = useState(true);
+  const [startTimes, setStartTimes] = useState<string[]>([]);
+
   const isInjection = orderType === "INJECTION";
+  const doseUnits = isInjection ? DOSE_UNITS_INJECTION : DOSE_UNITS_MEDICATION;
   const datalistId = `usage-templates-${orderType}`;
-  const canSubmit = lines.length > 0 && (!isInjection || rate.trim() !== "");
+
+  const rateValid = isInjection
+    ? administrationType === "単回静注"
+      ? bolusMethod === "フラッシュ" || bolusMinutes.trim() !== ""
+      : dripMethod === "全開投与" || dripValue.trim() !== ""
+    : true;
+  const startTimeValid = isInjection ? startNow || startTimes.some((t) => t.trim() !== "") : true;
+  const canSubmit = lines.length > 0 && (isInjection ? rateValid && startTimeValid : durationQty.trim() !== "");
 
   function resetDraft() {
     setQuery("");
@@ -52,8 +79,16 @@ export function DrugOrderDialog({
     setSearched(false);
     setLines([]);
     setInstruction("");
-    setRate("");
     setComment("");
+    setDosingType("定期");
+    setDurationQty("");
+    setAdministrationType("単回静注");
+    setBolusMethod("フラッシュ");
+    setBolusMinutes("");
+    setDripMethod("○mL/hr");
+    setDripValue("");
+    setStartNow(true);
+    setStartTimes([]);
   }
 
   function openDialog() {
@@ -75,7 +110,7 @@ export function DrugOrderDialog({
   }
 
   function addLine(drug: DrugSearchResult) {
-    const parsed = parseDose(drug.defaultDose);
+    const parsed = parseDose(drug.defaultDose, doseUnits);
     setLines((prev) => [
       ...prev,
       {
@@ -102,6 +137,36 @@ export function DrugOrderDialog({
     setLines((prev) => prev.filter((l) => l.key !== key));
   }
 
+  function addTimeRow() {
+    setStartTimes((prev) => [...prev, ""]);
+  }
+
+  function updateTimeRow(index: number, value: string) {
+    setStartTimes((prev) => prev.map((t, i) => (i === index ? value : t)));
+  }
+
+  function removeTimeRow(index: number) {
+    setStartTimes((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function buildRate(): string {
+    if (administrationType === "単回静注") {
+      return bolusMethod === "フラッシュ" ? "フラッシュ" : `${bolusMinutes.trim()}分かけて`;
+    }
+    if (dripMethod === "全開投与") return "全開投与";
+    if (dripMethod === "○分かけて") return `${dripValue.trim()}分かけて`;
+    return `${dripValue.trim()}mL/hr`;
+  }
+
+  function buildStartTime(): string {
+    const parts: string[] = [];
+    if (startNow) parts.push("今から");
+    for (const t of startTimes) {
+      if (t.trim()) parts.push(t.trim());
+    }
+    return parts.length > 0 ? `${parts.join("・")}開始` : "";
+  }
+
   function addRpToCart() {
     if (!canSubmit) return;
     const drugs = lines.map((l) => ({
@@ -111,9 +176,24 @@ export function DrugOrderDialog({
       count: l.countQty.trim() ? `${l.countQty.trim()}${l.countUnit}` : "",
     }));
     if (isInjection) {
-      onAdd({ kind: "INJECTION_RP", drugs, rate: rate.trim(), comment: comment.trim() });
+      onAdd({
+        kind: "INJECTION_RP",
+        drugs,
+        administrationType,
+        rate: buildRate(),
+        startTime: buildStartTime(),
+        comment: comment.trim(),
+      });
     } else {
-      onAdd({ kind: "MEDICATION_RP", drugs, instruction: instruction.trim(), comment: comment.trim() });
+      const duration = durationQty.trim() ? `${durationQty.trim()}${dosingType === "定期" ? "日分" : "回分"}` : "";
+      onAdd({
+        kind: "MEDICATION_RP",
+        drugs,
+        instruction: instruction.trim(),
+        dosingType,
+        duration,
+        comment: comment.trim(),
+      });
     }
     resetDraft();
   }
@@ -217,7 +297,7 @@ export function DrugOrderDialog({
                         placeholder="個数"
                       />
                       <select value={l.countUnit} onChange={(e) => updateLine(l.key, { countUnit: e.target.value })}>
-                        {DOSE_UNITS.map((u) => (
+                        {doseUnits.map((u) => (
                           <option key={u} value={u}>
                             {u}
                           </option>
@@ -241,13 +321,79 @@ export function DrugOrderDialog({
             {lines.length > 0 && isInjection && (
               <>
                 <div className="field" style={{ marginTop: 10, marginBottom: 10 }}>
-                  <label>投与速度（必須、Rp共通）</label>
-                  <input
-                    value={rate}
-                    onChange={(e) => setRate(e.target.value)}
-                    placeholder="例: 30分かけて投与、または100mL/hr"
-                  />
+                  <label>投与方法</label>
+                  <div className="radio2">
+                    {ADMINISTRATION_TYPES.map((t) => (
+                      <div key={t} className={administrationType === t ? "on" : ""} onClick={() => setAdministrationType(t)}>
+                        {t}
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                {administrationType === "単回静注" ? (
+                  <div className="field" style={{ marginBottom: 10 }}>
+                    <label>投与速度（必須）</label>
+                    <div className="radio2">
+                      {BOLUS_METHODS.map((m) => (
+                        <div key={m} className={bolusMethod === m ? "on" : ""} onClick={() => setBolusMethod(m)}>
+                          {m}
+                        </div>
+                      ))}
+                    </div>
+                    {bolusMethod === "○分かけて" && (
+                      <input
+                        style={{ marginTop: 6, width: 120 }}
+                        value={bolusMinutes}
+                        onChange={(e) => setBolusMinutes(e.target.value)}
+                        placeholder="分数（例: 5）"
+                        inputMode="numeric"
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="field" style={{ marginBottom: 10 }}>
+                    <label>投与速度（必須）</label>
+                    <div className="radio2">
+                      {DRIP_METHODS.map((m) => (
+                        <div key={m} className={dripMethod === m ? "on" : ""} onClick={() => setDripMethod(m)}>
+                          {m}
+                        </div>
+                      ))}
+                    </div>
+                    {dripMethod !== "全開投与" && (
+                      <input
+                        style={{ marginTop: 6, width: 120 }}
+                        value={dripValue}
+                        onChange={(e) => setDripValue(e.target.value)}
+                        placeholder={dripMethod === "○mL/hr" ? "例: 100" : "分数（例: 60）"}
+                        inputMode="numeric"
+                      />
+                    )}
+                  </div>
+                )}
+
+                <div className="field" style={{ marginBottom: 10 }}>
+                  <label>開始時刻（必須、1つ以上）</label>
+                  <div style={{ marginBottom: 6 }}>
+                    <label style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 400 }}>
+                      <input type="checkbox" checked={startNow} onChange={(e) => setStartNow(e.target.checked)} />
+                      今から開始する
+                    </label>
+                  </div>
+                  {startTimes.map((t, i) => (
+                    <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                      <input type="time" value={t} onChange={(e) => updateTimeRow(i, e.target.value)} />
+                      <button type="button" className="btn ghost" onClick={() => removeTimeRow(i)}>
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" className="btn ghost" onClick={addTimeRow}>
+                    ＋ 時刻を追加
+                  </button>
+                </div>
+
                 <div className="field" style={{ marginBottom: 10 }}>
                   <label>備考（任意）</label>
                   <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="補足事項があれば入力" />
@@ -258,6 +404,26 @@ export function DrugOrderDialog({
             {lines.length > 0 && !isInjection && (
               <>
                 <div className="field" style={{ marginTop: 10, marginBottom: 10 }}>
+                  <label>用法区分</label>
+                  <div className="radio2">
+                    {DOSING_TYPES.map((t) => (
+                      <div key={t} className={dosingType === t ? "on" : ""} onClick={() => setDosingType(t)}>
+                        {t}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="field" style={{ marginBottom: 10 }}>
+                  <label>{dosingType === "定期" ? "日数" : "回数"}（必須）</label>
+                  <input
+                    style={{ width: 120 }}
+                    value={durationQty}
+                    onChange={(e) => setDurationQty(e.target.value)}
+                    placeholder={dosingType === "定期" ? "例: 5" : "例: 10"}
+                    inputMode="numeric"
+                  />
+                </div>
+                <div className="field" style={{ marginBottom: 10 }}>
                   <label>指示（用法・投与方法など、Rp共通）</label>
                   <input
                     value={instruction}

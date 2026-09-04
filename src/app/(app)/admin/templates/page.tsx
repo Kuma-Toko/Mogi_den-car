@@ -148,6 +148,7 @@ export default async function AdminTemplatesPage({
                 {t.name}
                 <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <span className="badge blue">{t.isCommon ? "共通" : "個別"}</span>
+                  {t.isCrisisPathology && <span className="badge red">危機病態</span>}
                   {!engineReady && <span className="badge amber">エンジン未対応</span>}
                   <span style={{ fontSize: 11, color: "var(--ink-soft)", fontWeight: 400 }}>key: {t.key}</span>
                 </span>
@@ -170,6 +171,13 @@ export default async function AdminTemplatesPage({
                     <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
                       <input type="checkbox" name="isInfectious" defaultChecked={t.isInfectious} />
                       症例作成画面で「真の原因菌」を選択できるようにする
+                    </label>
+                  </div>
+                  <div className="field">
+                    <label>危機病態</label>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                      <input type="checkbox" name="isCrisisPathology" defaultChecked={t.isCrisisPathology} />
+                      危機病態として扱う（急変シナリオのアタッチ先として使う）
                     </label>
                   </div>
                   <div className="field" style={{ gridColumn: "1 / -1" }}>
@@ -266,6 +274,12 @@ export default async function AdminTemplatesPage({
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
                   <input type="checkbox" name="isInfectious" />
                   症例作成画面で「真の原因菌」を選択できるようにする
+                </label>
+              </div>
+              <div className="field">
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                  <input type="checkbox" name="isCrisisPathology" />
+                  危機病態として扱う（急変シナリオのアタッチ先として使う）
                 </label>
               </div>
             </div>

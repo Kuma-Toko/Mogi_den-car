@@ -42,6 +42,18 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
   const pathogenIdByTemplate = Object.fromEntries(
     caseRecord.diseaseLinks.filter((l) => l.pathogenId).map((l) => [l.templateId, l.pathogenId as string])
   );
+  const relevantSpecimenSitesByTemplate: Record<string, string[] | null> = Object.fromEntries(
+    caseRecord.diseaseLinks
+      .filter((l) => l.relevantSpecimenSites)
+      .map((l) => {
+        try {
+          const parsed = JSON.parse(l.relevantSpecimenSites as string);
+          return [l.templateId, Array.isArray(parsed) ? (parsed as string[]) : null];
+        } catch {
+          return [l.templateId, null];
+        }
+      })
+  );
 
   const initial: CaseFormInitial = {
     status: caseRecord.status,
@@ -63,6 +75,7 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
     crisisMode: caseRecord.crisisMode,
     physiologyParamsByTemplate,
     pathogenIdByTemplate,
+    relevantSpecimenSitesByTemplate,
     assigneeLoginIds: caseRecord.assignments.map((a) => a.student.loginId).join(", "),
   };
 
