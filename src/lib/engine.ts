@@ -96,8 +96,8 @@ export async function loadTemplateConfig(templateKey: string | null | undefined)
         postRescueSeverity: template.crisisRescue.postRescueSeverity,
         rescueActions: template.crisisRescue.rescueActions.map((r) => ({
           label: r.label,
-          drugCategories: JSON.parse(r.drugCategories) as string[],
-          procedureKeywords: JSON.parse(r.procedureKeywords) as string[],
+          drugCategories: parseStringArray(r.drugCategories),
+          procedureKeywords: parseStringArray(r.procedureKeywords),
         })),
       }
     : null;
@@ -225,6 +225,18 @@ function parseLabValues(raw: string | null): LabValue[] | null {
     return JSON.parse(raw) as LabValue[];
   } catch {
     return null;
+  }
+}
+
+// drugCategories/procedureKeywordsは常にJSON.stringify(string[])で保存される想定だが、
+// 過去のスキーマ移行で複製されたレガシーデータ等、想定外の値が1件でも混ざると
+// 未ガードのJSON.parseがページ全体をクラッシュさせてしまうため、壊れた値は空配列として扱う。
+function parseStringArray(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
   }
 }
 

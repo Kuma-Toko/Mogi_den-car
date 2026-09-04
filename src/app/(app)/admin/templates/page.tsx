@@ -59,6 +59,17 @@ type TemplateWithRelations = Prisma.DiseaseTemplateGetPayload<{ include: typeof 
 
 const TIER_LABELS: Record<string, string> = { mild: "軽症", moderate: "中等症", severe: "重症" };
 
+// drugCategories/procedureKeywordsは常にJSON.stringify(string[])で保存される想定だが、
+// 壊れた値が1件でも混ざると未ガードのJSON.parseがページ全体をクラッシュさせてしまうため防御的に扱う。
+function parseStringArray(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function AdminTemplatesPage({
   searchParams,
 }: {
@@ -774,13 +785,13 @@ function CrisisSection({
                 <input name="label" defaultValue={ra.label} placeholder="表示名" style={{ width: 140 }} required />
                 <input
                   name="drugCategories"
-                  defaultValue={(JSON.parse(ra.drugCategories) as string[]).join(", ")}
+                  defaultValue={parseStringArray(ra.drugCategories).join(", ")}
                   placeholder="薬剤大分類(カンマ区切り)"
                   style={{ width: 160 }}
                 />
                 <input
                   name="procedureKeywords"
-                  defaultValue={(JSON.parse(ra.procedureKeywords) as string[]).join(", ")}
+                  defaultValue={parseStringArray(ra.procedureKeywords).join(", ")}
                   placeholder="処置キーワード(カンマ区切り)"
                   style={{ width: 160 }}
                 />
