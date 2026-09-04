@@ -15,7 +15,7 @@ function loadOrders(caseId: string) {
   return db.order.findMany({
     where: { caseId },
     orderBy: { orderedAt: "desc" },
-    include: { drug: { select: { name: true } } },
+    include: { drug: { select: { name: true } }, orderedBy: { select: { name: true } } },
   });
 }
 
@@ -113,6 +113,7 @@ export async function OrdersTab({ caseId }: { caseId: string }) {
                   <div className="rp-block" key={first.rpGroupId}>
                     <div className="rp-block-h">
                       {first.rpLabel}（{orderTypeLabel[first.orderType]}）　{formatJaDateTimeShort(first.orderedAt)}
+                      　{first.orderedBy.name}
                       {subTag && <>　{subTag}</>}
                     </div>
                     {group.map((o) => {
@@ -187,7 +188,7 @@ export async function OrdersTab({ caseId }: { caseId: string }) {
                       )}
                     </div>
                     <div className="sub">
-                      {orderTypeLabel[first.orderType]}　{formatJaDateTimeShort(first.orderedAt)}
+                      {orderTypeLabel[first.orderType]}　{formatJaDateTimeShort(first.orderedAt)}　{first.orderedBy.name}
                       {comment && <>　/　{comment}</>}
                     </div>
                   </div>

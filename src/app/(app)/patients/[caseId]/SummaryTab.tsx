@@ -18,7 +18,12 @@ export async function SummaryTab({ caseId, canManageDiseases }: { caseId: string
   const [problems, latestNote, recentOrders, evaluations, diseaseLinks, severities] = await Promise.all([
     db.problem.findMany({ where: { caseId }, orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }] }),
     db.karteEntry.findFirst({ where: { caseId }, orderBy: { createdAt: "desc" }, include: { author: true } }),
-    db.order.findMany({ where: { caseId }, orderBy: { orderedAt: "desc" }, take: 5 }),
+    db.order.findMany({
+      where: { caseId },
+      orderBy: { orderedAt: "desc" },
+      take: 5,
+      include: { orderedBy: { select: { name: true } } },
+    }),
     db.treatmentEvaluation.findMany({ where: { caseId, status: "COMPLETED" }, orderBy: { completedAt: "desc" }, take: 5 }),
     canManageDiseases
       ? db.caseDiseaseLink.findMany({ where: { caseId }, include: { template: true }, orderBy: { sortOrder: "asc" } })
@@ -93,7 +98,9 @@ export async function SummaryTab({ caseId, canManageDiseases }: { caseId: string
               <div className="order-item" key={o.id}>
                 <div>
                   <div className="name">{o.label}</div>
-                  <div className="sub">{orderTypeLabel[o.orderType]}</div>
+                  <div className="sub">
+                    {orderTypeLabel[o.orderType]}　{o.orderedBy.name}
+                  </div>
                 </div>
                 <span className={`badge ${orderStatusBadgeClass[o.status]}`}>{orderStatusLabel[o.status]}</span>
               </div>

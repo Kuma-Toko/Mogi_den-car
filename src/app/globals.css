@@ -1031,6 +1031,10 @@ dialog.order-dialog::backdrop {
   max-height: 560px;
   margin-bottom: 0;
 }
+.ref-table-scroll {
+  max-height: 560px;
+  overflow-y: auto;
+}
 .chat-msg {
   display: flex;
 }

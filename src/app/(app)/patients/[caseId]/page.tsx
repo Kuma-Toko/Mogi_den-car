@@ -7,7 +7,7 @@ import { SummaryTab } from "./SummaryTab";
 import { KarteTab } from "./KarteTab";
 import { KarteEntryTab } from "./KarteEntryTab";
 import { EncounterTab } from "./EncounterTab";
-import { EncounterLogPanel } from "./EncounterLogPanel";
+import { KarteReferencePanel } from "./KarteReferencePanel";
 import { OrdersTab } from "./OrdersTab";
 import { ResultsTab } from "./ResultsTab";
 import { VitalsTab } from "./VitalsTab";
@@ -112,7 +112,7 @@ export default async function CaseDetailPage({
         {tab === "karte-entry" && (
           <div className="split">
             <KarteEntryTab caseId={caseId} />
-            <EncounterLogPanel caseId={caseId} />
+            <KarteReferencePanel caseId={caseId} />
           </div>
         )}
         {tab === "encounter" && <EncounterTab caseId={caseId} />}
