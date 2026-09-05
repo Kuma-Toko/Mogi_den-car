@@ -1,0 +1,321 @@
+[
+  {
+    "watcherKey": "acs",
+    "targetKey": "acs_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "vital",
+        "code": null,
+        "label": null,
+        "field": "systolicBp",
+        "op": "<=",
+        "value": 82,
+        "sortOrder": 0
+      }
+    ]
+  },
+  {
+    "watcherKey": "adrenal_crisis",
+    "targetKey": "adrenal_crisis_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "lab",
+        "code": "4D040",
+        "label": null,
+        "field": null,
+        "op": "<=",
+        "value": 0.5,
+        "sortOrder": 0
+      },
+      {
+        "type": "lab",
+        "code": "3H010",
+        "label": null,
+        "field": null,
+        "op": "<=",
+        "value": 116,
+        "sortOrder": 1
+      }
+    ]
+  },
+  {
+    "watcherKey": "anaphylaxis",
+    "targetKey": "anaphylaxis_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "vital",
+        "code": null,
+        "label": null,
+        "field": "systolicBp",
+        "op": "<=",
+        "value": 65,
+        "sortOrder": 0
+      }
+    ]
+  },
+  {
+    "watcherKey": "appendicitis",
+    "targetKey": "appendicitis_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "lab",
+        "code": "2A010",
+        "label": null,
+        "field": null,
+        "op": ">=",
+        "value": 21000,
+        "sortOrder": 0
+      },
+      {
+        "type": "lab",
+        "code": "5C070",
+        "label": null,
+        "field": null,
+        "op": ">=",
+        "value": 18.5,
+        "sortOrder": 1
+      }
+    ]
+  },
+  {
+    "watcherKey": "arrhythmia",
+    "targetKey": "arrhythmia_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "lab",
+        "code": "3H015",
+        "label": null,
+        "field": null,
+        "op": "<=",
+        "value": 2.3,
+        "sortOrder": 0
+      },
+      {
+        "type": "lab",
+        "code": "3H025",
+        "label": null,
+        "field": null,
+        "op": "<=",
+        "value": 1,
+        "sortOrder": 1
+      }
+    ]
+  },
+  {
+    "watcherKey": "asthma_copd",
+    "targetKey": "asthma_copd_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "lab",
+        "code": "3H080",
+        "label": "pCO2",
+        "field": null,
+        "op": ">=",
+        "value": 60,
+        "sortOrder": 0
+      },
+      {
+        "type": "lab",
+        "code": "3H080",
+        "label": "O2飽和度",
+        "field": null,
+        "op": "<=",
+        "value": 78,
+        "sortOrder": 1
+      }
+    ]
+  },
+  {
+    "watcherKey": "dehydration",
+    "targetKey": "dehydration_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "lab",
+        "code": "3C015",
+        "label": null,
+        "field": null,
+        "op": ">=",
+        "value": 2.4,
+        "sortOrder": 0
+      },
+      {
+        "type": "lab",
+        "code": "3H010",
+        "label": null,
+        "field": null,
+        "op": ">=",
+        "value": 152,
+        "sortOrder": 1
+      }
+    ]
+  },
+  {
+    "watcherKey": "dka",
+    "targetKey": "dka_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "lab",
+        "code": "3H080",
+        "label": null,
+        "field": null,
+        "op": "<=",
+        "value": 7.05,
+        "sortOrder": 0
+      },
+      {
+        "type": "lab",
+        "code": "3H015",
+        "label": null,
+        "field": null,
+        "op": ">=",
+        "value": 6.5,
+        "sortOrder": 1
+      }
+    ]
+  },
+  {
+    "watcherKey": "gi_bleed",
+    "targetKey": "gi_bleed_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "lab",
+        "code": "2A030",
+        "label": null,
+        "field": null,
+        "op": "<=",
+        "value": 5.5,
+        "sortOrder": 0
+      }
+    ]
+  },
+  {
+    "watcherKey": "heart_failure",
+    "targetKey": "heart_failure_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "lab",
+        "code": "H8039",
+        "label": null,
+        "field": null,
+        "op": ">=",
+        "value": 1450,
+        "sortOrder": 0
+      }
+    ]
+  },
+  {
+    "watcherKey": "infection",
+    "targetKey": "infection_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "vital",
+        "code": null,
+        "label": null,
+        "field": "systolicBp",
+        "op": "<=",
+        "value": 100,
+        "sortOrder": 0
+      },
+      {
+        "type": "lab",
+        "code": "5C070",
+        "label": null,
+        "field": null,
+        "op": ">=",
+        "value": 22.4,
+        "sortOrder": 1
+      }
+    ]
+  },
+  {
+    "watcherKey": "pancreatitis",
+    "targetKey": "pancreatitis_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "lab",
+        "code": "3H030",
+        "label": null,
+        "field": null,
+        "op": "<=",
+        "value": 6.8,
+        "sortOrder": 0
+      }
+    ]
+  },
+  {
+    "watcherKey": "pe",
+    "targetKey": "pe_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "lab",
+        "code": "2B140",
+        "label": null,
+        "field": null,
+        "op": ">=",
+        "value": 9,
+        "sortOrder": 0
+      },
+      {
+        "type": "vital",
+        "code": null,
+        "label": null,
+        "field": "spo2",
+        "op": "<=",
+        "value": 72,
+        "sortOrder": 1
+      }
+    ]
+  },
+  {
+    "watcherKey": "thyroid_storm",
+    "targetKey": "thyroid_storm_crisis",
+    "sustainMinutes": 15,
+    "sortOrder": 0,
+    "triggers": [
+      {
+        "type": "lab",
+        "code": "4B015",
+        "label": null,
+        "field": null,
+        "op": ">=",
+        "value": 14,
+        "sortOrder": 0
+      },
+      {
+        "type": "lab",
+        "code": "4B035",
+        "label": null,
+        "field": null,
+        "op": ">=",
+        "value": 6.5,
+        "sortOrder": 1
+      }
+    ]
+  }
+]

@@ -170,6 +170,9 @@ model Case {
   notifications        Notification[]
   treatmentEvaluations TreatmentEvaluation[]
   crisisTriggerProgress CaseCrisisTriggerProgress[]
+
+  @@index([createdByUserId])
+  @@index([status])
 }
 
 model CaseAssignment {
@@ -182,6 +185,9 @@ model CaseAssignment {
   dischargedAt DateTime? // 退院日時。null=担当中、値あり=退院済み（担当患者一覧からは除外し、退院済み患者として保持）
 
   @@unique([caseId, studentId])
+  // (caseId, studentId)の複合uniqueは先頭列がcaseIdのため、studentId単体の検索
+  // （reconcileCasesForStudent等、症例横断で「この学生の担当」を引く経路）には効かない。
+  @@index([studentId])
 }
 
 // 症例に複数アタッチできる病態モデル。各疾患は完全に独立した重症度カーブ・治療トリガー・改善速度を持つ
@@ -223,6 +229,8 @@ model Problem {
   status    String   @default("active")
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
+
+  @@index([caseId])
 }
 
 // カルテ記載1件分。様式（entryType）によって使用するフィールドが異なる：
@@ -244,6 +252,8 @@ model KarteEntry {
   narrative    String         @default("") // NARRATIVE用の自由記述本文
   detail       String? // JSON文字列。REFERRAL/AMBULANCEの構造化項目
   createdAt    DateTime       @default(now())
+
+  @@index([caseId])
 }
 
 // 問診・身体診察AIチャットのログ1件分。学生の発言とAI（模擬患者役）の応答を時系列で保持する。
@@ -256,6 +266,8 @@ model EncounterMessage {
   role         EncounterRole
   content      String
   createdAt    DateTime      @default(now())
+
+  @@index([caseId])
 }
 
 model DrugMaster {
@@ -617,6 +629,12 @@ model Order {
   // 処方・注射オーダーの中止時刻（症例時刻）。null=継続中。中止後は薬剤影響エンジンの対象から外れる
   // （statusをDISCONTINUEDに更新すると同時にセットする）。
   discontinuedAt  DateTime?
+
+  // reconcile系関数はcaseId+orderTypeで繰り返し絞り込む(engine.tsのloadTreatmentOrders等)ため複合indexを、
+  // 発行済みオーダーの中止待ち等caseId+statusでの絞り込み、Rpグループ単位のまとめ取得にも別途indexを張る。
+  @@index([caseId, orderType])
+  @@index([caseId, status])
+  @@index([rpGroupId])
 }
 
 model Vital {
@@ -630,6 +648,8 @@ model Vital {
   pulse       Int?
   spo2        Int?
   respRate    Int?
+
+  @@index([caseId, recordedAt])
 }
 
 model Notification {
@@ -641,6 +661,9 @@ model Notification {
   message   String
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  // (app)/layout.tsxが全ページ描画のたびに未読件数をカウントするため。
+  @@index([userId, isRead])
 }
 
 model AuditLog {
@@ -652,4 +675,6 @@ model AuditLog {
   targetId   String?
   detail     String?
   createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }

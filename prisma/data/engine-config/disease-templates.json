@@ -1,0 +1,3180 @@
+[
+  {
+    "key": "acs",
+    "treatmentConfig": "{\"drugCategories\":[\"抗血小板薬\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":36.6,\"systolicBp\":112,\"diastolicBp\":70,\"pulse\":92,\"spo2\":96,\"respRate\":18},\"perSeverity\":{\"temperature\":0.2,\"systolicBp\":-30,\"diastolicBp\":-16,\"pulse\":20,\"spo2\":-10,\"respRate\":8}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "5C093",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "トロポニンT",
+            "value": 0.05,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "トロポニンT",
+            "value": 0.3,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "トロポニンT",
+            "value": 1.2,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "5C094",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "トロポニンI",
+            "value": 60,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "トロポニンI",
+            "value": 300,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "トロポニンI",
+            "value": 1200,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3B015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "CK-MB",
+            "value": 30,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "CK-MB",
+            "value": 70,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "CK-MB",
+            "value": 150,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "IMG-CT-010",
+        "kind": "text",
+        "mildText": "1枝に軽度〜中等度の狭窄疑いを認める。",
+        "moderateText": "1〜2枝に有意狭窄（50〜70%）を認める。",
+        "severeText": "多枝に高度狭窄（90%以上）を認め、急性冠症候群の所見と矛盾しない。",
+        "sortOrder": 3,
+        "values": []
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "acs_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"抗血小板薬\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":-0.29999999999999716,\"systolicBp\":-120,\"diastolicBp\":-70,\"pulse\":-75,\"spo2\":-23,\"respRate\":-10}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "5C093",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "トロポニンT",
+            "value": 0.05,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "トロポニンT",
+            "value": 0.3,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "トロポニンT",
+            "value": 1.2,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "5C094",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "トロポニンI",
+            "value": 60,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "トロポニンI",
+            "value": 300,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "トロポニンI",
+            "value": 1200,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3B015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "CK-MB",
+            "value": 30,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "CK-MB",
+            "value": 70,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "CK-MB",
+            "value": 150,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "IMG-CT-010",
+        "kind": "text",
+        "mildText": "1枝に軽度〜中等度の狭窄疑いを認める。",
+        "moderateText": "1〜2枝に有意狭窄（50〜70%）を認める。",
+        "severeText": "多枝に高度狭窄（90%以上）を認め、急性冠症候群の所見と矛盾しない。",
+        "sortOrder": 3,
+        "values": []
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 55,
+      "actions": [
+        {
+          "label": "除細動",
+          "drugCategories": "[]",
+          "procedureKeywords": "[\"除細動\"]",
+          "sortOrder": 0
+        },
+        {
+          "label": "抗血小板薬強化投与",
+          "drugCategories": "[\"抗血小板薬\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 1
+        }
+      ]
+    }
+  },
+  {
+    "key": "adrenal_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"副腎皮質ステロイド\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":37,\"systolicBp\":98,\"diastolicBp\":60,\"pulse\":92,\"spo2\":97,\"respRate\":17},\"perSeverity\":{\"temperature\":0.7,\"systolicBp\":-32,\"diastolicBp\":-18,\"pulse\":24,\"spo2\":-4,\"respRate\":7}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "4D040",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "コルチゾール",
+            "value": 3,
+            "unit": "μg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "コルチゾール",
+            "value": 1.5,
+            "unit": "μg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "コルチゾール",
+            "value": 0.5,
+            "unit": "μg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H010",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Na",
+            "value": 130,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Na",
+            "value": 124,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Na",
+            "value": 116,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "K",
+            "value": 5.2,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "K",
+            "value": 5.9,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "K",
+            "value": 6.8,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "adrenal_crisis_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"副腎皮質ステロイド\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":-1.2999999999999972,\"systolicBp\":-60,\"diastolicBp\":-34,\"pulse\":41,\"spo2\":-8,\"respRate\":8}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "4D040",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "コルチゾール",
+            "value": 3,
+            "unit": "μg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "コルチゾール",
+            "value": 1.5,
+            "unit": "μg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "コルチゾール",
+            "value": 0.5,
+            "unit": "μg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H010",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Na",
+            "value": 130,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Na",
+            "value": 124,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Na",
+            "value": 116,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "K",
+            "value": 5.2,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "K",
+            "value": 5.9,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "K",
+            "value": 6.8,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 45,
+      "actions": [
+        {
+          "label": "ステロイド大量投与・輸液",
+          "drugCategories": "[\"副腎皮質ステロイド\",\"輸液\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 0
+        }
+      ]
+    }
+  },
+  {
+    "key": "anaphylaxis",
+    "treatmentConfig": "{\"drugCategories\":[\"アドレナリン作動薬\",\"抗ヒスタミン薬\",\"副腎皮質ステロイド\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":36.7,\"systolicBp\":110,\"diastolicBp\":68,\"pulse\":100,\"spo2\":96,\"respRate\":20},\"perSeverity\":{\"temperature\":-0.3,\"systolicBp\":-52,\"diastolicBp\":-30,\"pulse\":34,\"spo2\":-22,\"respRate\":12}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "5A090",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "IgE",
+            "value": 300,
+            "unit": "IU/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "IgE",
+            "value": 600,
+            "unit": "IU/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "IgE",
+            "value": 1200,
+            "unit": "IU/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "anaphylaxis_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"アドレナリン作動薬\",\"抗ヒスタミン薬\",\"副腎皮質ステロイド\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":-0.5,\"systolicBp\":-70,\"diastolicBp\":-40,\"pulse\":75,\"spo2\":-30,\"respRate\":-8}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "5A090",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "IgE",
+            "value": 300,
+            "unit": "IU/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "IgE",
+            "value": 600,
+            "unit": "IU/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "IgE",
+            "value": 1200,
+            "unit": "IU/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 40,
+      "actions": [
+        {
+          "label": "アドレナリン筋注",
+          "drugCategories": "[\"アドレナリン作動薬\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 0
+        },
+        {
+          "label": "気管挿管・人工呼吸管理",
+          "drugCategories": "[]",
+          "procedureKeywords": "[\"気管挿管\"]",
+          "sortOrder": 1
+        }
+      ]
+    }
+  },
+  {
+    "key": "appendicitis",
+    "treatmentConfig": "{\"procedureKeywords\":[\"虫垂切除\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":37,\"systolicBp\":120,\"diastolicBp\":76,\"pulse\":84,\"spo2\":98,\"respRate\":16},\"perSeverity\":{\"temperature\":2,\"systolicBp\":-24,\"diastolicBp\":-14,\"pulse\":40,\"spo2\":-6,\"respRate\":10}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "2A010",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "WBC",
+            "value": 11200,
+            "unit": "/μL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "WBC",
+            "value": 15600,
+            "unit": "/μL",
+            "note": "好中球優位",
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "WBC",
+            "value": 21000,
+            "unit": "/μL",
+            "note": "好中球優位・核左方移動",
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "5C070",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "CRP",
+            "value": 2.5,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "CRP",
+            "value": 9.8,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "CRP",
+            "value": 18.5,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "IMG-002",
+        "kind": "text",
+        "mildText": "右下腹部に軽度腫大した虫垂様構造（外径7mm前後）を認める。周囲への炎症波及は明らかでない。",
+        "moderateText": "右下腹部に腫大した虫垂様構造（外径9〜10mm）を認め、周囲脂肪織の輝度上昇を伴う。",
+        "severeText": "右下腹部に著明に腫大した虫垂様構造を認め、周囲に液体貯留（膿瘍形成の可能性）を伴う。虫垂の輪郭は不明瞭。",
+        "sortOrder": 2,
+        "values": []
+      },
+      {
+        "labItemCode": "IMG-003",
+        "kind": "text",
+        "mildText": "虫垂は軽度腫大（径7mm前後）し、虫垂周囲の脂肪織濃度上昇を軽度に認める。明らかな膿瘍形成はない。",
+        "moderateText": "虫垂は腫大（径10mm前後）し、虫垂周囲に脂肪織濃度上昇と少量の遊離液体を認める。",
+        "severeText": "虫垂の腫大・壁不整を認め、周囲に膿瘍形成および遊離ガス像を疑う所見があり、穿孔が疑われる。汎発性の腹水貯留を伴う。",
+        "sortOrder": 3,
+        "values": []
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "appendicitis_crisis",
+    "treatmentConfig": "{\"procedureKeywords\":[\"虫垂切除\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":3,\"systolicBp\":-50,\"diastolicBp\":-28,\"pulse\":65,\"spo2\":-10,\"respRate\":14}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "2A010",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "WBC",
+            "value": 11200,
+            "unit": "/μL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "WBC",
+            "value": 15600,
+            "unit": "/μL",
+            "note": "好中球優位",
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "WBC",
+            "value": 21000,
+            "unit": "/μL",
+            "note": "好中球優位・核左方移動",
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "5C070",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "CRP",
+            "value": 2.5,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "CRP",
+            "value": 9.8,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "CRP",
+            "value": 18.5,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "IMG-002",
+        "kind": "text",
+        "mildText": "右下腹部に軽度腫大した虫垂様構造（外径7mm前後）を認める。周囲への炎症波及は明らかでない。",
+        "moderateText": "右下腹部に腫大した虫垂様構造（外径9〜10mm）を認め、周囲脂肪織の輝度上昇を伴う。",
+        "severeText": "右下腹部に著明に腫大した虫垂様構造を認め、周囲に液体貯留（膿瘍形成の可能性）を伴う。虫垂の輪郭は不明瞭。",
+        "sortOrder": 2,
+        "values": []
+      },
+      {
+        "labItemCode": "IMG-003",
+        "kind": "text",
+        "mildText": "虫垂は軽度腫大（径7mm前後）し、虫垂周囲の脂肪織濃度上昇を軽度に認める。明らかな膿瘍形成はない。",
+        "moderateText": "虫垂は腫大（径10mm前後）し、虫垂周囲に脂肪織濃度上昇と少量の遊離液体を認める。",
+        "severeText": "虫垂の腫大・壁不整を認め、周囲に膿瘍形成および遊離ガス像を疑う所見があり、穿孔が疑われる。汎発性の腹水貯留を伴う。",
+        "sortOrder": 3,
+        "values": []
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 50,
+      "actions": [
+        {
+          "label": "緊急手術（虫垂切除）",
+          "drugCategories": "[]",
+          "procedureKeywords": "[\"虫垂切除\"]",
+          "sortOrder": 0
+        },
+        {
+          "label": "広域抗菌薬・急速輸液",
+          "drugCategories": "[\"輸液\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 1
+        }
+      ]
+    }
+  },
+  {
+    "key": "arrhythmia",
+    "treatmentConfig": "{\"drugCategories\":[\"抗不整脈薬\",\"β遮断薬\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":36.6,\"systolicBp\":116,\"diastolicBp\":76,\"pulse\":98,\"spo2\":97,\"respRate\":17},\"perSeverity\":{\"temperature\":0,\"systolicBp\":-18,\"diastolicBp\":-10,\"pulse\":58,\"spo2\":-6,\"respRate\":6}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "3H015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "K",
+            "value": 3.3,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "K",
+            "value": 2.8,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "K",
+            "value": 2.3,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H025",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Mg",
+            "value": 1.6,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Mg",
+            "value": 1.3,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Mg",
+            "value": 1,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "arrhythmia_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"抗不整脈薬\",\"β遮断薬\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":-0.10000000000000142,\"systolicBp\":-120,\"diastolicBp\":-70,\"pulse\":-75,\"spo2\":-18,\"respRate\":-12}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "3H015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "K",
+            "value": 3.3,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "K",
+            "value": 2.8,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "K",
+            "value": 2.3,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H025",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Mg",
+            "value": 1.6,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Mg",
+            "value": 1.3,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Mg",
+            "value": 1,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 50,
+      "actions": [
+        {
+          "label": "除細動",
+          "drugCategories": "[]",
+          "procedureKeywords": "[\"除細動\"]",
+          "sortOrder": 0
+        },
+        {
+          "label": "抗不整脈薬投与",
+          "drugCategories": "[\"抗不整脈薬\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 1
+        },
+        {
+          "label": "電解質補正",
+          "drugCategories": "[\"輸液\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 2
+        }
+      ]
+    }
+  },
+  {
+    "key": "asthma_copd",
+    "treatmentConfig": "{\"drugCategories\":[\"気管支拡張薬\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":36.6,\"systolicBp\":126,\"diastolicBp\":78,\"pulse\":92,\"spo2\":95,\"respRate\":22},\"perSeverity\":{\"temperature\":0.2,\"systolicBp\":2,\"diastolicBp\":2,\"pulse\":22,\"spo2\":-20,\"respRate\":16}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "3H080",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "動脈血pH",
+            "value": 7.38,
+            "unit": "",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "mild",
+            "label": "pCO2",
+            "value": 36,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "mild",
+            "label": "pO2",
+            "value": 75,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 2
+          },
+          {
+            "tier": "mild",
+            "label": "O2飽和度",
+            "value": 93,
+            "unit": "%",
+            "note": null,
+            "sortOrder": 3
+          },
+          {
+            "tier": "mild",
+            "label": "血漿HCO3",
+            "value": 25,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 4
+          },
+          {
+            "tier": "mild",
+            "label": "BE",
+            "value": 1,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 5
+          },
+          {
+            "tier": "moderate",
+            "label": "動脈血pH",
+            "value": 7.32,
+            "unit": "",
+            "note": null,
+            "sortOrder": 6
+          },
+          {
+            "tier": "moderate",
+            "label": "pCO2",
+            "value": 46,
+            "unit": "mmHg",
+            "note": "CO2貯留傾向",
+            "sortOrder": 7
+          },
+          {
+            "tier": "moderate",
+            "label": "pO2",
+            "value": 60,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 8
+          },
+          {
+            "tier": "moderate",
+            "label": "O2飽和度",
+            "value": 87,
+            "unit": "%",
+            "note": null,
+            "sortOrder": 9
+          },
+          {
+            "tier": "moderate",
+            "label": "血漿HCO3",
+            "value": 26,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 10
+          },
+          {
+            "tier": "moderate",
+            "label": "BE",
+            "value": 2,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 11
+          },
+          {
+            "tier": "severe",
+            "label": "動脈血pH",
+            "value": 7.18,
+            "unit": "",
+            "note": null,
+            "sortOrder": 12
+          },
+          {
+            "tier": "severe",
+            "label": "pCO2",
+            "value": 60,
+            "unit": "mmHg",
+            "note": "CO2貯留",
+            "sortOrder": 13
+          },
+          {
+            "tier": "severe",
+            "label": "pO2",
+            "value": 45,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 14
+          },
+          {
+            "tier": "severe",
+            "label": "O2飽和度",
+            "value": 78,
+            "unit": "%",
+            "note": null,
+            "sortOrder": 15
+          },
+          {
+            "tier": "severe",
+            "label": "血漿HCO3",
+            "value": 28,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 16
+          },
+          {
+            "tier": "severe",
+            "label": "BE",
+            "value": 3,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 17
+          }
+        ]
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "asthma_copd_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"気管支拡張薬\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":0,\"systolicBp\":-20,\"diastolicBp\":-10,\"pulse\":55,\"spo2\":-36,\"respRate\":-10}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "3H080",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "動脈血pH",
+            "value": 7.38,
+            "unit": "",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "mild",
+            "label": "pCO2",
+            "value": 36,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "mild",
+            "label": "pO2",
+            "value": 75,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 2
+          },
+          {
+            "tier": "mild",
+            "label": "O2飽和度",
+            "value": 93,
+            "unit": "%",
+            "note": null,
+            "sortOrder": 3
+          },
+          {
+            "tier": "mild",
+            "label": "血漿HCO3",
+            "value": 25,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 4
+          },
+          {
+            "tier": "mild",
+            "label": "BE",
+            "value": 1,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 5
+          },
+          {
+            "tier": "moderate",
+            "label": "動脈血pH",
+            "value": 7.32,
+            "unit": "",
+            "note": null,
+            "sortOrder": 6
+          },
+          {
+            "tier": "moderate",
+            "label": "pCO2",
+            "value": 46,
+            "unit": "mmHg",
+            "note": "CO2貯留傾向",
+            "sortOrder": 7
+          },
+          {
+            "tier": "moderate",
+            "label": "pO2",
+            "value": 60,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 8
+          },
+          {
+            "tier": "moderate",
+            "label": "O2飽和度",
+            "value": 87,
+            "unit": "%",
+            "note": null,
+            "sortOrder": 9
+          },
+          {
+            "tier": "moderate",
+            "label": "血漿HCO3",
+            "value": 26,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 10
+          },
+          {
+            "tier": "moderate",
+            "label": "BE",
+            "value": 2,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 11
+          },
+          {
+            "tier": "severe",
+            "label": "動脈血pH",
+            "value": 7.18,
+            "unit": "",
+            "note": null,
+            "sortOrder": 12
+          },
+          {
+            "tier": "severe",
+            "label": "pCO2",
+            "value": 60,
+            "unit": "mmHg",
+            "note": "CO2貯留",
+            "sortOrder": 13
+          },
+          {
+            "tier": "severe",
+            "label": "pO2",
+            "value": 45,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 14
+          },
+          {
+            "tier": "severe",
+            "label": "O2飽和度",
+            "value": 78,
+            "unit": "%",
+            "note": null,
+            "sortOrder": 15
+          },
+          {
+            "tier": "severe",
+            "label": "血漿HCO3",
+            "value": 28,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 16
+          },
+          {
+            "tier": "severe",
+            "label": "BE",
+            "value": 3,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 17
+          }
+        ]
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 45,
+      "actions": [
+        {
+          "label": "気管挿管・人工呼吸管理",
+          "drugCategories": "[]",
+          "procedureKeywords": "[\"気管挿管\"]",
+          "sortOrder": 0
+        },
+        {
+          "label": "気管支拡張薬強化投与",
+          "drugCategories": "[\"気管支拡張薬\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 1
+        }
+      ]
+    }
+  },
+  {
+    "key": "dehydration",
+    "treatmentConfig": "{\"drugCategories\":[\"輸液\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":36.8,\"systolicBp\":122,\"diastolicBp\":78,\"pulse\":76,\"spo2\":98,\"respRate\":16},\"perSeverity\":{\"temperature\":1,\"systolicBp\":-32,\"diastolicBp\":-18,\"pulse\":44,\"spo2\":-4,\"respRate\":6}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "3C015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Cr",
+            "value": 1.1,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Cr",
+            "value": 1.6,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Cr",
+            "value": 2.4,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3C025",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "BUN",
+            "value": 22,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "BUN",
+            "value": 38,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "BUN",
+            "value": 55,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H010",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Na",
+            "value": 142,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Na",
+            "value": 148,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Na",
+            "value": 152,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "dehydration_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"輸液\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":-1,\"systolicBp\":-58,\"diastolicBp\":-32,\"pulse\":67,\"spo2\":-8,\"respRate\":12}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "3C015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Cr",
+            "value": 1.1,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Cr",
+            "value": 1.6,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Cr",
+            "value": 2.4,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3C025",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "BUN",
+            "value": 22,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "BUN",
+            "value": 38,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "BUN",
+            "value": 55,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H010",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Na",
+            "value": 142,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Na",
+            "value": 148,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Na",
+            "value": 152,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 45,
+      "actions": [
+        {
+          "label": "急速輸液",
+          "drugCategories": "[\"輸液\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 0
+        }
+      ]
+    }
+  },
+  {
+    "key": "dka",
+    "treatmentConfig": "{\"drugCategories\":[\"糖尿病治療薬\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":36.8,\"systolicBp\":118,\"diastolicBp\":74,\"pulse\":88,\"spo2\":98,\"respRate\":18},\"perSeverity\":{\"temperature\":-0.4,\"systolicBp\":-20,\"diastolicBp\":-12,\"pulse\":30,\"spo2\":-4,\"respRate\":16}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "3D010",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Glu",
+            "value": 220,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Glu",
+            "value": 380,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Glu",
+            "value": 560,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H080",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "動脈血pH",
+            "value": 7.32,
+            "unit": "",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "mild",
+            "label": "pCO2",
+            "value": 30,
+            "unit": "mmHg",
+            "note": "呼吸性代償",
+            "sortOrder": 1
+          },
+          {
+            "tier": "mild",
+            "label": "pO2",
+            "value": 92,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 2
+          },
+          {
+            "tier": "mild",
+            "label": "血漿HCO3",
+            "value": 16,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 3
+          },
+          {
+            "tier": "mild",
+            "label": "BE",
+            "value": -8,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 4
+          },
+          {
+            "tier": "moderate",
+            "label": "動脈血pH",
+            "value": 7.2,
+            "unit": "",
+            "note": null,
+            "sortOrder": 5
+          },
+          {
+            "tier": "moderate",
+            "label": "pCO2",
+            "value": 25,
+            "unit": "mmHg",
+            "note": "呼吸性代償",
+            "sortOrder": 6
+          },
+          {
+            "tier": "moderate",
+            "label": "pO2",
+            "value": 90,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 7
+          },
+          {
+            "tier": "moderate",
+            "label": "血漿HCO3",
+            "value": 10,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 8
+          },
+          {
+            "tier": "moderate",
+            "label": "BE",
+            "value": -15,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 9
+          },
+          {
+            "tier": "severe",
+            "label": "動脈血pH",
+            "value": 7.05,
+            "unit": "",
+            "note": null,
+            "sortOrder": 10
+          },
+          {
+            "tier": "severe",
+            "label": "pCO2",
+            "value": 18,
+            "unit": "mmHg",
+            "note": "Kussmaul呼吸",
+            "sortOrder": 11
+          },
+          {
+            "tier": "severe",
+            "label": "pO2",
+            "value": 88,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 12
+          },
+          {
+            "tier": "severe",
+            "label": "血漿HCO3",
+            "value": 5,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 13
+          },
+          {
+            "tier": "severe",
+            "label": "BE",
+            "value": -22,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 14
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "K",
+            "value": 5.2,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "K",
+            "value": 5.8,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "K",
+            "value": 6.5,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "dka_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"糖尿病治療薬\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":-0.7000000000000028,\"systolicBp\":-42,\"diastolicBp\":-24,\"pulse\":53,\"spo2\":-6,\"respRate\":18}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "3D010",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Glu",
+            "value": 220,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Glu",
+            "value": 380,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Glu",
+            "value": 560,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H080",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "動脈血pH",
+            "value": 7.32,
+            "unit": "",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "mild",
+            "label": "pCO2",
+            "value": 30,
+            "unit": "mmHg",
+            "note": "呼吸性代償",
+            "sortOrder": 1
+          },
+          {
+            "tier": "mild",
+            "label": "pO2",
+            "value": 92,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 2
+          },
+          {
+            "tier": "mild",
+            "label": "血漿HCO3",
+            "value": 16,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 3
+          },
+          {
+            "tier": "mild",
+            "label": "BE",
+            "value": -8,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 4
+          },
+          {
+            "tier": "moderate",
+            "label": "動脈血pH",
+            "value": 7.2,
+            "unit": "",
+            "note": null,
+            "sortOrder": 5
+          },
+          {
+            "tier": "moderate",
+            "label": "pCO2",
+            "value": 25,
+            "unit": "mmHg",
+            "note": "呼吸性代償",
+            "sortOrder": 6
+          },
+          {
+            "tier": "moderate",
+            "label": "pO2",
+            "value": 90,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 7
+          },
+          {
+            "tier": "moderate",
+            "label": "血漿HCO3",
+            "value": 10,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 8
+          },
+          {
+            "tier": "moderate",
+            "label": "BE",
+            "value": -15,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 9
+          },
+          {
+            "tier": "severe",
+            "label": "動脈血pH",
+            "value": 7.05,
+            "unit": "",
+            "note": null,
+            "sortOrder": 10
+          },
+          {
+            "tier": "severe",
+            "label": "pCO2",
+            "value": 18,
+            "unit": "mmHg",
+            "note": "Kussmaul呼吸",
+            "sortOrder": 11
+          },
+          {
+            "tier": "severe",
+            "label": "pO2",
+            "value": 88,
+            "unit": "mmHg",
+            "note": null,
+            "sortOrder": 12
+          },
+          {
+            "tier": "severe",
+            "label": "血漿HCO3",
+            "value": 5,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 13
+          },
+          {
+            "tier": "severe",
+            "label": "BE",
+            "value": -22,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 14
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "K",
+            "value": 5.2,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "K",
+            "value": 5.8,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "K",
+            "value": 6.5,
+            "unit": "mEq/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 45,
+      "actions": [
+        {
+          "label": "インスリン持続投与",
+          "drugCategories": "[\"糖尿病治療薬\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 0
+        },
+        {
+          "label": "急速輸液・カリウム補正",
+          "drugCategories": "[\"輸液\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 1
+        }
+      ]
+    }
+  },
+  {
+    "key": "gi_bleed",
+    "treatmentConfig": "{\"drugCategories\":[\"消化性潰瘍治療薬\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":36.5,\"systolicBp\":114,\"diastolicBp\":72,\"pulse\":88,\"spo2\":98,\"respRate\":16},\"perSeverity\":{\"temperature\":-0.2,\"systolicBp\":-38,\"diastolicBp\":-20,\"pulse\":40,\"spo2\":-3,\"respRate\":8}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "2A030",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Hb",
+            "value": 11,
+            "unit": "g/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Hb",
+            "value": 8,
+            "unit": "g/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Hb",
+            "value": 5.5,
+            "unit": "g/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "1B040",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "便Hb",
+            "value": 300,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "便Hb",
+            "value": 900,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "便Hb",
+            "value": 2500,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3C025",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "BUN",
+            "value": 26,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "BUN",
+            "value": 42,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "BUN",
+            "value": 60,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "gi_bleed_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"消化性潰瘍治療薬\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":-0.8999999999999986,\"systolicBp\":-62,\"diastolicBp\":-36,\"pulse\":73,\"spo2\":-8,\"respRate\":14}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "2A030",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Hb",
+            "value": 11,
+            "unit": "g/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Hb",
+            "value": 8,
+            "unit": "g/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Hb",
+            "value": 5.5,
+            "unit": "g/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "1B040",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "便Hb",
+            "value": 300,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "便Hb",
+            "value": 900,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "便Hb",
+            "value": 2500,
+            "unit": "ng/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3C025",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "BUN",
+            "value": 26,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "BUN",
+            "value": 42,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "BUN",
+            "value": 60,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 45,
+      "actions": [
+        {
+          "label": "輸血",
+          "drugCategories": "[\"血液製剤\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 0
+        },
+        {
+          "label": "急速輸液",
+          "drugCategories": "[\"輸液\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 1
+        }
+      ]
+    }
+  },
+  {
+    "key": "heart_failure",
+    "treatmentConfig": "{\"drugCategories\":[\"利尿薬\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":36.6,\"systolicBp\":145,\"diastolicBp\":88,\"pulse\":78,\"spo2\":97,\"respRate\":16},\"perSeverity\":{\"temperature\":0.8,\"systolicBp\":10,\"diastolicBp\":6,\"pulse\":32,\"spo2\":-17,\"respRate\":14}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "H8039",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "BNP",
+            "value": 180,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "BNP",
+            "value": 620,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "BNP",
+            "value": 1450,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "IMG-001",
+        "kind": "text",
+        "mildText": "軽度の肺うっ血を疑う所見。心胸郭比はやや拡大。",
+        "moderateText": "肺うっ血像と胸水貯留を認める。心胸郭比拡大。",
+        "severeText": "著明な肺うっ血、両側胸水、心拡大を認める。",
+        "sortOrder": 1,
+        "values": []
+      },
+      {
+        "labItemCode": "IMG-US-001",
+        "kind": "text",
+        "mildText": "左室駆出率は軽度低下（LVEF 45%）。びまん性壁運動低下を軽度に認める。",
+        "moderateText": "左室駆出率は中等度低下（LVEF 35%）。びまん性壁運動低下を認め、軽度の機能性僧帽弁逆流を伴う。",
+        "severeText": "左室駆出率は高度低下（LVEF 25%）。著明なびまん性壁運動低下と中等度以上の機能性僧帽弁逆流を認める。下大静脈は拡張し呼吸性変動を欠く。",
+        "sortOrder": 2,
+        "values": []
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "heart_failure_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"利尿薬\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":-0.5,\"systolicBp\":-48,\"diastolicBp\":-22,\"pulse\":55,\"spo2\":-30,\"respRate\":18}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "H8039",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "BNP",
+            "value": 180,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "BNP",
+            "value": 620,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "BNP",
+            "value": 1450,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "IMG-001",
+        "kind": "text",
+        "mildText": "軽度の肺うっ血を疑う所見。心胸郭比はやや拡大。",
+        "moderateText": "肺うっ血像と胸水貯留を認める。心胸郭比拡大。",
+        "severeText": "著明な肺うっ血、両側胸水、心拡大を認める。",
+        "sortOrder": 1,
+        "values": []
+      },
+      {
+        "labItemCode": "IMG-US-001",
+        "kind": "text",
+        "mildText": "左室駆出率は軽度低下（LVEF 45%）。びまん性壁運動低下を軽度に認める。",
+        "moderateText": "左室駆出率は中等度低下（LVEF 35%）。びまん性壁運動低下を認め、軽度の機能性僧帽弁逆流を伴う。",
+        "severeText": "左室駆出率は高度低下（LVEF 25%）。著明なびまん性壁運動低下と中等度以上の機能性僧帽弁逆流を認める。下大静脈は拡張し呼吸性変動を欠く。",
+        "sortOrder": 2,
+        "values": []
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 50,
+      "actions": [
+        {
+          "label": "強心薬投与",
+          "drugCategories": "[\"強心配糖体\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 0
+        },
+        {
+          "label": "気管挿管・人工呼吸管理",
+          "drugCategories": "[]",
+          "procedureKeywords": "[\"気管挿管\"]",
+          "sortOrder": 1
+        }
+      ]
+    }
+  },
+  {
+    "key": "infection",
+    "treatmentConfig": "{\"drugCategories\":[\"抗菌薬\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":36.5,\"systolicBp\":122,\"diastolicBp\":76,\"pulse\":72,\"spo2\":99,\"respRate\":15},\"perSeverity\":{\"temperature\":3.4,\"systolicBp\":-22,\"diastolicBp\":-14,\"pulse\":48,\"spo2\":-14,\"respRate\":13}}",
+    "aiEvaluationGuideline": "市中肺炎・敗血症疑いの症例。第一選択は広域スペクトラムの抗菌薬（セフェム系またはカルバペネム系）の早期静注投与。発症からの投与開始が早いほど高評価。輸液（細胞外液の急速輸液）が血圧低下・頻脈時に併用されていれば加点。解熱剤のみで抗菌薬を投与していない場合は原因治療になっていないため大幅減点。抗菌薬の種類が明らかに感染巣と合わない場合（例:グラム陽性菌用薬のみ等）も減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "2A010",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "WBC",
+            "value": 9800,
+            "unit": "/μL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "WBC",
+            "value": 14200,
+            "unit": "/μL",
+            "note": "好中球優位",
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "WBC",
+            "value": 19800,
+            "unit": "/μL",
+            "note": "好中球優位・核左方移動",
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "5C070",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "CRP",
+            "value": 1.2,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "CRP",
+            "value": 8.9,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "CRP",
+            "value": 22.4,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "MB-001",
+        "kind": "text",
+        "mildText": "陰性（48時間培養、有意菌の発育なし）",
+        "moderateText": "グラム陽性球菌を少数検出（同定検査中）",
+        "severeText": "グラム陰性桿菌を検出、同定検査中（菌血症の可能性）",
+        "sortOrder": 2,
+        "values": []
+      },
+      {
+        "labItemCode": "IMG-001",
+        "kind": "text",
+        "mildText": "軽度の透亮性低下を認めるが、明らかな浸潤影は指摘できない。",
+        "moderateText": "右下肺野に浸潤影を認める。",
+        "severeText": "両側肺野に広範な浸潤影を認め、一部に無気肺を疑う所見あり。",
+        "sortOrder": 3,
+        "values": []
+      },
+      {
+        "labItemCode": "IMG-CT-007",
+        "kind": "text",
+        "mildText": "スリガラス影を軽度に認めるが、明らかな浸潤影は指摘できない。",
+        "moderateText": "右下葉主体に浸潤影とair bronchogramを認める。",
+        "severeText": "両側多葉にわたる広範な浸潤影を認め、一部に膿瘍形成・胸水貯留を疑う。",
+        "sortOrder": 4,
+        "values": []
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "infection_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"抗菌薬\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":-1.5,\"systolicBp\":-52,\"diastolicBp\":-30,\"pulse\":63,\"spo2\":-19,\"respRate\":16}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "2A010",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "WBC",
+            "value": 9800,
+            "unit": "/μL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "WBC",
+            "value": 14200,
+            "unit": "/μL",
+            "note": "好中球優位",
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "WBC",
+            "value": 19800,
+            "unit": "/μL",
+            "note": "好中球優位・核左方移動",
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "5C070",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "CRP",
+            "value": 1.2,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "CRP",
+            "value": 8.9,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "CRP",
+            "value": 22.4,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "MB-001",
+        "kind": "text",
+        "mildText": "陰性（48時間培養、有意菌の発育なし）",
+        "moderateText": "グラム陽性球菌を少数検出（同定検査中）",
+        "severeText": "グラム陰性桿菌を検出、同定検査中（菌血症の可能性）",
+        "sortOrder": 2,
+        "values": []
+      },
+      {
+        "labItemCode": "IMG-001",
+        "kind": "text",
+        "mildText": "軽度の透亮性低下を認めるが、明らかな浸潤影は指摘できない。",
+        "moderateText": "右下肺野に浸潤影を認める。",
+        "severeText": "両側肺野に広範な浸潤影を認め、一部に無気肺を疑う所見あり。",
+        "sortOrder": 3,
+        "values": []
+      },
+      {
+        "labItemCode": "IMG-CT-007",
+        "kind": "text",
+        "mildText": "スリガラス影を軽度に認めるが、明らかな浸潤影は指摘できない。",
+        "moderateText": "右下葉主体に浸潤影とair bronchogramを認める。",
+        "severeText": "両側多葉にわたる広範な浸潤影を認め、一部に膿瘍形成・胸水貯留を疑う。",
+        "sortOrder": 4,
+        "values": []
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 55,
+      "actions": [
+        {
+          "label": "急速輸液",
+          "drugCategories": "[\"輸液\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 0
+        },
+        {
+          "label": "気管挿管・人工呼吸管理",
+          "drugCategories": "[]",
+          "procedureKeywords": "[\"気管挿管\"]",
+          "sortOrder": 1
+        }
+      ]
+    }
+  },
+  {
+    "key": "pancreatitis",
+    "treatmentConfig": "{\"drugCategories\":[\"輸液\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":37.1,\"systolicBp\":116,\"diastolicBp\":72,\"pulse\":90,\"spo2\":97,\"respRate\":18},\"perSeverity\":{\"temperature\":1.4,\"systolicBp\":-24,\"diastolicBp\":-14,\"pulse\":28,\"spo2\":-9,\"respRate\":10}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "3B160",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Amy",
+            "value": 300,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Amy",
+            "value": 700,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Amy",
+            "value": 1300,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3B180",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "リパーゼ",
+            "value": 250,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "リパーゼ",
+            "value": 650,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "リパーゼ",
+            "value": 1400,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H030",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Ca",
+            "value": 8.2,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Ca",
+            "value": 7.5,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Ca",
+            "value": 6.8,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "pancreatitis_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"輸液\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":2.299999999999997,\"systolicBp\":-54,\"diastolicBp\":-30,\"pulse\":61,\"spo2\":-14,\"respRate\":14}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "3B160",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Amy",
+            "value": 300,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Amy",
+            "value": 700,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Amy",
+            "value": 1300,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3B180",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "リパーゼ",
+            "value": 250,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "リパーゼ",
+            "value": 650,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "リパーゼ",
+            "value": 1400,
+            "unit": "U/L",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "3H030",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Ca",
+            "value": 8.2,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Ca",
+            "value": 7.5,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Ca",
+            "value": 6.8,
+            "unit": "mg/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 50,
+      "actions": [
+        {
+          "label": "大量輸液・集中治療",
+          "drugCategories": "[\"輸液\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 0
+        }
+      ]
+    }
+  },
+  {
+    "key": "pe",
+    "treatmentConfig": "{\"drugCategories\":[\"抗凝固薬\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":36.7,\"systolicBp\":116,\"diastolicBp\":74,\"pulse\":92,\"spo2\":94,\"respRate\":20},\"perSeverity\":{\"temperature\":0.1,\"systolicBp\":-28,\"diastolicBp\":-14,\"pulse\":28,\"spo2\":-22,\"respRate\":14}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "2B140",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Dダイマー",
+            "value": 1.5,
+            "unit": "μg/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Dダイマー",
+            "value": 4,
+            "unit": "μg/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Dダイマー",
+            "value": 9,
+            "unit": "μg/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "IMG-CT-009",
+        "kind": "text",
+        "mildText": "区域枝レベルに小範囲の造影欠損を認める。",
+        "moderateText": "葉枝レベルに造影欠損を認め、肺塞栓と矛盾しない。",
+        "severeText": "肺動脈本幹〜主要分枝に広範な造影欠損を認め、右心負荷所見を伴う。",
+        "sortOrder": 1,
+        "values": []
+      },
+      {
+        "labItemCode": "IMG-US-004",
+        "kind": "text",
+        "mildText": "下腿静脈に軽度の血流うっ滞を認めるが明らかな血栓像はない。",
+        "moderateText": "膝窩静脈に圧迫不能な血栓像を認める。",
+        "severeText": "大腿静脈〜膝窩静脈にかけて広範な閉塞性血栓を認める。",
+        "sortOrder": 2,
+        "values": []
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "pe_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"抗凝固薬\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":-0.5,\"systolicBp\":-62,\"diastolicBp\":-34,\"pulse\":70,\"spo2\":-33,\"respRate\":-8}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "2B140",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "Dダイマー",
+            "value": 1.5,
+            "unit": "μg/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "Dダイマー",
+            "value": 4,
+            "unit": "μg/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "Dダイマー",
+            "value": 9,
+            "unit": "μg/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "IMG-CT-009",
+        "kind": "text",
+        "mildText": "区域枝レベルに小範囲の造影欠損を認める。",
+        "moderateText": "葉枝レベルに造影欠損を認め、肺塞栓と矛盾しない。",
+        "severeText": "肺動脈本幹〜主要分枝に広範な造影欠損を認め、右心負荷所見を伴う。",
+        "sortOrder": 1,
+        "values": []
+      },
+      {
+        "labItemCode": "IMG-US-004",
+        "kind": "text",
+        "mildText": "下腿静脈に軽度の血流うっ滞を認めるが明らかな血栓像はない。",
+        "moderateText": "膝窩静脈に圧迫不能な血栓像を認める。",
+        "severeText": "大腿静脈〜膝窩静脈にかけて広範な閉塞性血栓を認める。",
+        "sortOrder": 2,
+        "values": []
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 50,
+      "actions": [
+        {
+          "label": "血栓溶解・抗凝固強化",
+          "drugCategories": "[\"抗凝固薬\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 0
+        },
+        {
+          "label": "気管挿管・人工呼吸管理",
+          "drugCategories": "[]",
+          "procedureKeywords": "[\"気管挿管\"]",
+          "sortOrder": 1
+        }
+      ]
+    }
+  },
+  {
+    "key": "thyroid_storm",
+    "treatmentConfig": "{\"drugCategories\":[\"甲状腺関連薬\"]}",
+    "vitalsConfig": "{\"base\":{\"temperature\":37.3,\"systolicBp\":130,\"diastolicBp\":76,\"pulse\":112,\"spo2\":97,\"respRate\":18},\"perSeverity\":{\"temperature\":2.8,\"systolicBp\":8,\"diastolicBp\":-8,\"pulse\":48,\"spo2\":-5,\"respRate\":8}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "4B015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "FT3",
+            "value": 6,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "FT3",
+            "value": 9,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "FT3",
+            "value": 14,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "4B035",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "FT4",
+            "value": 2.8,
+            "unit": "ng/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "FT4",
+            "value": 4.2,
+            "unit": "ng/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "FT4",
+            "value": 6.5,
+            "unit": "ng/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "4A055",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "TSH",
+            "value": 0.05,
+            "unit": "μIU/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "TSH",
+            "value": 0.02,
+            "unit": "μIU/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "TSH",
+            "value": 0.01,
+            "unit": "μIU/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": null
+  },
+  {
+    "key": "thyroid_storm_crisis",
+    "treatmentConfig": "{\"drugCategories\":[\"甲状腺関連薬\"]}",
+    "vitalsConfig": "{\"perSeverity\":{\"temperature\":4.5,\"systolicBp\":-40,\"diastolicBp\":-30,\"pulse\":93,\"spo2\":-10,\"respRate\":14}}",
+    "aiEvaluationGuideline": null,
+    "labPatterns": [
+      {
+        "labItemCode": "4B015",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 0,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "FT3",
+            "value": 6,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "FT3",
+            "value": 9,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "FT3",
+            "value": 14,
+            "unit": "pg/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "4B035",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 1,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "FT4",
+            "value": 2.8,
+            "unit": "ng/dL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "FT4",
+            "value": 4.2,
+            "unit": "ng/dL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "FT4",
+            "value": 6.5,
+            "unit": "ng/dL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      },
+      {
+        "labItemCode": "4A055",
+        "kind": "values",
+        "mildText": null,
+        "moderateText": null,
+        "severeText": null,
+        "sortOrder": 2,
+        "values": [
+          {
+            "tier": "mild",
+            "label": "TSH",
+            "value": 0.05,
+            "unit": "μIU/mL",
+            "note": null,
+            "sortOrder": 0
+          },
+          {
+            "tier": "moderate",
+            "label": "TSH",
+            "value": 0.02,
+            "unit": "μIU/mL",
+            "note": null,
+            "sortOrder": 1
+          },
+          {
+            "tier": "severe",
+            "label": "TSH",
+            "value": 0.01,
+            "unit": "μIU/mL",
+            "note": null,
+            "sortOrder": 2
+          }
+        ]
+      }
+    ],
+    "crisisRescue": {
+      "postRescueSeverity": 50,
+      "actions": [
+        {
+          "label": "β遮断薬・抗甲状腺薬強化投与",
+          "drugCategories": "[\"β遮断薬\",\"甲状腺関連薬\"]",
+          "procedureKeywords": "[]",
+          "sortOrder": 0
+        }
+      ]
+    }
+  }
+]

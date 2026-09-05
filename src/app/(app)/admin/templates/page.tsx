@@ -6,6 +6,8 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { PhysiologySliders } from "@/components/PhysiologySliders";
 import { DEFAULT_PHYSIOLOGY_PARAMS } from "@/lib/physiology";
 import { parsePhysiologyParams } from "@/lib/physiology-engine";
+import { safeJsonParse } from "@/lib/engine";
+import { treatmentTriggerSchema, vitalCoefficientsSchema } from "@/lib/schemas";
 import { VITAL_FIELDS } from "@/lib/vital-fields";
 import {
   addCrisisRescueAction,
@@ -138,9 +140,13 @@ export default async function AdminTemplatesPage({
         </div>
 
         {templates.map((t) => {
-          const engineReady = !!t.vitalsConfig && !!t.treatmentConfig;
-          const vitals = t.vitalsConfig ? (JSON.parse(t.vitalsConfig) as { perSeverity: Record<string, number> }) : null;
-          const treatment = t.treatmentConfig ? (JSON.parse(t.treatmentConfig) as { drugCategories?: string[]; procedureKeywords?: string[] }) : null;
+          // engine.tsのloadTemplateConfigと同じ検証済みパーサーを使う。手入力・Turso手動同期を経由するJSON
+          // なので、壊れた値が1件でもあると未ガードのJSON.parseはこの管理画面全体をクラッシュさせてしまう。
+          const vitalsParsed = t.vitalsConfig ? safeJsonParse(t.vitalsConfig, vitalCoefficientsSchema) : null;
+          const treatmentParsed = t.treatmentConfig ? safeJsonParse(t.treatmentConfig, treatmentTriggerSchema) : null;
+          const vitals = vitalsParsed?.success ? vitalsParsed.data : null;
+          const treatment = treatmentParsed?.success ? treatmentParsed.data : null;
+          const engineReady = !!vitals && !!treatment;
 
           return (
             <div className="card" key={t.id}>

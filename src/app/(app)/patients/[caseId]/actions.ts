@@ -20,6 +20,7 @@ import {
 } from "@/lib/engine";
 import { getCaseClockNow, parsePhysiologyParams } from "@/lib/physiology-engine";
 import { getCultureDelayHours } from "@/lib/infection-engine";
+import { advanceSimHoursSchema, cartItemsSchema, updateDrugOrderRpPayloadSchema } from "@/lib/schemas";
 
 // 紹介状（診療情報提供書）の構造化項目。KarteEntry.detailにJSON文字列として保存する。
 export type ReferralDetail = {
@@ -172,6 +173,10 @@ export type CartItem =
   | { kind: "GENERAL"; category: string; selection: string; comment: string }
   | { kind: "PROCEDURE"; category: string; selection: string; comment: string };
 
+export type SubmitOrderResult =
+  | { ok: true }
+  | { ok: false; error: "empty" | "invalid" | "not_found" | "deceased" };
+
 export type DrugSearchResult = {
   id: string;
   name: string;
@@ -261,15 +266,22 @@ export async function searchDrugs(caseId: string, isInjectable: boolean, query: 
 
 // 検査・処方・注射・一般指示をまとめて一括発行する。学生はダイアログでカートに項目を積んでから
 // 一括で確定するため、サーバー側でもまとめて1回のトランザクションで処理する。
-export async function submitOrderBatch(caseId: string, items: CartItem[]) {
+export async function submitOrderBatch(caseId: string, items: CartItem[]): Promise<SubmitOrderResult> {
   const { user } = await requireCaseAccess(caseId);
-  if (!items || items.length === 0) return;
+  if (!items || items.length === 0) return { ok: false, error: "empty" };
+
+  const parsed = cartItemsSchema.safeParse(items);
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  items = parsed.data;
 
   const caseRecord = await db.case.findUnique({
     where: { id: caseId },
     include: { diseaseLinks: { include: { template: true }, orderBy: { sortOrder: "asc" } } },
   });
-  if (!caseRecord || caseRecord.crisisState === "DECEASED") return;
+  if (!caseRecord) return { ok: false, error: "not_found" };
+  // 死亡＝症例凍結。無言でreturnすると呼び出し側では成功と区別できず、カートだけが空になるため
+  // 明示的に理由を返す（UI側で発行ボタンを無効化しつつ、直接呼ばれた場合もここで止める）。
+  if (caseRecord.crisisState === "DECEASED") return { ok: false, error: "deceased" };
 
   // シミュレーション症例ではオーダー時刻もシミュレーション時計に合わせる。治療開始時刻の判定や
   // バイタルの時系列がこの時刻を基準に計算されるため、実時刻のままだとズレてしまう。
@@ -519,6 +531,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
 
   revalidatePath(`/patients/${caseId}`);
   refresh();
+  return { ok: true };
 }
 
 // 処方・注射オーダーの中止。discontinuedAt（症例時刻）をセットすると、薬剤影響エンジンは
@@ -526,6 +539,8 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]) {
 // スナップショットのため遡って変わらない）。
 export async function discontinueOrder(caseId: string, orderId: string) {
   const { user, case: caseRecord } = await requireCaseAccess(caseId);
+
+  if (caseRecord.crisisState === "DECEASED") return; // 死亡＝症例凍結（以後の変更を受け付けない）
 
   const order = await db.order.findUnique({ where: { id: orderId } });
   if (!order || order.caseId !== caseId) return;
@@ -571,7 +586,12 @@ function parseExistingDetail(json: string | null): Record<string, unknown> {
 
 // 処方・注射Rpの既存項目を値のみ修正する（薬剤の追加・削除は対象外）。中止済みのRpは編集できない。
 export async function updateDrugOrderRp(caseId: string, rpGroupId: string, payload: UpdateDrugOrderRpPayload) {
-  const { user } = await requireCaseAccess(caseId);
+  const { user, case: caseRecord } = await requireCaseAccess(caseId);
+  if (caseRecord.crisisState === "DECEASED") return; // 死亡＝症例凍結（以後の変更を受け付けない）
+
+  const parsedPayload = updateDrugOrderRpPayloadSchema.safeParse(payload);
+  if (!parsedPayload.success) return;
+  payload = parsedPayload.data;
 
   const orders = await db.order.findMany({
     where: { caseId, rpGroupId },
@@ -631,6 +651,13 @@ export async function updateDrugOrderRp(caseId: string, rpGroupId: string, paylo
 export async function advanceSimTime(caseId: string, hours: number) {
   const { user, case: caseRecord } = await requireCaseAccess(caseId);
   if (caseRecord.timeProgressMode !== "MANUAL") return;
+  if (caseRecord.crisisState === "DECEASED") return; // 死亡＝症例凍結（以後の変更を受け付けない）
+
+  // Server Actionはクライアントの<SimTimeControl>の選択肢をバイパスして直接呼び出せるため、
+  // 負値（時計を巻き戻し、致死的な急変ウィンドウを回避しうる）・NaN・極端な大値を必ず検証する。
+  const parsedHours = advanceSimHoursSchema.safeParse(hours);
+  if (!parsedHours.success) return;
+  hours = parsedHours.data;
 
   const current = getCaseClockNow(caseRecord);
   const next = new Date(current.getTime() + hours * 3_600_000);

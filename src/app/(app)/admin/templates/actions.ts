@@ -8,14 +8,15 @@ import { logAudit } from "@/lib/audit";
 import { DEFAULT_PHYSIOLOGY_PARAMS } from "@/lib/physiology";
 import type { VitalPoint } from "@/lib/physiology-engine";
 import { VITAL_FIELDS } from "@/lib/vital-fields";
+import { clampSlider0to100, finiteOrZero } from "@/lib/schemas";
 
 function readParams(formData: FormData) {
   return {
     ...DEFAULT_PHYSIOLOGY_PARAMS,
-    initialTempSlider: Number(formData.get("initialTempSlider") ?? 50),
-    improvementSpeedSlider: Number(formData.get("improvementSpeedSlider") ?? 50),
-    initialSpo2Slider: Number(formData.get("initialSpo2Slider") ?? 50),
-    severitySlider: Number(formData.get("severitySlider") ?? 50),
+    initialTempSlider: clampSlider0to100(Number(formData.get("initialTempSlider"))),
+    improvementSpeedSlider: clampSlider0to100(Number(formData.get("improvementSpeedSlider"))),
+    initialSpo2Slider: clampSlider0to100(Number(formData.get("initialSpo2Slider"))),
+    severitySlider: clampSlider0to100(Number(formData.get("severitySlider"))),
   };
 }
 
@@ -88,7 +89,7 @@ export async function deleteTemplate(id: string) {
 function readVitalPoint(formData: FormData, prefix: string): VitalPoint {
   const point = {} as VitalPoint;
   for (const f of VITAL_FIELDS) {
-    point[f.key] = Number(formData.get(`${prefix}_${f.key}`) ?? 0);
+    point[f.key] = finiteOrZero(Number(formData.get(`${prefix}_${f.key}`)));
   }
   return point;
 }

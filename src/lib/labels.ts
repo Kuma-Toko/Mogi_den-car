@@ -86,10 +86,17 @@ export const auditActionLabel: Record<string, string> = {
   master_template_delete: "病態テンプレートを削除",
   auto_discontinue_prescription: "処方を自動中止（日数超過）",
   order_edit_rp: "処方・注射オーダーを編集",
+  discontinue_order: "オーダーを中止",
+  crisis_onset: "【急変】発生",
+  crisis_rescue: "【急変】救命処置により安定化",
+  case_deceased: "【死亡確認】",
+  order_result_preliminary: "検査の速報結果を開示",
+  order_result_available: "検査の確定結果を開示",
 };
 
 export const auditTargetTypeLabel: Record<string, string> = {
   Case: "症例",
+  Order: "オーダー",
   DrugMaster: "薬剤マスター",
   LabItemMaster: "検査項目マスター",
   DiseaseTemplate: "病態テンプレート",

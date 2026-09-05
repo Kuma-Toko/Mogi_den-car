@@ -63,17 +63,21 @@ function groupOrders(orders: OrderRow[]): OrderRow[][] {
   return keys.map((k) => groups.get(k)!);
 }
 
+// ConfirmButtonは確認状態で <button type="submit" formAction={...}> を描画するため、
+// form の所有者が無いとクリックしても何も起きない（他のConfirmButton利用箇所も全て<form>で囲んでいる）。
 function DiscontinueButton({ caseId, orderId }: { caseId: string; orderId: string }) {
   return (
-    <ConfirmButton
-      formAction={discontinueOrder.bind(null, caseId, orderId)}
-      confirmText="このオーダーを中止しますか？"
-      className="btn ghost"
-      actionLabel="中止する"
-      actionClassName="btn danger"
-    >
-      中止
-    </ConfirmButton>
+    <form>
+      <ConfirmButton
+        formAction={discontinueOrder.bind(null, caseId, orderId)}
+        confirmText="このオーダーを中止しますか？"
+        className="btn ghost"
+        actionLabel="中止する"
+        actionClassName="btn danger"
+      >
+        中止
+      </ConfirmButton>
+    </form>
   );
 }
 
@@ -89,7 +93,13 @@ export async function OrdersTab({ caseId }: { caseId: string }) {
 
   return (
     <div className="split">
-      <OrderCard caseId={caseId} labItems={labItems} usageTemplates={usageTemplates} immediate={caseRecord?.resultTiming === "IMMEDIATE"} />
+      <OrderCard
+        caseId={caseId}
+        labItems={labItems}
+        usageTemplates={usageTemplates}
+        immediate={caseRecord?.resultTiming === "IMMEDIATE"}
+        deceased={caseRecord?.crisisState === "DECEASED"}
+      />
 
       <div className="card">
         <div className="card-h">オーダー履歴</div>

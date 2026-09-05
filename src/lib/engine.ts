@@ -28,10 +28,10 @@ import {
   type PatternSet,
   type SeverityTier,
   type TemplateConfig,
-  type TreatmentTrigger,
   type VitalPoint,
 } from "@/lib/physiology-engine";
 import { formatLabValues, type LabValue } from "@/lib/lab-reference-ranges";
+import { treatmentTriggerSchema, vitalCoefficientsSchema } from "@/lib/schemas";
 import { evaluateTreatment, type TargetedTherapyContext } from "@/lib/ai-treatment-evaluation";
 import {
   evaluateAntibioticCoverage,
@@ -69,6 +69,13 @@ export async function loadTemplateConfig(templateKey: string | null | undefined)
   });
   if (!template || !template.vitalsConfig || !template.treatmentConfig) return null;
 
+  // treatmentConfig/vitalsConfigは管理画面の手入力・Turso手動同期を経由するJSON文字列のため、
+  // 形が壊れていても未ガードのJSON.parseで全カルテ描画をクラッシュさせないよう、パース失敗・
+  // スキーマ不一致は「このテンプレートはエンジン未対応」として扱う（呼び出し側は既にnullを想定済み）。
+  const treatmentParsed = safeJsonParse(template.treatmentConfig, treatmentTriggerSchema);
+  const vitalsParsed = safeJsonParse(template.vitalsConfig, vitalCoefficientsSchema);
+  if (!treatmentParsed.success || !vitalsParsed.success) return null;
+
   const labPatterns: Record<string, PatternSet> = {};
   for (const p of template.labPatterns) {
     if (p.kind === "text") {
@@ -105,12 +112,23 @@ export async function loadTemplateConfig(templateKey: string | null | undefined)
     : null;
 
   return {
-    treatment: JSON.parse(template.treatmentConfig) as TreatmentTrigger,
-    vitals: JSON.parse(template.vitalsConfig) as TemplateConfig["vitals"],
+    treatment: treatmentParsed.data,
+    vitals: vitalsParsed.data,
     labPatterns,
     crisisTriggers,
     crisisRescue,
   };
+}
+
+// JSON.parseとzod検証をまとめたヘルパー。不正なJSON・スキーマ不一致のどちらもsuccess:falseに正規化する
+// （呼び出し側はJSON構文エラーとスキーマ不一致を区別する必要が無いため）。
+export function safeJsonParse<T>(raw: string, schema: { safeParse: (v: unknown) => { success: boolean; data?: T } }): { success: true; data: T } | { success: false } {
+  try {
+    const result = schema.safeParse(JSON.parse(raw));
+    return result.success ? { success: true, data: result.data as T } : { success: false };
+  } catch {
+    return { success: false };
+  }
 }
 
 // この検査項目コードが、いずれかの病態テンプレートの動的所見パターンで使われているか
@@ -518,6 +536,7 @@ export async function reconcileCaseResults(caseId: string): Promise<void> {
     await db.notification.create({
       data: { userId: order.orderedByUserId, caseId, message: `${order.label} の速報結果が出ました。` },
     });
+    await logAudit({ userId: null, action: "order_result_preliminary", targetType: "Order", targetId: order.id });
   }
 
   for (const order of dueFinal) {
@@ -542,6 +561,7 @@ export async function reconcileCaseResults(caseId: string): Promise<void> {
         message: `${order.label} の結果が出ました。`,
       },
     });
+    await logAudit({ userId: null, action: "order_result_available", targetType: "Order", targetId: order.id });
   }
 }
 
@@ -689,11 +709,19 @@ export async function reconcileCaseCrisis(caseId: string): Promise<void> {
       const progress = progressByScenario.get(scenario.id);
 
       if (!conditionHolds) {
-        if (progress) await db.caseCrisisTriggerProgress.delete({ where: { id: progress.id } });
+        // 学生のカルテ表示と教員ダッシュボードの同時アクセス等でreconcileが競合しうるため、
+        // 「無ければ何もしない」deleteManyにして、既に他方が削除済みでもP2025で落ちないようにする。
+        if (progress) await db.caseCrisisTriggerProgress.deleteMany({ where: { caseId, scenarioId: scenario.id } });
         continue;
       }
       if (!progress) {
-        await db.caseCrisisTriggerProgress.create({ data: { caseId, scenarioId: scenario.id, conditionSince: clockNow } });
+        // 同様に、他方が既に作成済みならupsertが上書きするだけで済むようにする（read-check-then-createは
+        // @@unique([caseId, scenarioId])に対する競合でP2002になりうる）。
+        await db.caseCrisisTriggerProgress.upsert({
+          where: { caseId_scenarioId: { caseId, scenarioId: scenario.id } },
+          update: {},
+          create: { caseId, scenarioId: scenario.id, conditionSince: clockNow },
+        });
         continue;
       }
       const sustainedMinutes = (clockNow.getTime() - progress.conditionSince.getTime()) / 60_000;
@@ -705,26 +733,38 @@ export async function reconcileCaseCrisis(caseId: string): Promise<void> {
       const targetParams = parsePhysiologyParams(targetTemplate.defaultParams);
       const maxSort = await db.caseDiseaseLink.aggregate({ where: { caseId }, _max: { sortOrder: true } });
 
-      await db.caseDiseaseLink.updateMany({ where: { caseId }, data: { isPrimary: false } });
-      await db.caseDiseaseLink.upsert({
-        where: { caseId_templateId: { caseId, templateId: targetTemplate.id } },
-        update: {
-          isPrimary: true,
-          severityBaselineAt: clockNow,
-          physiologyParams: JSON.stringify(targetParams),
-          aiSeverityRatePerHour: null,
-        },
-        create: {
-          caseId,
-          templateId: targetTemplate.id,
-          isPrimary: true,
-          physiologyParams: JSON.stringify(targetParams),
-          severityBaselineAt: clockNow,
-          sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
-        },
+      // 4段階の状態遷移を1トランザクションにまとめる。非トランザクションのままだと、
+      // 途中で失敗した場合に「主病態がゼロ件の症例」（updateManyだけ成功）や、
+      // 「crisisStateはCRITICALなのに新しい病態リンクが無い」といった不整合な中間状態が残ってしまう。
+      await db.$transaction(async (tx) => {
+        await tx.caseDiseaseLink.updateMany({ where: { caseId }, data: { isPrimary: false } });
+        await tx.caseDiseaseLink.upsert({
+          where: { caseId_templateId: { caseId, templateId: targetTemplate.id } },
+          update: {
+            isPrimary: true,
+            severityBaselineAt: clockNow,
+            physiologyParams: JSON.stringify(targetParams),
+            aiSeverityRatePerHour: null,
+          },
+          create: {
+            caseId,
+            templateId: targetTemplate.id,
+            isPrimary: true,
+            physiologyParams: JSON.stringify(targetParams),
+            severityBaselineAt: clockNow,
+            sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+          },
+        });
+        await tx.case.update({ where: { id: caseId }, data: { crisisState: "CRITICAL", crisisStartedAt: clockNow } });
+        await tx.caseCrisisTriggerProgress.deleteMany({ where: { caseId } });
       });
-      await db.case.update({ where: { id: caseId }, data: { crisisState: "CRITICAL", crisisStartedAt: clockNow } });
-      await db.caseCrisisTriggerProgress.deleteMany({ where: { caseId } });
+      await logAudit({
+        userId: null,
+        action: "crisis_onset",
+        targetType: "Case",
+        targetId: caseId,
+        detail: { targetTemplateKey: targetTemplate.key, targetTemplateName: targetTemplate.name },
+      });
       await notifyAssignedStudents(caseId, `【急変】${targetTemplate.name}を疑う状態です。直ちに対応してください。`);
       return;
     }
@@ -739,14 +779,19 @@ export async function reconcileCaseCrisis(caseId: string): Promise<void> {
     const rescuedAt = findCrisisRescueAt(treatmentOrders, rescue, crisisStartedAt);
     if (rescuedAt) {
       const params = parsePhysiologyParams(primaryLink.physiologyParams);
-      await db.case.update({ where: { id: caseId }, data: { crisisState: "STABLE", crisisStartedAt: null } });
-      await db.caseDiseaseLink.update({
-        where: { id: primaryLink.id },
-        data: {
-          severityBaselineAt: clockNow,
-          physiologyParams: JSON.stringify({ ...params, severitySlider: rescue.postRescueSeverity }),
-        },
+      // 「安定化したのにcrisisStateだけ変わって重症度カーブは危機のまま」という中間状態を避けるため
+      // 1トランザクションにまとめる（急変発生時と同じ理由）。
+      await db.$transaction(async (tx) => {
+        await tx.case.update({ where: { id: caseId }, data: { crisisState: "STABLE", crisisStartedAt: null } });
+        await tx.caseDiseaseLink.update({
+          where: { id: primaryLink.id },
+          data: {
+            severityBaselineAt: clockNow,
+            physiologyParams: JSON.stringify({ ...params, severitySlider: rescue.postRescueSeverity }),
+          },
+        });
       });
+      await logAudit({ userId: null, action: "crisis_rescue", targetType: "Case", targetId: caseId });
       await notifyAssignedStudents(caseId, "救命処置が奏功し、状態は安定化しました。");
       return;
     }
@@ -756,6 +801,7 @@ export async function reconcileCaseCrisis(caseId: string): Promise<void> {
     const severity = computeCaseSeverityAtTime(primaryLink, treatmentOrders, primaryConfig, clockNow);
     if (severity !== null && severity >= 100) {
       await db.case.update({ where: { id: caseId }, data: { crisisState: "DECEASED" } });
+      await logAudit({ userId: null, action: "case_deceased", targetType: "Case", targetId: caseId });
       await notifyAssignedStudents(caseId, "【死亡確認】救命処置が間に合わず、患者は死亡しました。");
     }
   }

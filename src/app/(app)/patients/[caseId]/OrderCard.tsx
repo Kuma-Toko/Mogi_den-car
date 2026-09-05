@@ -37,16 +37,25 @@ function rpNumberFor(cart: CartItem[], index: number): number {
   return n;
 }
 
+const SUBMIT_ERROR_MESSAGE: Record<string, string> = {
+  empty: "オーダーを1件以上追加してください。",
+  invalid: "入力内容を確認してください。",
+  not_found: "症例が見つかりませんでした。",
+  deceased: "この症例は死亡により凍結されているため、新規オーダーは発行できません。",
+};
+
 export function OrderCard({
   caseId,
   labItems,
   usageTemplates,
   immediate,
+  deceased,
 }: {
   caseId: string;
   labItems: LabItem[];
   usageTemplates: UsageTemplate[];
   immediate: boolean;
+  deceased: boolean;
 }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -68,8 +77,12 @@ export function OrderCard({
     setSubmitting(true);
     setError(null);
     try {
-      await submitOrderBatch(caseId, cart);
-      setCart([]);
+      const result = await submitOrderBatch(caseId, cart);
+      if (result.ok) {
+        setCart([]);
+      } else {
+        setError(SUBMIT_ERROR_MESSAGE[result.error] ?? "オーダーの送信に失敗しました。");
+      }
     } catch {
       setError("オーダーの送信に失敗しました。時間をおいて再度お試しください。");
     } finally {
@@ -81,14 +94,20 @@ export function OrderCard({
     <div className="card">
       <div className="card-h">オーダー入力</div>
       <div className="card-b">
-        <div className="field" style={{ marginBottom: 12 }}>
-          <label>結果取得タイミング（症例側の設定）</label>
-          <div className="badge blue">
-            {immediate ? "即時型：確定後すぐに結果が反映されます" : "遅延型：しばらくしてから結果が反映されます"}
+        {deceased ? (
+          <div className="banner-error" style={{ marginBottom: 12 }}>
+            この症例は死亡により凍結されているため、新規オーダーは発行できません。
           </div>
-        </div>
+        ) : (
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>結果取得タイミング（症例側の設定）</label>
+            <div className="badge blue">
+              {immediate ? "即時型：確定後すぐに結果が反映されます" : "遅延型：しばらくしてから結果が反映されます"}
+            </div>
+          </div>
+        )}
 
-        <div className="order-types">
+        <div className="order-types" style={deceased ? { pointerEvents: "none", opacity: 0.5 } : undefined}>
           <LabOrderDialog labItems={nonImagingLabItems} onAdd={addToCart} />
           <ImagingOrderDialog imagingItems={imagingItems} onAdd={addToCart} />
           <DrugOrderDialog caseId={caseId} orderType="MEDICATION" usageTemplates={usageTemplates} onAdd={addToCart} />
@@ -158,7 +177,7 @@ export function OrderCard({
               type="button"
               className="btn primary"
               style={{ width: "100%", marginTop: 10 }}
-              disabled={submitting}
+              disabled={submitting || deceased}
               onClick={confirmOrders}
             >
               {submitting ? "発行中…" : `オーダーを確定する（${cart.length}件）`}

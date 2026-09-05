@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import type { Case, CaseType, CrisisMode } from "@prisma/client";
 import type { PhysiologyParams } from "@/lib/physiology";
+import { caseTypeSchema, clampPatientAge, clampSlider0to100, patientGenderSchema } from "@/lib/schemas";
 
 const CRISIS_MODES: CrisisMode[] = ["OFF", "REVERSIBLE", "LETHAL"];
 
@@ -32,10 +33,16 @@ function timeProgressModeFor(caseType: CaseType) {
 // 症例作成・編集フォームの共通フィールドをパースする。
 function readCaseFields(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
-  const caseType = String(formData.get("caseType") ?? "SIMULATION") as CaseType;
+  // Prisma/SQLiteのenumはCHECK制約を生成しないため、whitelist無しにキャストすると任意の文字列が
+  // 永続化されうる（後続のRecord<CaseType, …>系ラベル参照が全てundefinedになる）。
+  const caseTypeParsed = caseTypeSchema.safeParse(formData.get("caseType"));
+  const caseType: CaseType = caseTypeParsed.success ? caseTypeParsed.data : "SIMULATION";
   const patientName = String(formData.get("patientName") ?? "").trim();
-  const patientAge = Number(formData.get("patientAge") ?? 0) || 0;
-  const patientGender = String(formData.get("patientGender") ?? "");
+  // NaN・負数・小数・異常値が生理モデルの年齢帯マッチングへそのまま渡ると意図しない基準値が選ばれるため、
+  // 0〜120歳の整数へクランプする（"Number(x) || 0"だとNaNが黙って0歳＝乳児帯になっていた）。
+  const patientAge = clampPatientAge(Number(formData.get("patientAge")));
+  const patientGenderParsed = patientGenderSchema.safeParse(String(formData.get("patientGender") ?? ""));
+  const patientGender = patientGenderParsed.success ? patientGenderParsed.data : "男性";
   const ward = String(formData.get("ward") ?? "").trim() || null;
   const bed = String(formData.get("bed") ?? "").trim() || null;
   const visibilityScope = String(formData.get("visibilityScope") ?? "").trim() || null;
@@ -65,11 +72,13 @@ function readCaseFields(formData: FormData) {
   const pathogenIdByTemplate: Record<string, string | null> = {};
   const relevantSpecimenSitesByTemplate: Record<string, string[] | null> = {};
   for (const templateId of diseaseTemplateIds) {
+    // "Number(x) ?? 50"は非数値文字列に対してNaNを返す（??はnullish coalescingでNaNを素通りさせる）ため、
+    // JSON.stringify(NaN)がnullになって重症度カーブ全体がNaN化しうる。0〜100へ必ず数値クランプする。
     physiologyParamsByTemplate[templateId] = {
-      initialTempSlider: Number(formData.get(`tpl_${templateId}_initialTempSlider`) ?? 50),
-      improvementSpeedSlider: Number(formData.get(`tpl_${templateId}_improvementSpeedSlider`) ?? 50),
-      initialSpo2Slider: Number(formData.get(`tpl_${templateId}_initialSpo2Slider`) ?? 50),
-      severitySlider: Number(formData.get(`tpl_${templateId}_severitySlider`) ?? 50),
+      initialTempSlider: clampSlider0to100(Number(formData.get(`tpl_${templateId}_initialTempSlider`))),
+      improvementSpeedSlider: clampSlider0to100(Number(formData.get(`tpl_${templateId}_improvementSpeedSlider`))),
+      initialSpo2Slider: clampSlider0to100(Number(formData.get(`tpl_${templateId}_initialSpo2Slider`))),
+      severitySlider: clampSlider0to100(Number(formData.get(`tpl_${templateId}_severitySlider`))),
     };
     pathogenIdByTemplate[templateId] = String(formData.get(`tpl_${templateId}_pathogenId`) ?? "").trim() || null;
     // 検体部位制限: チェックボックスがONのときだけ配列（空配列もありうる）、OFFならnull（=制限なし、既存挙動）。
