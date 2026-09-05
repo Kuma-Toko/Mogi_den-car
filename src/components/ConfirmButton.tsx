@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 function SubmitButton({
@@ -36,22 +36,42 @@ export function ConfirmButton({
   actionClassName?: string;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const wrapRef = useRef<HTMLSpanElement>(null);
 
-  if (!confirming) {
-    return (
+  useEffect(() => {
+    if (!confirming) return;
+    function onPointerDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setConfirming(false);
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setConfirming(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [confirming]);
+
+  return (
+    <span ref={wrapRef} className="confirm-btn-wrap">
       <button type="button" className={className} onClick={() => setConfirming(true)}>
         {children}
       </button>
-    );
-  }
-
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
-      <span style={{ fontSize: 11, color: "var(--red)" }}>{confirmText}</span>
-      <SubmitButton formAction={formAction} actionLabel={actionLabel} actionClassName={actionClassName} />
-      <button type="button" className="btn ghost" onClick={() => setConfirming(false)}>
-        取消
-      </button>
+      {confirming && (
+        <span className="confirm-popover">
+          <span className="confirm-popover-text">{confirmText}</span>
+          <span className="confirm-popover-actions">
+            <SubmitButton formAction={formAction} actionLabel={actionLabel} actionClassName={actionClassName} />
+            <button type="button" className="btn ghost" onClick={() => setConfirming(false)}>
+              取消
+            </button>
+          </span>
+        </span>
+      )}
     </span>
   );
 }

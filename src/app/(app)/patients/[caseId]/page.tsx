@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireCaseAccess } from "@/lib/case-access";
 import { findPrimaryDiseaseLink, getCurrentPrimarySeverity, reconcileCase } from "@/lib/engine";
 import { db } from "@/lib/db";
@@ -8,6 +7,8 @@ import { KarteTab } from "./KarteTab";
 import { KarteEntryTab } from "./KarteEntryTab";
 import { EncounterTab } from "./EncounterTab";
 import { KarteReferencePanel } from "./KarteReferencePanel";
+import { NavigationBlockerProvider } from "./NavigationBlockerContext";
+import { TabLink } from "./TabLink";
 import { OrdersTab } from "./OrdersTab";
 import { ResultsTab } from "./ResultsTab";
 import { VitalsTab } from "./VitalsTab";
@@ -36,10 +37,10 @@ export default async function CaseDetailPage({
   searchParams,
 }: {
   params: Promise<{ caseId: string }>;
-  searchParams: Promise<{ tab?: string; error?: string }>;
+  searchParams: Promise<{ tab?: string; error?: string; oq?: string; opage?: string }>;
 }) {
   const { caseId } = await params;
-  const { tab: tabParam, error } = await searchParams;
+  const { tab: tabParam, error, oq, opage } = await searchParams;
   const { user, case: caseRecord } = await requireCaseAccess(caseId);
   const canManage = user.role !== "STUDENT";
 
@@ -99,29 +100,31 @@ export default async function CaseDetailPage({
 
         <SimTimeControl caseId={caseId} caseRecord={caseRecord} />
 
-        <div className="tabs">
-          {TABS.map((t) => (
-            <Link key={t.key} href={`/patients/${caseId}?tab=${t.key}`} className={tab === t.key ? "on" : ""}>
-              {t.label}
-            </Link>
-          ))}
-        </div>
-
-        {tab === "summary" && <SummaryTab caseId={caseId} canManageDiseases={canManage} currentUserId={user.id} />}
-        {tab === "karte" && <KarteTab caseId={caseId} />}
-        {tab === "karte-entry" && (
-          <div className="split">
-            <KarteEntryTab caseId={caseId} />
-            <KarteReferencePanel caseId={caseId} />
+        <NavigationBlockerProvider>
+          <div className="tabs">
+            {TABS.map((t) => (
+              <TabLink key={t.key} href={`/patients/${caseId}?tab=${t.key}`} className={tab === t.key ? "on" : ""}>
+                {t.label}
+              </TabLink>
+            ))}
           </div>
-        )}
-        {tab === "encounter" && <EncounterTab caseId={caseId} />}
-        {tab === "orders" && <OrdersTab caseId={caseId} />}
-        {tab === "results" && <ResultsTab caseId={caseId} />}
-        {tab === "vitals" && <VitalsTab caseId={caseId} />}
-        {tab === "discharge" && (
-          <DischargeTab caseId={caseId} currentUserId={user.id} currentUserRole={user.role} />
-        )}
+
+          {tab === "summary" && <SummaryTab caseId={caseId} canManageDiseases={canManage} currentUserId={user.id} />}
+          {tab === "karte" && <KarteTab caseId={caseId} />}
+          {tab === "karte-entry" && (
+            <div className="split">
+              <KarteEntryTab caseId={caseId} />
+              <KarteReferencePanel caseId={caseId} />
+            </div>
+          )}
+          {tab === "encounter" && <EncounterTab caseId={caseId} />}
+          {tab === "orders" && <OrdersTab caseId={caseId} query={oq} page={opage} />}
+          {tab === "results" && <ResultsTab caseId={caseId} />}
+          {tab === "vitals" && <VitalsTab caseId={caseId} />}
+          {tab === "discharge" && (
+            <DischargeTab caseId={caseId} currentUserId={user.id} currentUserRole={user.role} />
+          )}
+        </NavigationBlockerProvider>
       </div>
     </>
   );

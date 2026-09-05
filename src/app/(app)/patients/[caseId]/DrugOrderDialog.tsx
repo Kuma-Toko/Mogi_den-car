@@ -196,6 +196,7 @@ export function DrugOrderDialog({
       });
     }
     resetDraft();
+    dialogRef.current?.close();
   }
 
   return (

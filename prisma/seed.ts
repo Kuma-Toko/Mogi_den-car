@@ -650,8 +650,18 @@ async function main() {
     { code: "IMG-MG-001", name: "マンモグラフィ（両側2方向）", category: "画像検査", subcategory: "マンモグラフィ", unit: null, sampleResult: "カテゴリ1〜2相当。明らかな腫瘤・石灰化を認めない。", sampleValues: null },
     { code: "IMG-MG-002", name: "マンモグラフィ（片側追加撮影）", category: "画像検査", subcategory: "マンモグラフィ", unit: null, sampleResult: "圧迫拡大撮影で明らかな悪性所見を認めない。", sampleValues: null },
   ];
+  // オーダー画面のタブ表示順（画像検査は別タブ群のため対象外）
+  const LAB_CATEGORY_ORDER: Record<string, number> = {
+    "生化学的検査": 0,
+    "免疫学的検査": 1,
+    "内分泌学的検査": 2,
+    "血液学的検査": 3,
+    "一般検査": 4,
+    "微生物学的検査": 5,
+  };
   for (const l of labItems) {
-    await db.labItemMaster.upsert({ where: { code: l.code }, update: l, create: l });
+    const sortOrder = LAB_CATEGORY_ORDER[l.category] ?? 99;
+    await db.labItemMaster.upsert({ where: { code: l.code }, update: { ...l, sortOrder }, create: { ...l, sortOrder } });
   }
 
   const usageTemplates = [

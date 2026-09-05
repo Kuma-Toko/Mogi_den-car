@@ -7,24 +7,54 @@ import { reconcileCasesForStudent } from "@/lib/engine";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { dischargeCase } from "./actions";
 
-export default async function PatientsPage() {
+const PAGE_SIZE = 20;
+
+export default async function PatientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   await reconcileCasesForStudent(user.id);
 
-  const cases = await db.case.findMany({
-    where: {
-      status: { not: "DRAFT" },
-      assignments: { some: { studentId: user.id, dischargedAt: null } },
-    },
-    include: {
-      problems: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1 },
-      orders: { orderBy: { orderedAt: "desc" }, take: 20 },
-      karteEntries: { orderBy: { createdAt: "desc" }, take: 1 },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
+  const { q, page: pageParam } = await searchParams;
+  const query = q?.trim() ?? "";
+  const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
+
+  const baseWhere = {
+    status: { not: "DRAFT" as const },
+    assignments: { some: { studentId: user.id, dischargedAt: null } },
+  };
+  const where = query
+    ? {
+        ...baseWhere,
+        OR: [
+          { caseCode: { contains: query } },
+          { patientName: { contains: query } },
+          { ward: { contains: query } },
+          { bed: { contains: query } },
+        ],
+      }
+    : baseWhere;
+
+  const [assignedCount, totalCount, cases] = await Promise.all([
+    db.case.count({ where: baseWhere }),
+    db.case.count({ where }),
+    db.case.findMany({
+      where,
+      include: {
+        problems: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1 },
+        orders: { orderBy: { orderedAt: "desc" }, take: 20 },
+        karteEntries: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+      orderBy: { updatedAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const unreadNotifications = await db.notification.count({
     where: { userId: user.id, isRead: false },
@@ -39,7 +69,7 @@ export default async function PatientsPage() {
     },
   });
 
-  const simulationCount = cases.filter((c) => c.caseType === "SIMULATION").length;
+  const simulationCount = await db.case.count({ where: { ...baseWhere, caseType: "SIMULATION" } });
 
   function statusBadge(c: (typeof cases)[number]) {
     if (c.status === "SIMULATING") {
@@ -69,7 +99,7 @@ export default async function PatientsPage() {
       <div className="content">
         <div className="stat-row">
           <div className="stat">
-            <div className="n">{cases.length}</div>
+            <div className="n">{assignedCount}</div>
             <div className="l">担当患者数</div>
           </div>
           <div className="stat">
@@ -88,7 +118,7 @@ export default async function PatientsPage() {
 
         <div className="card">
           <div className="card-h">
-            担当患者
+            担当患者（全{totalCount.toLocaleString()}件中{cases.length.toLocaleString()}件を表示）
             <div style={{ display: "flex", gap: 6 }}>
               <Link href="/patients/discharged" className="btn ghost" style={{ fontSize: 11 }}>
                 退院済み患者
@@ -98,9 +128,30 @@ export default async function PatientsPage() {
               </Link>
             </div>
           </div>
+          <div className="card-b" style={{ paddingBottom: 0 }}>
+            <form method="get" style={{ display: "flex", gap: 8 }}>
+              <input
+                type="text"
+                name="q"
+                defaultValue={query}
+                placeholder="患者ID・氏名・病棟/床で検索"
+                style={{ flex: 1 }}
+              />
+              <button type="submit" className="btn">
+                検索
+              </button>
+              {query && (
+                <a href="/patients" className="btn ghost">
+                  条件をクリア
+                </a>
+              )}
+            </form>
+          </div>
           <div className="card-b" style={{ padding: 0 }}>
             {cases.length === 0 ? (
-              <div className="empty-note">担当患者はまだいません。「症例プールから追加」から症例を選んでください。</div>
+              <div className="empty-note">
+                {query ? "条件に一致する患者がいません。" : "担当患者はまだいません。「症例プールから追加」から症例を選んでください。"}
+              </div>
             ) : (
               <table>
                 <thead>
@@ -152,6 +203,27 @@ export default async function PatientsPage() {
               </table>
             )}
           </div>
+          {totalPages > 1 && (
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "12px 0" }}>
+              <a
+                href={`/patients?${new URLSearchParams({ ...(query ? { q: query } : {}), page: String(Math.max(1, page - 1)) })}`}
+                className={`btn ghost${page <= 1 ? " disabled" : ""}`}
+                aria-disabled={page <= 1}
+              >
+                ← 前へ
+              </a>
+              <span style={{ fontSize: 12, color: "var(--ink-soft)", alignSelf: "center" }}>
+                {page} / {totalPages}
+              </span>
+              <a
+                href={`/patients?${new URLSearchParams({ ...(query ? { q: query } : {}), page: String(Math.min(totalPages, page + 1)) })}`}
+                className={`btn ghost${page >= totalPages ? " disabled" : ""}`}
+                aria-disabled={page >= totalPages}
+              >
+                次へ →
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </>

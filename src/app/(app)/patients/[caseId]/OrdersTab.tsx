@@ -8,12 +8,18 @@ import { EditRpDialog } from "./EditRpDialog";
 import { discontinueOrder } from "./actions";
 
 const DRUG_ORDER_TYPES = new Set(["MEDICATION", "INJECTION"]);
+const ORDER_HISTORY_PAGE_SIZE = 20;
 
 type OrderRow = Awaited<ReturnType<typeof loadOrders>>[number];
 
-function loadOrders(caseId: string) {
+function loadOrders(caseId: string, query: string) {
   return db.order.findMany({
-    where: { caseId },
+    where: query
+      ? {
+          caseId,
+          OR: [{ label: { contains: query } }, { drug: { is: { name: { contains: query } } } }],
+        }
+      : { caseId },
     orderBy: { orderedAt: "desc" },
     include: { drug: { select: { name: true } }, orderedBy: { select: { name: true } } },
   });
@@ -81,15 +87,36 @@ function DiscontinueButton({ caseId, orderId }: { caseId: string; orderId: strin
   );
 }
 
-export async function OrdersTab({ caseId }: { caseId: string }) {
+export async function OrdersTab({
+  caseId,
+  query,
+  page: pageParam,
+}: {
+  caseId: string;
+  query?: string;
+  page?: string;
+}) {
+  const q = query?.trim() ?? "";
+  const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
+
   const [labItems, usageTemplates, orders, caseRecord] = await Promise.all([
     db.labItemMaster.findMany({ orderBy: { sortOrder: "asc" } }),
     db.usageTemplate.findMany({ orderBy: { sortOrder: "asc" } }),
-    loadOrders(caseId),
+    loadOrders(caseId, q),
     db.case.findUnique({ where: { id: caseId } }),
   ]);
 
-  const groups = groupOrders(orders);
+  const allGroups = groupOrders(orders);
+  const totalGroups = allGroups.length;
+  const totalPages = Math.max(1, Math.ceil(totalGroups / ORDER_HISTORY_PAGE_SIZE));
+  const groups = allGroups.slice((page - 1) * ORDER_HISTORY_PAGE_SIZE, page * ORDER_HISTORY_PAGE_SIZE);
+
+  function historyHref(params: { q?: string; page?: number }) {
+    const sp = new URLSearchParams({ tab: "orders" });
+    if (params.q) sp.set("oq", params.q);
+    if (params.page && params.page > 1) sp.set("opage", String(params.page));
+    return `/patients/${caseId}?${sp}`;
+  }
 
   return (
     <div className="split">
@@ -102,10 +129,22 @@ export async function OrdersTab({ caseId }: { caseId: string }) {
       />
 
       <div className="card">
-        <div className="card-h">オーダー履歴</div>
+        <div className="card-h">オーダー履歴（全{totalGroups.toLocaleString()}件中{groups.length.toLocaleString()}件を表示）</div>
         <div className="card-b">
+          <form method="get" action={`/patients/${caseId}`} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <input type="hidden" name="tab" value="orders" />
+            <input type="text" name="oq" defaultValue={q} placeholder="薬剤名・オーダー名で検索" style={{ flex: 1 }} />
+            <button type="submit" className="btn">
+              検索
+            </button>
+            {q && (
+              <a href={historyHref({})} className="btn ghost">
+                条件をクリア
+              </a>
+            )}
+          </form>
           {orders.length === 0 ? (
-            <div className="empty-note">オーダーはまだありません。</div>
+            <div className="empty-note">{q ? "条件に一致するオーダーがありません。" : "オーダーはまだありません。"}</div>
           ) : (
             groups.map((group) => {
               const first = group[0];
@@ -209,6 +248,27 @@ export async function OrdersTab({ caseId }: { caseId: string }) {
                 </div>
               );
             })
+          )}
+          {totalPages > 1 && (
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "12px 0" }}>
+              <a
+                href={historyHref({ q, page: Math.max(1, page - 1) })}
+                className={`btn ghost${page <= 1 ? " disabled" : ""}`}
+                aria-disabled={page <= 1}
+              >
+                ← 前へ
+              </a>
+              <span style={{ fontSize: 12, color: "var(--ink-soft)", alignSelf: "center" }}>
+                {page} / {totalPages}
+              </span>
+              <a
+                href={historyHref({ q, page: Math.min(totalPages, page + 1) })}
+                className={`btn ghost${page >= totalPages ? " disabled" : ""}`}
+                aria-disabled={page >= totalPages}
+              >
+                次へ →
+              </a>
+            </div>
           )}
         </div>
       </div>

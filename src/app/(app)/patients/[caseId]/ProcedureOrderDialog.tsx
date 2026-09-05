@@ -49,6 +49,7 @@ export function ProcedureOrderDialog({ onAdd }: { onAdd: (item: CartItem) => voi
     onAdd({ kind: "PROCEDURE", category, selection: options ? selection : "", comment: comment.trim() });
     setComment("");
     if (options) setSelection(options[0]);
+    dialogRef.current?.close();
   }
 
   return (

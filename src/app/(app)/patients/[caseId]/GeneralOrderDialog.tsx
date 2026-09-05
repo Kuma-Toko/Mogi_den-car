@@ -72,6 +72,7 @@ export function GeneralOrderDialog({ onAdd }: { onAdd: (item: CartItem) => void 
     onAdd({ kind: "GENERAL", category, selection: options ? selection : "", comment: comment.trim() });
     setComment("");
     if (options) setSelection(options[0]);
+    dialogRef.current?.close();
   }
 
   return (
