@@ -6,6 +6,7 @@ import { requireCaseAccess } from "@/lib/case-access";
 import { generatePatientReply } from "@/lib/gemini";
 import { logAudit } from "@/lib/audit";
 import { loadEncounterLog, type EncounterLogItem } from "@/lib/encounter-log";
+import { findCasePathogenId, loadPathogenProfile } from "@/lib/engine";
 
 export type EncounterMessageView = EncounterLogItem;
 
@@ -24,11 +25,15 @@ export async function sendEncounterMessage(caseId: string, content: string): Pro
     data: { caseId, authorUserId: user.id, role: "STUDENT", content: trimmed },
   });
 
-  const [history, problems, latestVital] = await Promise.all([
+  const [history, problems, latestVital, diseaseLinks] = await Promise.all([
     db.encounterMessage.findMany({ where: { caseId }, orderBy: { createdAt: "asc" } }),
     db.problem.findMany({ where: { caseId } }),
     db.vital.findFirst({ where: { caseId }, orderBy: { recordedAt: "desc" } }),
+    db.caseDiseaseLink.findMany({ where: { caseId }, select: { pathogenId: true } }),
   ]);
+
+  const casePathogenId = findCasePathogenId(diseaseLinks);
+  const pathogen = casePathogenId ? await loadPathogenProfile(casePathogenId) : null;
 
   let reply: string;
   try {
@@ -36,6 +41,7 @@ export async function sendEncounterMessage(caseId: string, content: string): Pro
       caseRecord,
       problems,
       latestVital,
+      pathogenName: pathogen?.name ?? null,
       history: history.map((m) => ({ role: m.role, content: m.content })),
     });
   } catch (err) {

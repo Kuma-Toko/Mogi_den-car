@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { after } from "next/server";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import type { Case, CaseDiseaseLink, DiseaseTemplate, LabItemMaster, OrderType } from "@prisma/client";
@@ -33,6 +34,7 @@ import {
 import { formatLabValues, type LabValue } from "@/lib/lab-reference-ranges";
 import { treatmentTriggerSchema, vitalCoefficientsSchema } from "@/lib/schemas";
 import { evaluateTreatment, type TargetedTherapyContext } from "@/lib/ai-treatment-evaluation";
+import { generateDischargeFeedback } from "@/lib/ai-discharge-feedback";
 import {
   evaluateAntibioticCoverage,
   isSpecimenSiteRelevant,
@@ -421,24 +423,16 @@ async function loadActiveAntibioticCategories(caseId: string): Promise<ActiveAnt
   return result;
 }
 
-// AI治療評価（標的治療フェーズ）向け: 症例に原因菌が割り当てられ、かつ「妥当な検体部位」の培養の
-// 確定結果(RESULT_AVAILABLE)が開示済みの場合のみ、現在の抗菌薬オーダーの原因菌カバレッジを判定して返す。
-// 原因菌未割当・培養未確定（＝学生がまだ原因菌を知り得ない経験的治療フェーズ）、または部位不一致で
-// 陰性確定しただけの培養しかない場合はnullを返し、AIの採点材料に含めない
+// AI治療評価向け: 症例に原因菌が割り当てられていれば、学生への培養結果開示状況とは無関係に、
+// 現在の抗菌薬オーダーの原因菌カバレッジを常に判定して返す。「（選択した抗菌薬が原因菌に）効いていない」
+// ことも治療効果判定の重要な材料であるため、培養未確定の経験的治療フェーズでも常に評価する。
+// 原因菌未割当の症例（＝感染症エンジン未使用）はnullを返し、AIの採点材料に含めない
 // （既存の大分類ベースの二値判定のみで評価される、従来どおりの挙動を維持する）。
 async function loadTargetedTherapyContext(
   caseRecord: Pick<CaseForEngine, "id" | "diseaseLinks">
 ): Promise<TargetedTherapyContext | null> {
   const casePathogenId = findCasePathogenId(caseRecord.diseaseLinks);
   if (!casePathogenId) return null;
-
-  const relevantSites = findCaseRelevantSpecimenSites(caseRecord.diseaseLinks);
-  const revealedCultureOrders = await db.order.findMany({
-    where: { caseId: caseRecord.id, status: "RESULT_AVAILABLE", labItem: { isCulture: true } },
-    select: { labItem: { select: { specimenSite: true } } },
-  });
-  const cultureRevealed = revealedCultureOrders.some((o) => isSpecimenSiteRelevant(relevantSites, o.labItem?.specimenSite ?? null));
-  if (!cultureRevealed) return null;
 
   const pathogen = await loadPathogenProfile(casePathogenId);
   if (!pathogen) return null;
@@ -803,6 +797,24 @@ export async function reconcileCaseCrisis(caseId: string): Promise<void> {
       await db.case.update({ where: { id: caseId }, data: { crisisState: "DECEASED" } });
       await logAudit({ userId: null, action: "case_deceased", targetType: "Case", targetId: caseId });
       await notifyAssignedStudents(caseId, "【死亡確認】救命処置が間に合わず、患者は死亡しました。");
+
+      // 死亡＝症例終了として、まだ退院していない担当学生を退院済み扱いにし、退院時と同じ包括的
+      // AIフィードバックを生成する。死亡はページ読み込みのたびに走るreconcileの中で偶発的に検知される
+      // ため（退院ボタンのような能動的操作ではない）、たまたまそのページを開いたユーザーのリクエストを
+      // 数秒〜十数秒（担当学生分）ブロックしないよう、生成はafter()でレスポンス返却後に行う。
+      const activeAssignments = await db.caseAssignment.findMany({
+        where: { caseId, dischargedAt: null },
+        select: { studentId: true },
+      });
+      if (activeAssignments.length > 0) {
+        await db.caseAssignment.updateMany({
+          where: { caseId, dischargedAt: null },
+          data: { dischargedAt: new Date() },
+        });
+        for (const a of activeAssignments) {
+          after(() => runDischargeFeedback(caseId, a.studentId));
+        }
+      }
     }
   }
 }
@@ -997,20 +1009,75 @@ export async function processTreatmentEvaluation(evaluationId: string): Promise<
       },
     });
 
-    // resetSeverityがnull＝評価中に危機へ遷移していた等で重症度へは未反映。監査記録のみ残し、学生への
-    // 「反映しました」通知は送らない（現況と矛盾するメッセージになるため）。
-    if (resetSeverity !== null) {
-      const prefix = result.contraindicated ? "【AI治療評価・重大な懸念】" : "【AI治療評価】";
-      await notifyAssignedStudents(
-        evaluation.caseId,
-        `${prefix}適切性スコア ${result.appropriatenessScore}/100。${result.rationale}`
-      );
-    }
+    // AI治療評価の内容（スコア・根拠）は教員・管理者のみに開示する情報のため、学生への通知は送らない
+    // （閲覧は教員・管理者向けのSummaryTab経由のみ）。
   } catch (err) {
     console.error(`[ai-treatment-evaluation] caseId=${evaluation.caseId} evaluationId=${evaluationId}`, err);
     await db.treatmentEvaluation.update({
       where: { id: evaluationId },
       data: { status: "FAILED", errorMessage: err instanceof Error ? err.message : String(err), completedAt: new Date() },
+    });
+  }
+}
+
+// 退院（学生自身の操作・教員による代理操作）または死亡（reconcileCaseCrisis参照）の際に、
+// その学生の症例全体を振り返る包括的AIフィードバックを生成し、CaseAssignmentへ保存する。
+// オーダーごとのAI治療評価（processTreatmentEvaluation）と異なり、症例終了時に一度だけ行う
+// 総括評価であり、教員のルーブリック未設定でも生成を試みる（一般的な臨床的観点にフォールバック）。
+export async function runDischargeFeedback(caseId: string, studentId: string): Promise<void> {
+  try {
+    const caseRecord = await loadCaseForEngine(caseId);
+    if (!caseRecord) throw new Error("症例が見つかりません");
+
+    const primaryLink = findPrimaryDiseaseLink(caseRecord.diseaseLinks);
+    const template = primaryLink?.template;
+    if (!template) throw new Error("主病態のテンプレートが見つかりません");
+
+    const [orders, problems, pastEvaluations, latestVital, targetedTherapy] = await Promise.all([
+      db.order.findMany({
+        where: { caseId, orderType: { in: TREATMENT_EVALUATION_ORDER_TYPES } },
+        select: { orderType: true, label: true, detail: true, orderedAt: true },
+      }),
+      db.problem.findMany({ where: { caseId }, select: { label: true, isPrimary: true } }),
+      db.treatmentEvaluation.findMany({
+        where: { caseId, status: "COMPLETED" },
+        orderBy: { completedAt: "asc" },
+        select: { appropriatenessScore: true, contraindicated: true, rationale: true, completedAt: true },
+      }),
+      db.vital.findFirst({ where: { caseId }, orderBy: { recordedAt: "desc" } }),
+      loadTargetedTherapyContext(caseRecord),
+    ]);
+
+    const result = await generateDischargeFeedback({
+      caseRecord,
+      templateName: template.name,
+      templateDescription: template.description,
+      guideline: template.aiEvaluationGuideline?.trim() || null,
+      crisisState: caseRecord.crisisState,
+      problems,
+      orders,
+      pastEvaluations,
+      latestVital,
+      targetedTherapy,
+    });
+
+    await db.caseAssignment.update({
+      where: { caseId_studentId: { caseId, studentId } },
+      data: {
+        dischargeFeedback: JSON.stringify({
+          summary: result.summary,
+          strengths: result.strengths,
+          improvements: result.improvements,
+        }),
+        dischargeFeedbackAt: new Date(),
+        dischargeFeedbackError: null,
+      },
+    });
+  } catch (err) {
+    console.error(`[ai-discharge-feedback] caseId=${caseId} studentId=${studentId}`, err);
+    await db.caseAssignment.update({
+      where: { caseId_studentId: { caseId, studentId } },
+      data: { dischargeFeedbackError: err instanceof Error ? err.message : String(err) },
     });
   }
 }

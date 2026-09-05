@@ -14,7 +14,28 @@ function scoreBadgeClass(score: number): string {
 
 const TIER_LABEL: Record<SeverityTier, string> = { mild: "軽症", moderate: "中等症", severe: "重症" };
 
-export async function SummaryTab({ caseId, canManageDiseases }: { caseId: string; canManageDiseases: boolean }) {
+export async function SummaryTab({
+  caseId,
+  canManageDiseases,
+  currentUserId,
+}: {
+  caseId: string;
+  canManageDiseases: boolean;
+  currentUserId: string;
+}) {
+  // AI治療評価（オーダーごとのスコア・根拠）は治療中の学生には見せない。教員・管理者は常時閲覧可、
+  // 学生は自身が退院済み（症例終了）になって初めて、その症例の評価履歴を振り返りとして閲覧できる。
+  const canViewTreatmentEvaluations = canManageDiseases
+    ? true
+    : Boolean(
+        (
+          await db.caseAssignment.findUnique({
+            where: { caseId_studentId: { caseId, studentId: currentUserId } },
+            select: { dischargedAt: true },
+          })
+        )?.dischargedAt
+      );
+
   const [problems, latestNote, recentOrders, evaluations, diseaseLinks, severities] = await Promise.all([
     db.problem.findMany({ where: { caseId }, orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }] }),
     db.karteEntry.findFirst({ where: { caseId }, orderBy: { createdAt: "desc" }, include: { author: true } }),
@@ -24,7 +45,9 @@ export async function SummaryTab({ caseId, canManageDiseases }: { caseId: string
       take: 5,
       include: { orderedBy: { select: { name: true } } },
     }),
-    db.treatmentEvaluation.findMany({ where: { caseId, status: "COMPLETED" }, orderBy: { completedAt: "desc" }, take: 5 }),
+    canViewTreatmentEvaluations
+      ? db.treatmentEvaluation.findMany({ where: { caseId, status: "COMPLETED" }, orderBy: { completedAt: "desc" }, take: 5 })
+      : Promise.resolve([]),
     canManageDiseases
       ? db.caseDiseaseLink.findMany({ where: { caseId }, include: { template: true }, orderBy: { sortOrder: "asc" } })
       : Promise.resolve([]),
@@ -108,7 +131,7 @@ export async function SummaryTab({ caseId, canManageDiseases }: { caseId: string
           )}
         </div>
 
-        {evaluations.length > 0 && (
+        {canViewTreatmentEvaluations && evaluations.length > 0 && (
           <>
             <div className="card-h" style={{ borderTop: "1px solid var(--line-soft)" }}>
               AI治療評価

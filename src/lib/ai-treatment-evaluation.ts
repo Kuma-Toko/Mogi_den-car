@@ -15,8 +15,8 @@ export type TreatmentEvaluationOrder = {
   orderedAt: Date;
 };
 
-// 標的治療フェーズ（培養で原因菌が確定した後）向けの採点用事実。原因菌未割当・培養未確定の症例では
-// null（呼び出し側=engine.tsのloadTargetedTherapyContextが判定する）。
+// 症例に原因菌が割り当てられていれば常に提供する採点用事実（学生への培養結果開示状況とは無関係）。
+// 原因菌未割当の症例ではnull（呼び出し側=engine.tsのloadTargetedTherapyContextが判定する）。
 export type TargetedTherapyContext = {
   pathogenName: string;
   coverage: AntibioticCoverageResult;
@@ -31,7 +31,7 @@ const ORDER_TYPE_LABEL: Record<string, string> = {
   GENERAL: "一般指示",
 };
 
-function formatOrderLine(order: TreatmentEvaluationOrder, caseStartAt: Date): string {
+export function formatOrderLine(order: TreatmentEvaluationOrder, caseStartAt: Date): string {
   const elapsedHours = Math.round(((order.orderedAt.getTime() - caseStartAt.getTime()) / 3_600_000) * 10) / 10;
   let detailText = "";
   if (order.detail) {
@@ -57,7 +57,7 @@ function formatTargetedTherapySection(ctx: TargetedTherapyContext | null): strin
       : "（抗菌薬オーダーはまだありません）";
   return `
 
-# 標的治療フェーズ（培養検査で原因菌が確定済み。学生への結果開示状況とは別に、採点用の確定事実として提供）
+# 原因菌情報（採点用の確定事実。学生への培養結果開示状況とは無関係に常に提供）
 - 確定した原因菌: ${pathogenName}
 - 現在の抗菌薬オーダーと原因菌に対する感受性:
 ${detailLines}

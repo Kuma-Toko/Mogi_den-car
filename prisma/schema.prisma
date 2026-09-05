@@ -182,7 +182,11 @@ model CaseAssignment {
   studentId    String
   student      User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
   assignedAt   DateTime  @default(now())
-  dischargedAt DateTime? // 退院日時。null=担当中、値あり=退院済み（担当患者一覧からは除外し、退院済み患者として保持）
+  dischargedAt DateTime? // 退院日時。null=担当中、値あり=退院済み（担当患者一覧からは除外し、退院済み患者として保持）。死亡時も自動セットされる
+
+  dischargeFeedback      String? // 退院（または死亡）時に生成した包括的AIフィードバック（JSON文字列: {summary, strengths, improvements}）
+  dischargeFeedbackAt    DateTime? // 上記の生成日時（成功時のみセット）
+  dischargeFeedbackError String? // 直近の生成失敗時のエラーメッセージ（再生成導線用）
 
   @@unique([caseId, studentId])
   // (caseId, studentId)の複合uniqueは先頭列がcaseIdのため、studentId単体の検索

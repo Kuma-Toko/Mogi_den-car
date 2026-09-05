@@ -1,6 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
+
+function SubmitButton({
+  formAction,
+  actionLabel,
+  actionClassName,
+}: {
+  formAction: (formData: FormData) => void;
+  actionLabel: string;
+  actionClassName: string;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" formAction={formAction} className={actionClassName} disabled={pending}>
+      {pending ? "処理中…" : actionLabel}
+    </button>
+  );
+}
 
 export function ConfirmButton({
   formAction,
@@ -30,9 +48,7 @@ export function ConfirmButton({
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
       <span style={{ fontSize: 11, color: "var(--red)" }}>{confirmText}</span>
-      <button type="submit" formAction={formAction} className={actionClassName}>
-        {actionLabel}
-      </button>
+      <SubmitButton formAction={formAction} actionLabel={actionLabel} actionClassName={actionClassName} />
       <button type="button" className="btn ghost" onClick={() => setConfirming(false)}>
         取消
       </button>

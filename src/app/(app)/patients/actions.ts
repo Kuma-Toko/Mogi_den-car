@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireCaseAccess } from "@/lib/case-access";
 import { logAudit } from "@/lib/audit";
+import { runDischargeFeedback } from "@/lib/engine";
 
 export async function dischargeCase(caseId: string) {
   const { user } = await requireCaseAccess(caseId);
@@ -14,8 +15,12 @@ export async function dischargeCase(caseId: string) {
   });
   await logAudit({ userId: user.id, action: "case_discharge", targetType: "Case", targetId: caseId });
 
+  // 退院ボタンを押した直後にその画面で結果を見せるため、後回しにせず同期的に生成する。
+  await runDischargeFeedback(caseId, user.id);
+
   revalidatePath("/patients");
   revalidatePath("/patients/discharged");
+  revalidatePath(`/patients/${caseId}`);
 }
 
 export async function readmitCase(caseId: string) {

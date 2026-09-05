@@ -3,7 +3,24 @@ import { formatJaDateTimeShort } from "@/lib/format";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import type { Role } from "@prisma/client";
 import { dischargeCase, readmitCase } from "../actions";
-import { dischargeAssignment, readmitAssignment } from "./actions";
+import { dischargeAssignment, readmitAssignment, regenerateDischargeFeedback } from "./actions";
+
+type DischargeFeedback = { summary: string; strengths: string[]; improvements: string[] };
+
+function parseDischargeFeedback(raw: string | null): DischargeFeedback | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<DischargeFeedback>;
+    if (typeof parsed.summary !== "string") return null;
+    return {
+      summary: parsed.summary,
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths.filter((s): s is string => typeof s === "string") : [],
+      improvements: Array.isArray(parsed.improvements) ? parsed.improvements.filter((s): s is string => typeof s === "string") : [],
+    };
+  } catch {
+    return null;
+  }
+}
 
 export async function DischargeTab({
   caseId,
@@ -16,15 +33,21 @@ export async function DischargeTab({
 }) {
   const isManager = currentUserRole !== "STUDENT";
 
-  const assignments = await db.caseAssignment.findMany({
-    where: { caseId },
-    include: { student: true },
-    orderBy: { assignedAt: "asc" },
-  });
+  const [assignments, caseRecord] = await Promise.all([
+    db.caseAssignment.findMany({
+      where: { caseId },
+      include: { student: true },
+      orderBy: { assignedAt: "asc" },
+    }),
+    db.case.findUnique({ where: { id: caseId }, select: { crisisState: true } }),
+  ]);
+  const isDeceased = caseRecord?.crisisState === "DECEASED";
 
   const rows = isManager ? assignments : assignments.filter((a) => a.studentId === currentUserId);
+  const dischargedRows = rows.filter((a) => a.dischargedAt);
 
   return (
+    <>
     <div className="card">
       <div className="card-h">退院・再入院</div>
       <div className="card-b" style={{ padding: 0 }}>
@@ -48,7 +71,7 @@ export async function DischargeTab({
                   {isManager && <td>{a.student.name}</td>}
                   <td>
                     {a.dischargedAt ? (
-                      <span className="badge">退院済み</span>
+                      <span className={isDeceased ? "badge red" : "badge"}>{isDeceased ? "死亡（症例終了）" : "退院済み"}</span>
                     ) : (
                       <span className="badge teal">担当中</span>
                     )}
@@ -56,17 +79,19 @@ export async function DischargeTab({
                   <td>{a.dischargedAt ? formatJaDateTimeShort(a.dischargedAt) : "—"}</td>
                   <td>
                     {a.dischargedAt ? (
-                      <form
-                        action={
-                          isManager
-                            ? readmitAssignment.bind(null, caseId, a.studentId)
-                            : readmitCase.bind(null, caseId)
-                        }
-                      >
-                        <button type="submit" className="btn ghost" style={{ fontSize: 11 }}>
-                          再入院とする
-                        </button>
-                      </form>
+                      isDeceased ? null : (
+                        <form
+                          action={
+                            isManager
+                              ? readmitAssignment.bind(null, caseId, a.studentId)
+                              : readmitCase.bind(null, caseId)
+                          }
+                        >
+                          <button type="submit" className="btn ghost" style={{ fontSize: 11 }}>
+                            再入院とする
+                          </button>
+                        </form>
+                      )
                     ) : (
                       <form>
                         <ConfirmButton
@@ -92,5 +117,70 @@ export async function DischargeTab({
         )}
       </div>
     </div>
+
+    {dischargedRows.map((a) => {
+      const feedback = parseDischargeFeedback(a.dischargeFeedback);
+      return (
+        <div className="card" key={`feedback-${a.id}`}>
+          <div className="card-h">
+            AIによる包括的フィードバック{isManager ? `（${a.student.name}）` : ""}
+          </div>
+          <div className="card-b">
+            {feedback ? (
+              <div style={{ fontSize: 12.5 }}>
+                <p style={{ marginBottom: 10, whiteSpace: "pre-wrap" }}>{feedback.summary}</p>
+                {feedback.strengths.length > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>良かった点</div>
+                    <ul style={{ paddingLeft: 18, margin: 0 }}>
+                      {feedback.strengths.map((s, i) => (
+                        <li key={i} style={{ marginBottom: 4 }}>
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {feedback.improvements.length > 0 && (
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>改善点</div>
+                    <ul style={{ paddingLeft: 18, margin: 0 }}>
+                      {feedback.improvements.map((s, i) => (
+                        <li key={i} style={{ marginBottom: 4 }}>
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {a.dischargeFeedbackAt && (
+                  <div style={{ marginTop: 10, fontSize: 11, color: "var(--ink-soft)" }}>
+                    生成日時: {formatJaDateTimeShort(a.dischargeFeedbackAt)}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="empty-note">
+                  {a.dischargeFeedbackError
+                    ? `フィードバックの生成に失敗しました：${a.dischargeFeedbackError}`
+                    : "フィードバックはまだ生成されていません。"}
+                </div>
+                <form style={{ marginTop: 8 }}>
+                  <button
+                    type="submit"
+                    formAction={regenerateDischargeFeedback.bind(null, caseId, a.studentId)}
+                    className="btn ghost"
+                  >
+                    {a.dischargeFeedbackError ? "再生成する" : "生成する"}
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    })}
+    </>
   );
 }

@@ -107,7 +107,7 @@ export default async function CaseDetailPage({
           ))}
         </div>
 
-        {tab === "summary" && <SummaryTab caseId={caseId} canManageDiseases={canManage} />}
+        {tab === "summary" && <SummaryTab caseId={caseId} canManageDiseases={canManage} currentUserId={user.id} />}
         {tab === "karte" && <KarteTab caseId={caseId} />}
         {tab === "karte-entry" && (
           <div className="split">

@@ -56,13 +56,18 @@ type EncounterCase = Pick<
 function buildSystemInstruction(
   caseRecord: EncounterCase,
   problems: Pick<Problem, "label" | "isPrimary">[],
-  latestVital: Vital | null
+  latestVital: Vital | null,
+  pathogenName: string | null
 ): string {
   const problemLines = problems.length > 0 ? problems.map((p) => `- ${p.label}${p.isPrimary ? "（主病態）" : ""}`).join("\n") : "（未登録）";
 
   const vitalLine = latestVital
     ? `体温${latestVital.temperature ?? "—"}℃ / 血圧${latestVital.systolicBp ?? "—"}/${latestVital.diastolicBp ?? "—"} / 脈拍${latestVital.pulse ?? "—"} / SpO2${latestVital.spo2 ?? "—"}% / 呼吸数${latestVital.respRate ?? "—"}`
     : "（記録なし）";
+
+  const pathogenLine = pathogenName
+    ? `- 真の原因病原体: ${pathogenName}（この病原体らしい症状・経過になるよう応答の一貫性を保つための参考情報。次の「学生に明かさない情報」を厳守すること）`
+    : "";
 
   return `あなたは医学教育シミュレーションにおける模擬患者、および診察時の客観的所見の語り手を演じます。
 
@@ -72,6 +77,7 @@ function buildSystemInstruction(
 - プロブレムリスト:
 ${problemLines}
 - 直近のバイタルサイン: ${vitalLine}
+${pathogenLine}
 
 # 問診シナリオ台本（現病歴・既往歴・アレルギー・生活歴など。学生の質問に対する回答の根拠）
 ${caseRecord.historyScript?.trim() || "（台本未設定。症例のプロブレムやバイタルと矛盾しない範囲で常識的に応答してください）"}
@@ -84,24 +90,26 @@ ${caseRecord.examScript?.trim() || "（台本未設定。症例のプロブレ�
    - クローズドクエスチョン（はい/いいえや、特定の事実を一つ尋ねる質問）には端的に答える。補足を加える場合も1文程度にとどめる。
    - オープンクエスチョン（症状や経過を自由に尋ねる質問）には長さを特に制限しない。患者として自然に話してよい。
 2. 学生の発言が「診察の実施」（身体診察・触診・聴診など）の場合は、検者への客観的な所見として三人称的・簡潔に答える（例:「腹部は平坦・軟。心窩部に軽度の圧痛を認める。反跳痛なし。」）。
-3. 台本に明記されていない内容を聞かれた場合は、症例の設定と矛盾しない範囲で自然に即興で補ってよいが、診断名・検査結果の医学的解釈・治療方針など「まだ学生が明らかにしていないはずの情報」を先回りして教えない。
-4. 患者を演じる際も、AIであることや「シナリオ」「台本」という言葉には一切言及しない。`;
+3. あなたが演じられるのは問診・身体診察の範囲に限られる。検査（血液検査・画像検査・培養検査等）の結果や数値、バイタルサインの具体的な数値・測定値を学生から尋ねられても、それらは回答しない。患者はそのような数値を把握していないという体で「詳しい数値は分かりません」等と答えるか、検者（学生）自身が測定・オーダーして確認するよう促す。バイタルサインは触診・視診で分かる範囲の主観的表現（例:「熱っぽい」「脈が速い気がする」）にとどめ、具体的な数値は絶対に述べない。
+4. 診断名・病名・原因病原体の名称・検査結果の医学的解釈・治療方針など「まだ学生が明らかにしていないはずの情報」は、台本に明記されていない内容を尋ねられた場合も含め、一切先回りして教えない。上記「真の原因病原体」は応答の一貫性を保つための内部参考情報に過ぎず、その名称や関連する専門用語を学生に直接的にも間接的にも明かしてはならない。
+5. 患者を演じる際も、AIであることや「シナリオ」「台本」という言葉には一切言及しない。`;
 }
 
 export async function generatePatientReply(params: {
   caseRecord: EncounterCase;
   problems: Pick<Problem, "label" | "isPrimary">[];
   latestVital: Vital | null;
+  pathogenName: string | null;
   history: EncounterHistoryItem[];
 }): Promise<string> {
-  const { caseRecord, problems, latestVital, history } = params;
+  const { caseRecord, problems, latestVital, pathogenName, history } = params;
 
   const contents = history.map((m) => ({
     role: m.role === "STUDENT" ? ("user" as const) : ("model" as const),
     parts: [{ text: m.content }],
   }));
   const config = {
-    systemInstruction: buildSystemInstruction(caseRecord, problems, latestVital),
+    systemInstruction: buildSystemInstruction(caseRecord, problems, latestVital, pathogenName),
     temperature: 0.7,
   };
 

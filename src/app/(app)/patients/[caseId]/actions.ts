@@ -17,6 +17,7 @@ import {
   processTreatmentEvaluation,
   reconcileCase,
   resolveLabResult,
+  runDischargeFeedback,
 } from "@/lib/engine";
 import { getCaseClockNow, parsePhysiologyParams } from "@/lib/physiology-engine";
 import { getCultureDelayHours } from "@/lib/infection-engine";
@@ -749,9 +750,23 @@ export async function dischargeAssignment(caseId: string, studentId: string) {
   });
   await logAudit({ userId: user.id, action: "case_discharge", targetType: "Case", targetId: caseId, detail: { studentId } });
 
+  // 学生自身の退院と同じく、その画面で結果を見せるため同期的に生成する。
+  await runDischargeFeedback(caseId, studentId);
+
   revalidatePath(`/patients/${caseId}`);
   revalidatePath("/patients");
   revalidatePath("/patients/discharged");
+}
+
+// 退院時包括フィードバックの（再）生成。本人（学生）または教員・管理者が実行できる。
+// 生成失敗時の再試行、および本機能導入前に退院済みだった行への遡及生成の両方に使う。
+export async function regenerateDischargeFeedback(caseId: string, studentId: string) {
+  const { user } = await requireCaseAccess(caseId);
+  if (user.role === "STUDENT" && user.id !== studentId) return;
+
+  await runDischargeFeedback(caseId, studentId);
+
+  revalidatePath(`/patients/${caseId}`);
 }
 
 export async function readmitAssignment(caseId: string, studentId: string) {
