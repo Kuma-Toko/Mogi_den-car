@@ -1,5 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["hnd1"],
-  "env": { "TZ": "Asia/Tokyo" }
+  "regions": ["hnd1"]
 }
