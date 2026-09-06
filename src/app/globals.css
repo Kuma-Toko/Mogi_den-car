@@ -249,6 +249,40 @@ tr.row:hover td {
   cursor: pointer;
 }
 
+dialog.modal {
+  border: none;
+  border-radius: 10px;
+  padding: 0;
+  max-width: 92vw;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+}
+dialog.modal::backdrop {
+  background: rgba(28, 43, 46, 0.35);
+}
+dialog.modal .modal-box {
+  width: 640px;
+  max-width: 92vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+dialog.modal-lg .modal-box {
+  width: 880px;
+}
+.modal-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.modal-b {
+  padding: 16px;
+  overflow-y: auto;
+}
+
 .btn {
   font-size: 12px;
   padding: 7px 13px;

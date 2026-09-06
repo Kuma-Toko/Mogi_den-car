@@ -3,8 +3,10 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatJaDateTime } from "@/lib/format";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { Modal } from "@/components/Modal";
 import { PhysiologySliders } from "@/components/PhysiologySliders";
-import { DEFAULT_PHYSIOLOGY_PARAMS } from "@/lib/physiology";
+import { TemplatePhysiologyEditor } from "@/components/TemplatePhysiologyEditor";
+import { DEFAULT_PHYSIOLOGY_PARAMS, sliderToSpeedLabel } from "@/lib/physiology";
 import { parsePhysiologyParams } from "@/lib/physiology-engine";
 import { safeJsonParse } from "@/lib/engine";
 import { treatmentTriggerSchema, vitalCoefficientsSchema } from "@/lib/schemas";
@@ -136,123 +138,151 @@ export default async function AdminTemplatesPage({
           <span className="badge amber" style={{ marginRight: 6 }}>
             エンジン未対応
           </span>
-          が付いたテンプレートは、「治療開始条件・バイタル係数」が未入力のため、症例作成時にスライダーは表示されますが動的なバイタル・所見の変化には反映されません。下のフォームから入力すると対応します。
+          が付いたテンプレートは、「治療開始条件・バイタル係数」が未入力のため、症例作成時にスライダーは表示されますが動的なバイタル・所見の変化には反映されません。詳細設定から入力すると対応します。
         </div>
 
-        {templates.map((t) => {
-          // engine.tsのloadTemplateConfigと同じ検証済みパーサーを使う。手入力・Turso手動同期を経由するJSON
-          // なので、壊れた値が1件でもあると未ガードのJSON.parseはこの管理画面全体をクラッシュさせてしまう。
-          const vitalsParsed = t.vitalsConfig ? safeJsonParse(t.vitalsConfig, vitalCoefficientsSchema) : null;
-          const treatmentParsed = t.treatmentConfig ? safeJsonParse(t.treatmentConfig, treatmentTriggerSchema) : null;
-          const vitals = vitalsParsed?.success ? vitalsParsed.data : null;
-          const treatment = treatmentParsed?.success ? treatmentParsed.data : null;
-          const engineReady = !!vitals && !!treatment;
+        <div className="card">
+          <div className="card-h">病態テンプレート一覧</div>
+          <div className="card-b" style={{ padding: 0 }}>
+            {templates.length === 0 ? (
+              <div className="empty-note">病態テンプレートが登録されていません。</div>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>テンプレート名</th>
+                    <th>key</th>
+                    <th>属性</th>
+                    <th>改善速度</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {templates.map((t) => {
+                    // engine.tsのloadTemplateConfigと同じ検証済みパーサーを使う。手入力・Turso手動同期を経由するJSON
+                    // なので、壊れた値が1件でもあると未ガードのJSON.parseはこの管理画面全体をクラッシュさせてしまう。
+                    const vitalsParsed = t.vitalsConfig ? safeJsonParse(t.vitalsConfig, vitalCoefficientsSchema) : null;
+                    const treatmentParsed = t.treatmentConfig ? safeJsonParse(t.treatmentConfig, treatmentTriggerSchema) : null;
+                    const vitals = vitalsParsed?.success ? vitalsParsed.data : null;
+                    const treatment = treatmentParsed?.success ? treatmentParsed.data : null;
+                    const engineReady = !!vitals && !!treatment;
+                    const params = parsePhysiologyParams(t.defaultParams);
 
-          return (
-            <div className="card" key={t.id}>
-              <div className="card-h">
-                {t.name}
-                <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <span className="badge blue">{t.isCommon ? "共通" : "個別"}</span>
-                  {t.isCrisisPathology && <span className="badge red">危機病態</span>}
-                  {!engineReady && <span className="badge amber">エンジン未対応</span>}
-                  <span style={{ fontSize: 11, color: "var(--ink-soft)", fontWeight: 400 }}>key: {t.key}</span>
-                </span>
-              </div>
-              <form action={updateTemplate.bind(null, t.id)} className="card-b">
-                <div className="form-grid" style={{ marginBottom: 14 }}>
-                  <div className="field">
-                    <label htmlFor={`name-${t.id}`}>テンプレート名</label>
-                    <input id={`name-${t.id}`} name="name" defaultValue={t.name} required />
-                  </div>
-                  <div className="field">
-                    <label>担当形態</label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
-                      <input type="checkbox" name="isCommon" defaultChecked={t.isCommon} />
-                      共通テンプレートとして全教員に公開する
-                    </label>
-                  </div>
-                  <div className="field">
-                    <label>感染症エンジン</label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
-                      <input type="checkbox" name="isInfectious" defaultChecked={t.isInfectious} />
-                      症例作成画面で「真の原因菌」を選択できるようにする
-                    </label>
-                  </div>
-                  <div className="field">
-                    <label>危機病態</label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
-                      <input type="checkbox" name="isCrisisPathology" defaultChecked={t.isCrisisPathology} />
-                      危機病態として扱う（急変シナリオのアタッチ先として使う）
-                    </label>
-                  </div>
-                  <div className="field" style={{ gridColumn: "1 / -1" }}>
-                    <label htmlFor={`description-${t.id}`}>説明</label>
-                    <input id={`description-${t.id}`} name="description" defaultValue={t.description ?? ""} />
-                  </div>
-                </div>
+                    return (
+                      <tr className="row" key={t.id}>
+                        <td>{t.name}</td>
+                        <td style={{ color: "var(--ink-soft)", fontSize: 11 }}>{t.key}</td>
+                        <td>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <span className="badge blue">{t.isCommon ? "共通" : "個別"}</span>
+                            {t.isCrisisPathology && <span className="badge red">危機病態</span>}
+                            {!engineReady && <span className="badge amber">エンジン未対応</span>}
+                          </div>
+                        </td>
+                        <td>{sliderToSpeedLabel(params.improvementSpeedSlider)}</td>
+                        <td>
+                          <Modal trigger="詳細設定" triggerClassName="btn ghost" title={t.name} size="lg">
+                            <form action={updateTemplate.bind(null, t.id)} className="card-b" style={{ padding: 0 }}>
+                              <div className="form-grid" style={{ marginBottom: 14 }}>
+                                <div className="field">
+                                  <label htmlFor={`name-${t.id}`}>テンプレート名</label>
+                                  <input id={`name-${t.id}`} name="name" defaultValue={t.name} required />
+                                </div>
+                                <div className="field">
+                                  <label>担当形態</label>
+                                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                                    <input type="checkbox" name="isCommon" defaultChecked={t.isCommon} />
+                                    共通テンプレートとして全教員に公開する
+                                  </label>
+                                </div>
+                                <div className="field">
+                                  <label>感染症エンジン</label>
+                                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                                    <input type="checkbox" name="isInfectious" defaultChecked={t.isInfectious} />
+                                    症例作成画面で「真の原因菌」を選択できるようにする
+                                  </label>
+                                </div>
+                                <div className="field">
+                                  <label>危機病態</label>
+                                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                                    <input type="checkbox" name="isCrisisPathology" defaultChecked={t.isCrisisPathology} />
+                                    危機病態として扱う（急変シナリオのアタッチ先として使う）
+                                  </label>
+                                </div>
+                                <div className="field" style={{ gridColumn: "1 / -1" }}>
+                                  <label htmlFor={`description-${t.id}`}>説明</label>
+                                  <input id={`description-${t.id}`} name="description" defaultValue={t.description ?? ""} />
+                                </div>
+                              </div>
 
-                <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6 }}>
-                  既定パラメータ（症例作成時の初期スライダー位置）
-                </div>
-                <PhysiologySliders initial={parsePhysiologyParams(t.defaultParams)} />
+                              <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6 }}>
+                                既定パラメータ（症例作成時の初期スライダー位置）・改善速度
+                              </div>
+                              <TemplatePhysiologyEditor initial={params} />
 
-                <div style={{ textAlign: "right", marginTop: 12 }}>
-                  <button type="submit" className="btn primary">
-                    更新
-                  </button>{" "}
-                  <ConfirmButton
-                    formAction={deleteTemplate.bind(null, t.id)}
-                    confirmText={`「${t.name}」を削除しますか？`}
-                    className="btn danger"
-                  >
-                    削除
-                  </ConfirmButton>
-                </div>
-              </form>
+                              <div style={{ textAlign: "right", marginTop: 12 }}>
+                                <button type="submit" className="btn primary">
+                                  更新
+                                </button>{" "}
+                                <ConfirmButton
+                                  formAction={deleteTemplate.bind(null, t.id)}
+                                  confirmText={`「${t.name}」を削除しますか？`}
+                                  className="btn danger"
+                                >
+                                  削除
+                                </ConfirmButton>
+                              </div>
+                            </form>
 
-              <div className="card-b" style={{ borderTop: "1px solid var(--line-soft)" }}>
-                <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6 }}>
-                  治療開始条件・バイタル係数
-                </div>
-                <form action={updateTemplateEngineConfig.bind(null, t.id)}>
-                  <div className="form-grid" style={{ marginBottom: 10 }}>
-                    <div className="field">
-                      <label htmlFor={`drugCategories-${t.id}`}>治療とみなす薬剤大分類（カンマ区切り）</label>
-                      <input
-                        id={`drugCategories-${t.id}`}
-                        name="drugCategories"
-                        defaultValue={treatment?.drugCategories?.join(", ") ?? ""}
-                        placeholder="例: 抗菌薬, 輸液"
-                      />
-                    </div>
-                    <div className="field">
-                      <label htmlFor={`procedureKeywords-${t.id}`}>治療とみなす処置キーワード（カンマ区切り・部分一致）</label>
-                      <input
-                        id={`procedureKeywords-${t.id}`}
-                        name="procedureKeywords"
-                        defaultValue={treatment?.procedureKeywords?.join(", ") ?? ""}
-                        placeholder="例: 気管挿管"
-                      />
-                    </div>
-                  </div>
+                            <div className="card-b" style={{ borderTop: "1px solid var(--line-soft)" }}>
+                              <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6 }}>
+                                治療開始条件・バイタル係数
+                              </div>
+                              <form action={updateTemplateEngineConfig.bind(null, t.id)}>
+                                <div className="form-grid" style={{ marginBottom: 10 }}>
+                                  <div className="field">
+                                    <label htmlFor={`drugCategories-${t.id}`}>治療とみなす薬剤大分類（カンマ区切り）</label>
+                                    <input
+                                      id={`drugCategories-${t.id}`}
+                                      name="drugCategories"
+                                      defaultValue={treatment?.drugCategories?.join(", ") ?? ""}
+                                      placeholder="例: 抗菌薬, 輸液"
+                                    />
+                                  </div>
+                                  <div className="field">
+                                    <label htmlFor={`procedureKeywords-${t.id}`}>治療とみなす処置キーワード（カンマ区切り・部分一致）</label>
+                                    <input
+                                      id={`procedureKeywords-${t.id}`}
+                                      name="procedureKeywords"
+                                      defaultValue={treatment?.procedureKeywords?.join(", ") ?? ""}
+                                      placeholder="例: 気管挿管"
+                                    />
+                                  </div>
+                                </div>
 
-                  <VitalPointGrid prefix="perSeverity" title="重症度100あたりの増減量（基礎生理モデルへ加算）" defaults={vitals?.perSeverity} />
+                                <VitalPointGrid prefix="perSeverity" title="重症度100あたりの増減量（基礎生理モデルへ加算）" defaults={vitals?.perSeverity} />
 
-                  <div style={{ textAlign: "right", marginTop: 10 }}>
-                    <button type="submit" className="btn primary">
-                      治療条件・バイタル係数を保存
-                    </button>
-                  </div>
-                </form>
-              </div>
+                                <div style={{ textAlign: "right", marginTop: 10 }}>
+                                  <button type="submit" className="btn primary">
+                                    治療条件・バイタル係数を保存
+                                  </button>
+                                </div>
+                              </form>
+                            </div>
 
-              <AiEvaluationSection template={t} />
-              <LabPatternsSection template={t} />
-              <CrisisSection template={t} allTemplates={templates} />
-            </div>
-          );
-        })}
+                            <AiEvaluationSection template={t} />
+                            <LabPatternsSection template={t} />
+                            <CrisisSection template={t} allTemplates={templates} />
+                          </Modal>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
 
         <div className="card">
           <div className="card-h">新規テンプレートを登録</div>
