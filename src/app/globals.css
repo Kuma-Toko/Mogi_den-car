@@ -226,6 +226,24 @@ textarea {
   padding: 16px;
 }
 
+details.card > summary.card-h {
+  cursor: pointer;
+  list-style: none;
+}
+details.card > summary.card-h::-webkit-details-marker {
+  display: none;
+}
+details.card > summary.card-h::after {
+  content: "▶";
+  font-size: 9px;
+  color: var(--ink-soft);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+details.card[open] > summary.card-h::after {
+  transform: rotate(90deg);
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -247,6 +265,26 @@ td {
 tr.row:hover td {
   background: var(--teal-tint);
   cursor: pointer;
+}
+
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.th-sort:hover {
+  color: var(--teal-dark);
+}
+.th-sort-arrow {
+  font-size: 9px;
+  opacity: 0.35;
+}
+.th-sort-arrow.active {
+  opacity: 1;
+  color: var(--teal-dark);
 }
 
 dialog.modal {

@@ -2,11 +2,12 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatJaDateTime } from "@/lib/format";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { Modal } from "@/components/Modal";
 import { loadEngineLinkedLabCodes } from "@/lib/engine";
 import { SPECIMEN_SITE_LABELS, MICROBIOLOGY_KIND_LABELS } from "@/lib/infection-engine";
 import { createLabItem, deleteLabItem, updateLabItem } from "./actions";
 
-const COLS = "0.9fr 1.3fr 1fr 1fr 0.6fr 0.6fr 0.9fr 0.9fr 1.8fr auto";
+const COLS = "0.9fr 1.3fr 1fr 1fr 0.6fr 0.7fr 1.8fr auto";
 
 export default async function AdminLabItemsPage({
   searchParams,
@@ -35,7 +36,53 @@ export default async function AdminLabItemsPage({
         )}
 
         <div className="card">
-          <div className="card-h">登録済み検査項目（{labItems.length}件）</div>
+          <div className="card-h">
+            登録済み検査項目（{labItems.length}件）
+            <Modal trigger="＋ 新規検査項目を登録" triggerClassName="btn primary" title="新規検査項目を登録">
+              <form action={createLabItem} className="form-grid">
+                <div className="field">
+                  <label htmlFor="code">コード</label>
+                  <input id="code" name="code" required placeholder="例: C3002（JLAC11測定物コード等）" />
+                </div>
+                <div className="field">
+                  <label htmlFor="name">項目名</label>
+                  <input id="name" name="name" required placeholder="例: プロカルシトニン" />
+                </div>
+                <div className="field">
+                  <label htmlFor="category">カテゴリ</label>
+                  <input id="category" name="category" required placeholder="例: 検体・生理検査 / 画像検査" />
+                </div>
+                <div className="field">
+                  <label htmlFor="subcategory">サブカテゴリ（任意）</label>
+                  <input id="subcategory" name="subcategory" placeholder="例: 血算 / 生化学 / 単純写真 / CT" />
+                </div>
+                <div className="field">
+                  <label htmlFor="unit">単位（任意）</label>
+                  <input id="unit" name="unit" placeholder="例: ng/mL" />
+                </div>
+                <div className="field">
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                    <input type="checkbox" name="isCulture" />
+                    培養系検査（感染症エンジンの多段階結果開示の対象にする）
+                  </label>
+                </div>
+                <div className="field" style={{ gridColumn: "1 / -1" }}>
+                  <Modal trigger="培養設定（検体部位・検査方式）" triggerClassName="btn ghost" title="培養設定">
+                    <CultureSettingsFields defaultSpecimenSite="" defaultMicrobiologyKind="" />
+                  </Modal>
+                </div>
+                <div className="field" style={{ gridColumn: "1 / -1" }}>
+                  <label htmlFor="sampleResult">模擬結果文（既定・任意）</label>
+                  <input id="sampleResult" name="sampleResult" placeholder="例: 0.05 ng/mL未満（基準範囲内）" />
+                </div>
+                <div style={{ gridColumn: "1 / -1", textAlign: "right" }}>
+                  <button type="submit" className="btn primary">
+                    登録
+                  </button>
+                </div>
+              </form>
+            </Modal>
+          </div>
           <div style={{ padding: "10px 16px 0", fontSize: 11.5, color: "var(--ink-soft)" }}>
             <span className="badge blue" style={{ marginRight: 6 }}>
               連動
@@ -50,8 +97,6 @@ export default async function AdminLabItemsPage({
               <div>サブカテゴリ</div>
               <div>単位</div>
               <div>培養</div>
-              <div>検体部位</div>
-              <div>検査方式</div>
               <div>模擬結果文（既定）</div>
               <div></div>
             </div>
@@ -69,27 +114,20 @@ export default async function AdminLabItemsPage({
                 <input name="category" defaultValue={item.category} required />
                 <input name="subcategory" defaultValue={item.subcategory ?? ""} />
                 <input name="unit" defaultValue={item.unit ?? ""} />
-                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 0" }} title="感染症エンジンの多段階培養結果(速報→確定)の対象にする">
-                  <input type="checkbox" name="isCulture" defaultChecked={item.isCulture} />
-                </label>
-                <select name="specimenSite" defaultValue={item.specimenSite ?? ""} title="検体採取部位（培養系検査のみ使用）">
-                  <option value="">（部位を問わない）</option>
-                  {Object.entries(SPECIMEN_SITE_LABELS).map(([site, label]) => (
-                    <option key={site} value={site}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <select name="microbiologyKind" defaultValue={item.microbiologyKind ?? ""} title="検査方式（培養系検査のみ使用）">
-                  <option value="">（既定・一般細菌）</option>
-                  {Object.entries(MICROBIOLOGY_KIND_LABELS)
-                    .filter(([kind]) => kind !== "GENERAL")
-                    .map(([kind, label]) => (
-                      <option key={kind} value={kind}>
-                        {label}
-                      </option>
-                    ))}
-                </select>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <label
+                    style={{ display: "flex", alignItems: "center" }}
+                    title="感染症エンジンの多段階培養結果(速報→確定)の対象にする"
+                  >
+                    <input type="checkbox" name="isCulture" defaultChecked={item.isCulture} />
+                  </label>
+                  <Modal trigger="培養設定" triggerClassName="btn ghost" title={`培養設定 - ${item.name}`}>
+                    <CultureSettingsFields
+                      defaultSpecimenSite={item.specimenSite ?? ""}
+                      defaultMicrobiologyKind={item.microbiologyKind ?? ""}
+                    />
+                  </Modal>
+                </div>
                 <input name="sampleResult" defaultValue={item.sampleResult ?? ""} />
                 <div className="actions">
                   <button type="submit" className="btn">
@@ -107,74 +145,44 @@ export default async function AdminLabItemsPage({
             ))}
           </div>
         </div>
-
-        <div className="card">
-          <div className="card-h">新規検査項目を登録</div>
-          <div className="card-b">
-            <form action={createLabItem} className="form-grid">
-              <div className="field">
-                <label htmlFor="code">コード</label>
-                <input id="code" name="code" required placeholder="例: C3002（JLAC11測定物コード等）" />
-              </div>
-              <div className="field">
-                <label htmlFor="name">項目名</label>
-                <input id="name" name="name" required placeholder="例: プロカルシトニン" />
-              </div>
-              <div className="field">
-                <label htmlFor="category">カテゴリ</label>
-                <input id="category" name="category" required placeholder="例: 検体・生理検査 / 画像検査" />
-              </div>
-              <div className="field">
-                <label htmlFor="subcategory">サブカテゴリ（任意）</label>
-                <input id="subcategory" name="subcategory" placeholder="例: 血算 / 生化学 / 単純写真 / CT" />
-              </div>
-              <div className="field">
-                <label htmlFor="unit">単位（任意）</label>
-                <input id="unit" name="unit" placeholder="例: ng/mL" />
-              </div>
-              <div className="field">
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
-                  <input type="checkbox" name="isCulture" />
-                  培養系検査（感染症エンジンの多段階結果開示の対象にする）
-                </label>
-              </div>
-              <div className="field">
-                <label htmlFor="specimenSite">検体部位（培養系検査のみ・任意）</label>
-                <select id="specimenSite" name="specimenSite" defaultValue="">
-                  <option value="">（部位を問わない）</option>
-                  {Object.entries(SPECIMEN_SITE_LABELS).map(([site, label]) => (
-                    <option key={site} value={site}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor="microbiologyKind">検査方式（培養系検査のみ・任意）</label>
-                <select id="microbiologyKind" name="microbiologyKind" defaultValue="">
-                  <option value="">（既定・一般細菌）</option>
-                  {Object.entries(MICROBIOLOGY_KIND_LABELS)
-                    .filter(([kind]) => kind !== "GENERAL")
-                    .map(([kind, label]) => (
-                      <option key={kind} value={kind}>
-                        {label}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div className="field" style={{ gridColumn: "1 / -1" }}>
-                <label htmlFor="sampleResult">模擬結果文（既定・任意）</label>
-                <input id="sampleResult" name="sampleResult" placeholder="例: 0.05 ng/mL未満（基準範囲内）" />
-              </div>
-              <div style={{ gridColumn: "1 / -1", textAlign: "right" }}>
-                <button type="submit" className="btn primary">
-                  登録
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       </div>
     </>
+  );
+}
+
+function CultureSettingsFields({
+  defaultSpecimenSite,
+  defaultMicrobiologyKind,
+}: {
+  defaultSpecimenSite: string;
+  defaultMicrobiologyKind: string;
+}) {
+  return (
+    <div className="form-grid">
+      <div className="field">
+        <label>検体部位（部位を問わない場合は空欄）</label>
+        <select name="specimenSite" defaultValue={defaultSpecimenSite}>
+          <option value="">（部位を問わない）</option>
+          {Object.entries(SPECIMEN_SITE_LABELS).map(([site, label]) => (
+            <option key={site} value={site}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="field">
+        <label>検査方式（既定は一般細菌）</label>
+        <select name="microbiologyKind" defaultValue={defaultMicrobiologyKind}>
+          <option value="">（既定・一般細菌）</option>
+          {Object.entries(MICROBIOLOGY_KIND_LABELS)
+            .filter(([kind]) => kind !== "GENERAL")
+            .map(([kind, label]) => (
+              <option key={kind} value={kind}>
+                {label}
+              </option>
+            ))}
+        </select>
+      </div>
+    </div>
   );
 }

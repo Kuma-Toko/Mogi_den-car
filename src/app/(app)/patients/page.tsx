@@ -1,27 +1,35 @@
 import Link from "next/link";
+import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatJaDateTime, formatRelative } from "@/lib/format";
 import { redirect } from "next/navigation";
 import { reconcileCasesForStudent } from "@/lib/engine";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { SortableTh } from "@/components/SortableTh";
 import { dischargeCase } from "./actions";
 
 const PAGE_SIZE = 20;
 
+const SORTABLE_FIELDS = ["caseCode", "patientName", "patientAge", "ward", "updatedAt"] as const;
+type SortableField = (typeof SORTABLE_FIELDS)[number];
+
 export default async function PatientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string; dir?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   await reconcileCasesForStudent(user.id);
 
-  const { q, page: pageParam } = await searchParams;
+  const { q, page: pageParam, sort: sortParam, dir: dirParam } = await searchParams;
   const query = q?.trim() ?? "";
   const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
+  const sort: SortableField = SORTABLE_FIELDS.includes(sortParam as SortableField) ? (sortParam as SortableField) : "updatedAt";
+  const dir: "asc" | "desc" = dirParam === "asc" ? "asc" : dirParam === "desc" ? "desc" : sort === "updatedAt" ? "desc" : "asc";
+  const orderBy: Prisma.CaseOrderByWithRelationInput = { [sort]: dir };
 
   const baseWhere = {
     status: { not: "DRAFT" as const },
@@ -49,7 +57,7 @@ export default async function PatientsPage({
         orders: { orderBy: { orderedAt: "desc" }, take: 20 },
         karteEntries: { orderBy: { createdAt: "desc" }, take: 1 },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy,
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -156,13 +164,13 @@ export default async function PatientsPage({
               <table>
                 <thead>
                   <tr>
-                    <th>患者ID</th>
-                    <th>氏名（模擬）</th>
-                    <th>年齢/性別</th>
-                    <th>病棟/床</th>
+                    <SortableTh label="患者ID" sortKey="caseCode" sort={sort} dir={dir} basePath="/patients" params={{ q: query || undefined }} />
+                    <SortableTh label="氏名（模擬）" sortKey="patientName" sort={sort} dir={dir} basePath="/patients" params={{ q: query || undefined }} />
+                    <SortableTh label="年齢/性別" sortKey="patientAge" sort={sort} dir={dir} basePath="/patients" params={{ q: query || undefined }} />
+                    <SortableTh label="病棟/床" sortKey="ward" sort={sort} dir={dir} basePath="/patients" params={{ q: query || undefined }} />
                     <th>主なプロブレム</th>
                     <th>状態</th>
-                    <th>最終更新</th>
+                    <SortableTh label="最終更新" sortKey="updatedAt" sort={sort} dir={dir} basePath="/patients" params={{ q: query || undefined }} />
                     <th>操作</th>
                   </tr>
                 </thead>
@@ -206,7 +214,7 @@ export default async function PatientsPage({
           {totalPages > 1 && (
             <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "12px 0" }}>
               <a
-                href={`/patients?${new URLSearchParams({ ...(query ? { q: query } : {}), page: String(Math.max(1, page - 1)) })}`}
+                href={`/patients?${new URLSearchParams({ ...(query ? { q: query } : {}), sort, dir, page: String(Math.max(1, page - 1)) })}`}
                 className={`btn ghost${page <= 1 ? " disabled" : ""}`}
                 aria-disabled={page <= 1}
               >
@@ -216,7 +224,7 @@ export default async function PatientsPage({
                 {page} / {totalPages}
               </span>
               <a
-                href={`/patients?${new URLSearchParams({ ...(query ? { q: query } : {}), page: String(Math.min(totalPages, page + 1)) })}`}
+                href={`/patients?${new URLSearchParams({ ...(query ? { q: query } : {}), sort, dir, page: String(Math.min(totalPages, page + 1)) })}`}
                 className={`btn ghost${page >= totalPages ? " disabled" : ""}`}
                 aria-disabled={page >= totalPages}
               >

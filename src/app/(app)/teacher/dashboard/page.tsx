@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { formatJaDateTime, formatRelative } from "@/lib/format";
 import { findPrimaryDiseaseLink, getCurrentPrimarySeverity, reconcileCase } from "@/lib/engine";
 import { getSeverityTier, type SeverityTier } from "@/lib/physiology-engine";
+import { SortableTh } from "@/components/SortableTh";
 
 const CRISIS_LABEL: Record<CrisisState, string> = {
   STABLE: "安定",
@@ -23,7 +24,19 @@ const TIER_COLOR: Record<SeverityTier, string> = { mild: "var(--teal)", moderate
 // 危機中(CRITICAL)を最優先、次に死亡(DECEASED)、その後は安定症例を重症度の高い順に並べる。
 const CRISIS_SORT_RANK: Record<CrisisState, number> = { CRITICAL: 0, DECEASED: 1, STABLE: 2 };
 
-export default async function TeacherDashboardPage() {
+type RowSortKey = "caseCode" | "patientName" | "template" | "crisis" | "severity" | "students" | "updatedAt";
+
+const ROW_SORT_KEYS: RowSortKey[] = ["caseCode", "patientName", "template", "crisis", "severity", "students", "updatedAt"];
+
+export default async function TeacherDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string; dir?: string }>;
+}) {
+  const { sort: sortParam, dir: dirParam } = await searchParams;
+  const sort = ROW_SORT_KEYS.includes(sortParam as RowSortKey) ? (sortParam as RowSortKey) : undefined;
+  const dir: "asc" | "desc" = dirParam === "asc" ? "asc" : "desc";
+
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.role === "STUDENT") redirect("/patients");
@@ -57,11 +70,38 @@ export default async function TeacherDashboardPage() {
     })
   );
 
-  rows.sort((a, b) => {
-    const rankDiff = CRISIS_SORT_RANK[a.case.crisisState] - CRISIS_SORT_RANK[b.case.crisisState];
-    if (rankDiff !== 0) return rankDiff;
-    return (b.severity ?? -1) - (a.severity ?? -1);
-  });
+  if (sort) {
+    const dirMul = dir === "asc" ? 1 : -1;
+    rows.sort((a, b) => {
+      switch (sort) {
+        case "caseCode":
+          return dirMul * a.case.caseCode.localeCompare(b.case.caseCode);
+        case "patientName":
+          return dirMul * a.case.patientName.localeCompare(b.case.patientName);
+        case "template":
+          return dirMul * (a.primaryLink?.template.name ?? "").localeCompare(b.primaryLink?.template.name ?? "");
+        case "crisis":
+          return dirMul * CRISIS_LABEL[a.case.crisisState].localeCompare(CRISIS_LABEL[b.case.crisisState]);
+        case "severity":
+          return dirMul * ((a.severity ?? -1) - (b.severity ?? -1));
+        case "students": {
+          const aNames = a.case.assignments.map((asn) => asn.student.name).join("、");
+          const bNames = b.case.assignments.map((asn) => asn.student.name).join("、");
+          return dirMul * aNames.localeCompare(bNames);
+        }
+        case "updatedAt":
+          return dirMul * (a.case.updatedAt.getTime() - b.case.updatedAt.getTime());
+        default:
+          return 0;
+      }
+    });
+  } else {
+    rows.sort((a, b) => {
+      const rankDiff = CRISIS_SORT_RANK[a.case.crisisState] - CRISIS_SORT_RANK[b.case.crisisState];
+      if (rankDiff !== 0) return rankDiff;
+      return (b.severity ?? -1) - (a.severity ?? -1);
+    });
+  }
 
   const criticalCount = rows.filter((r) => r.case.crisisState === "CRITICAL").length;
   const deceasedCount = rows.filter((r) => r.case.crisisState === "DECEASED").length;
@@ -104,13 +144,13 @@ export default async function TeacherDashboardPage() {
               <table>
                 <thead>
                   <tr>
-                    <th>患者ID</th>
-                    <th>患者名</th>
-                    <th>主病態</th>
-                    <th>状況</th>
-                    <th>重症度</th>
-                    <th>担当学生</th>
-                    <th>最終更新</th>
+                    <SortableTh label="患者ID" sortKey="caseCode" sort={sort} dir={dir} basePath="/teacher/dashboard" />
+                    <SortableTh label="患者名" sortKey="patientName" sort={sort} dir={dir} basePath="/teacher/dashboard" />
+                    <SortableTh label="主病態" sortKey="template" sort={sort} dir={dir} basePath="/teacher/dashboard" />
+                    <SortableTh label="状況" sortKey="crisis" sort={sort} dir={dir} basePath="/teacher/dashboard" />
+                    <SortableTh label="重症度" sortKey="severity" sort={sort} dir={dir} basePath="/teacher/dashboard" />
+                    <SortableTh label="担当学生" sortKey="students" sort={sort} dir={dir} basePath="/teacher/dashboard" />
+                    <SortableTh label="最終更新" sortKey="updatedAt" sort={sort} dir={dir} basePath="/teacher/dashboard" />
                   </tr>
                 </thead>
                 <tbody>

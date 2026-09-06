@@ -1,25 +1,34 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { CaseStatus, CaseType } from "@prisma/client";
+import type { CaseStatus, CaseType, Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { caseTypeLabel } from "@/lib/labels";
 import { formatJaDateTime } from "@/lib/format";
+import { SortableTh } from "@/components/SortableTh";
 import { joinCase } from "./actions";
 
 const PAGE_SIZE = 20;
 
+const SORTABLE_FIELDS = ["caseCode", "title", "patientAge"] as const;
+type SortableField = (typeof SORTABLE_FIELDS)[number];
+
 export default async function CasePoolPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string; dir?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const { q, page: pageParam } = await searchParams;
+  const { q, page: pageParam, sort: sortParam, dir: dirParam } = await searchParams;
   const query = q?.trim() ?? "";
   const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
+  const sort: SortableField | undefined = SORTABLE_FIELDS.includes(sortParam as SortableField)
+    ? (sortParam as SortableField)
+    : undefined;
+  const dir: "asc" | "desc" = dirParam === "asc" ? "asc" : "desc";
+  const orderBy: Prisma.CaseOrderByWithRelationInput = sort ? { [sort]: dir } : { createdAt: "desc" };
 
   const baseWhere = {
     status: { in: ["ACTIVE", "SIMULATING"] as CaseStatus[] },
@@ -38,7 +47,7 @@ export default async function CasePoolPage({
     db.case.findMany({
       where,
       include: { problems: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1 } },
-      orderBy: { createdAt: "desc" },
+      orderBy,
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -87,10 +96,10 @@ export default async function CasePoolPage({
               <table>
                 <thead>
                   <tr>
-                    <th>患者ID</th>
-                    <th>症例名</th>
+                    <SortableTh label="患者ID" sortKey="caseCode" sort={sort} dir={dir} basePath="/patients/pool" params={{ q: query || undefined }} />
+                    <SortableTh label="症例名" sortKey="title" sort={sort} dir={dir} basePath="/patients/pool" params={{ q: query || undefined }} />
                     <th>区分</th>
-                    <th>年齢/性別</th>
+                    <SortableTh label="年齢/性別" sortKey="patientAge" sort={sort} dir={dir} basePath="/patients/pool" params={{ q: query || undefined }} />
                     <th>主なプロブレム</th>
                     <th></th>
                   </tr>
@@ -121,7 +130,7 @@ export default async function CasePoolPage({
           {totalPages > 1 && (
             <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "12px 0" }}>
               <a
-                href={`/patients/pool?${new URLSearchParams({ ...(query ? { q: query } : {}), page: String(Math.max(1, page - 1)) })}`}
+                href={`/patients/pool?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(sort ? { sort, dir } : {}), page: String(Math.max(1, page - 1)) })}`}
                 className={`btn ghost${page <= 1 ? " disabled" : ""}`}
                 aria-disabled={page <= 1}
               >
@@ -131,7 +140,7 @@ export default async function CasePoolPage({
                 {page} / {totalPages}
               </span>
               <a
-                href={`/patients/pool?${new URLSearchParams({ ...(query ? { q: query } : {}), page: String(Math.min(totalPages, page + 1)) })}`}
+                href={`/patients/pool?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(sort ? { sort, dir } : {}), page: String(Math.min(totalPages, page + 1)) })}`}
                 className={`btn ghost${page >= totalPages ? " disabled" : ""}`}
                 aria-disabled={page >= totalPages}
               >

@@ -7,6 +7,15 @@ import { auditActionLabel, auditTargetTypeLabel } from "@/lib/labels";
 const COLS = "1fr 1fr 1.3fr 1.3fr 1.6fr";
 const PAGE_SIZE = 50;
 
+const SORTABLE_FIELDS = ["createdAt", "user", "action", "targetType"] as const;
+type SortableField = (typeof SORTABLE_FIELDS)[number];
+const SORT_LABEL: Record<SortableField, string> = {
+  createdAt: "日時",
+  user: "ユーザー",
+  action: "操作",
+  targetType: "対象",
+};
+
 function buildQueryString(params: Record<string, string | undefined>) {
   const sp = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -19,13 +28,19 @@ function buildQueryString(params: Record<string, string | undefined>) {
 export default async function AdminAuditLogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; from?: string; to?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; from?: string; to?: string; page?: string; sort?: string; dir?: string }>;
 }) {
   await requireAdmin();
-  const { q, from, to, page: pageParam } = await searchParams;
+  const { q, from, to, page: pageParam, sort: sortParam, dir: dirParam } = await searchParams;
 
   const query = q?.trim() ?? "";
   const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
+  const sort: SortableField | undefined = SORTABLE_FIELDS.includes(sortParam as SortableField)
+    ? (sortParam as SortableField)
+    : undefined;
+  const dir: "asc" | "desc" = dirParam === "asc" ? "asc" : "desc";
+  const orderBy: Prisma.AuditLogOrderByWithRelationInput =
+    sort === "user" ? { user: { name: dir } } : sort ? { [sort]: dir } : { createdAt: "desc" };
 
   const where: Prisma.AuditLogWhereInput = {};
 
@@ -53,7 +68,7 @@ export default async function AdminAuditLogsPage({
     db.auditLog.count({ where }),
     db.auditLog.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy,
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       include: { user: true },
@@ -61,7 +76,12 @@ export default async function AdminAuditLogsPage({
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const baseParams = { q: query || undefined, from, to };
+  const baseParams = { q: query || undefined, from, to, sort, dir: sort ? dir : undefined };
+
+  function sortHref(key: SortableField) {
+    const nextDir: "asc" | "desc" = sort === key && dir === "asc" ? "desc" : "asc";
+    return `/admin/audit-logs${buildQueryString({ q: query || undefined, from, to, sort: key, dir: nextDir })}`;
+  }
 
   return (
     <>
@@ -101,10 +121,16 @@ export default async function AdminAuditLogsPage({
           </div>
           <div className="mrow-wrap">
             <div className="mrow head" style={{ gridTemplateColumns: COLS }}>
-              <div>日時</div>
-              <div>ユーザー</div>
-              <div>操作</div>
-              <div>対象</div>
+              {SORTABLE_FIELDS.map((key) => (
+                <div key={key}>
+                  <a href={sortHref(key)} className="th-sort">
+                    {SORT_LABEL[key]}
+                    <span className={`th-sort-arrow${sort === key ? " active" : ""}`}>
+                      {sort === key ? (dir === "asc" ? "▲" : "▼") : "↕"}
+                    </span>
+                  </a>
+                </div>
+              ))}
               <div>詳細</div>
             </div>
             {logs.length === 0 ? (

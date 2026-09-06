@@ -142,7 +142,56 @@ export default async function AdminTemplatesPage({
         </div>
 
         <div className="card">
-          <div className="card-h">病態テンプレート一覧</div>
+          <div className="card-h">
+            病態テンプレート一覧
+            <Modal trigger="＋ 新規テンプレートを登録" triggerClassName="btn primary" title="新規テンプレートを登録" size="lg">
+              <form action={createTemplate}>
+                <div className="form-grid" style={{ marginBottom: 14 }}>
+                  <div className="field">
+                    <label htmlFor="key">キー（半角英数・アンダースコア、後から変更不可）</label>
+                    <input id="key" name="key" required placeholder="例: copd" pattern="[a-z0-9_]+" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="new-name">テンプレート名</label>
+                    <input id="new-name" name="name" required placeholder="例: COPD増悪" />
+                  </div>
+                  <div className="field" style={{ gridColumn: "1 / -1" }}>
+                    <label htmlFor="new-description">説明</label>
+                    <input id="new-description" name="description" placeholder="例: 呼吸困難・SpO2低下の経時変化" />
+                  </div>
+                  <div className="field">
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                      <input type="checkbox" name="isCommon" defaultChecked />
+                      共通テンプレートとして全教員に公開する
+                    </label>
+                  </div>
+                  <div className="field">
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                      <input type="checkbox" name="isInfectious" />
+                      症例作成画面で「真の原因菌」を選択できるようにする
+                    </label>
+                  </div>
+                  <div className="field">
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
+                      <input type="checkbox" name="isCrisisPathology" />
+                      危機病態として扱う（急変シナリオのアタッチ先として使う）
+                    </label>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6 }}>
+                  既定パラメータ
+                </div>
+                <PhysiologySliders initial={DEFAULT_PHYSIOLOGY_PARAMS} />
+
+                <div style={{ textAlign: "right", marginTop: 12 }}>
+                  <button type="submit" className="btn primary">
+                    登録
+                  </button>
+                </div>
+              </form>
+            </Modal>
+          </div>
           <div className="card-b" style={{ padding: 0 }}>
             {templates.length === 0 ? (
               <div className="empty-note">病態テンプレートが登録されていません。</div>
@@ -284,54 +333,6 @@ export default async function AdminTemplatesPage({
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-h">新規テンプレートを登録</div>
-          <form action={createTemplate} className="card-b">
-            <div className="form-grid" style={{ marginBottom: 14 }}>
-              <div className="field">
-                <label htmlFor="key">キー（半角英数・アンダースコア、後から変更不可）</label>
-                <input id="key" name="key" required placeholder="例: copd" pattern="[a-z0-9_]+" />
-              </div>
-              <div className="field">
-                <label htmlFor="new-name">テンプレート名</label>
-                <input id="new-name" name="name" required placeholder="例: COPD増悪" />
-              </div>
-              <div className="field" style={{ gridColumn: "1 / -1" }}>
-                <label htmlFor="new-description">説明</label>
-                <input id="new-description" name="description" placeholder="例: 呼吸困難・SpO2低下の経時変化" />
-              </div>
-              <div className="field">
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
-                  <input type="checkbox" name="isCommon" defaultChecked />
-                  共通テンプレートとして全教員に公開する
-                </label>
-              </div>
-              <div className="field">
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
-                  <input type="checkbox" name="isInfectious" />
-                  症例作成画面で「真の原因菌」を選択できるようにする
-                </label>
-              </div>
-              <div className="field">
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
-                  <input type="checkbox" name="isCrisisPathology" />
-                  危機病態として扱う（急変シナリオのアタッチ先として使う）
-                </label>
-              </div>
-            </div>
-
-            <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6 }}>
-              既定パラメータ
-            </div>
-            <PhysiologySliders initial={DEFAULT_PHYSIOLOGY_PARAMS} />
-
-            <div style={{ textAlign: "right", marginTop: 12 }}>
-              <button type="submit" className="btn primary">
-                登録
-              </button>
-            </div>
-          </form>
-        </div>
       </div>
     </>
   );
@@ -370,8 +371,17 @@ function VitalPointGrid({
 
 function PhysiologyBaselineBandSection({ bands }: { bands: PhysiologyBaselineBand[] }) {
   return (
-    <div className="card" style={{ marginBottom: 14 }}>
-      <div className="card-h">年齢・性別による基礎値の調整</div>
+    <details className="card" style={{ marginBottom: 14 }}>
+      <summary className="card-h">
+        <span>
+          年齢・性別による基礎値の調整
+          {bands.length > 0 && (
+            <span className="badge blue" style={{ marginLeft: 8 }}>
+              {bands.length}件設定済み
+            </span>
+          )}
+        </span>
+      </summary>
       <div className="card-b">
         <div style={{ fontSize: 11.5, color: "var(--ink-soft)", marginBottom: 8 }}>
           症例の年齢・性別が該当する帯域があれば、上の基礎生理モデルの代わりにこちらの値を基準値として使う（該当する帯域が無ければ上へフォールバック）。
@@ -473,7 +483,7 @@ function PhysiologyBaselineBandSection({ bands }: { bands: PhysiologyBaselineBan
           </div>
         </form>
       </div>
-    </div>
+    </details>
   );
 }
 
