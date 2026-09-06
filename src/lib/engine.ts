@@ -18,6 +18,8 @@ import {
   getCaseClockNow,
   parsePhysiologyParams,
   resolveActiveDrugEffects,
+  resolveTreatmentStart,
+  severityHalfLifeHours,
   summarizeDrugEffects,
   type ActiveDrugEffects,
   type CrisisRescueConfig,
@@ -29,6 +31,8 @@ import {
   type PatternSet,
   type SeverityTier,
   type TemplateConfig,
+  type TreatmentStartResolution,
+  type TreatmentTrigger,
   type VitalPoint,
 } from "@/lib/physiology-engine";
 import { formatLabValues, type LabValue } from "@/lib/lab-reference-ranges";
@@ -844,6 +848,57 @@ export async function getDiseaseLinkSeverities(caseId: string): Promise<Map<stri
   const severities = new Map<string, number | null>(caseRecord.diseaseLinks.map((l) => [l.id, null]));
   for (const c of contributions) severities.set(c.link.id, c.severity);
   return severities;
+}
+
+// 症例の全病態について、現在の重症度カーブが「なぜ」その値なのか（改善モードの内訳・治療開始トリガーの
+// 一致状況）を返す。教員・管理者向けサマリタブの内部判定表示専用（getDiseaseLinkSeveritiesは重症度の数値
+// だけを返すため、その内訳が必要なここでは別関数として用意する）。
+export type DiseaseLinkImprovementDetail =
+  | { engineReady: false }
+  | { engineReady: true; trigger: TreatmentTrigger; mode: "ai"; severityBaselineAt: Date; aiSeverityRatePerHour: number }
+  | {
+      engineReady: true;
+      trigger: TreatmentTrigger;
+      mode: "natural";
+      severityBaselineAt: Date;
+      resolution: TreatmentStartResolution;
+      halfLifeHours: number | null; // treated時のみ意味を持つ。未治療時はnull
+    };
+
+export async function getDiseaseLinkImprovementDetails(caseId: string): Promise<Map<string, DiseaseLinkImprovementDetail>> {
+  const caseRecord = await loadCaseForEngine(caseId);
+  if (!caseRecord) return new Map();
+  const treatmentOrders = await loadTreatmentOrders(caseId);
+  const details = new Map<string, DiseaseLinkImprovementDetail>();
+
+  for (const link of caseRecord.diseaseLinks) {
+    const config = await loadTemplateConfig(link.template.key);
+    if (!config) {
+      details.set(link.id, { engineReady: false });
+      continue;
+    }
+    if (link.aiSeverityRatePerHour !== null && link.aiSeverityRatePerHour !== undefined) {
+      details.set(link.id, {
+        engineReady: true,
+        trigger: config.treatment,
+        mode: "ai",
+        severityBaselineAt: link.severityBaselineAt,
+        aiSeverityRatePerHour: link.aiSeverityRatePerHour,
+      });
+      continue;
+    }
+    const params = parsePhysiologyParams(link.physiologyParams);
+    const resolution = resolveTreatmentStart(link.severityBaselineAt, treatmentOrders, config.treatment);
+    details.set(link.id, {
+      engineReady: true,
+      trigger: config.treatment,
+      mode: "natural",
+      severityBaselineAt: link.severityBaselineAt,
+      resolution,
+      halfLifeHours: resolution.treated ? severityHalfLifeHours(params.improvementSpeedSlider) : null,
+    });
+  }
+  return details;
 }
 
 async function notifyAssignedStudents(caseId: string, message: string): Promise<void> {

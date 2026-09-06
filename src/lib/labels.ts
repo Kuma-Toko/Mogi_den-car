@@ -96,6 +96,7 @@ export const auditActionLabel: Record<string, string> = {
   case_readmit: "患者を再入院させる",
   case_disease_delete: "症例の病態を削除",
   case_disease_severity_override: "症例の病態重症度を手動設定",
+  case_disease_rate_override: "症例の病態の変動速度を手動設定",
   encounter_message: "問診・診察メッセージを送信",
   drug_alias_create: "薬剤の別名（エイリアス）を登録",
   drug_alias_delete: "薬剤の別名（エイリアス）を削除",
@@ -131,6 +132,7 @@ export const auditActionLabel: Record<string, string> = {
   master_physiology_baseline_band_delete: "生理値基準帯を削除",
   master_base_physiology_update: "基礎生理モデルを更新",
   master_template_engine_config_update: "病態テンプレートのエンジン設定を更新",
+  master_template_speed_update: "病態テンプレートの改善速度を更新",
   master_ai_evaluation_guideline_update: "AI評価ガイドラインを更新",
 };
 

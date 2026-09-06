@@ -1,10 +1,10 @@
 import { db } from "@/lib/db";
 import { formatJaDateTimeShort } from "@/lib/format";
 import { karteEntryTypeBadgeClass, karteEntryTypeLabel, orderStatusBadgeClass, orderStatusLabel, orderTypeLabel } from "@/lib/labels";
-import { getDiseaseLinkSeverities } from "@/lib/engine";
-import { getSeverityTier, type SeverityTier } from "@/lib/physiology-engine";
+import { getDiseaseLinkSeverities, getDiseaseLinkImprovementDetails, type DiseaseLinkImprovementDetail } from "@/lib/engine";
+import { getSeverityTier, UNTREATED_DRIFT_PER_HOUR, type SeverityTier } from "@/lib/physiology-engine";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { updateDiseaseLinkSeverity, deleteDiseaseLink } from "./actions";
+import { updateDiseaseLinkSeverity, updateDiseaseLinkRate, deleteDiseaseLink } from "./actions";
 
 function scoreBadgeClass(score: number): string {
   if (score >= 70) return "teal";
@@ -13,6 +13,22 @@ function scoreBadgeClass(score: number): string {
 }
 
 const TIER_LABEL: Record<SeverityTier, string> = { mild: "軽症", moderate: "中等症", severe: "重症" };
+
+// aiSeverityRatePerHour（時間あたりの重症度変化量。正=悪化、負=改善）の表示用ラベル。
+// null＝AI評価未発火・手動設定なし（改善速度スライダーに基づく従来の自然経過カーブを使用中）。
+function rateLabel(rate: number | null): string {
+  if (rate === null) return "自然経過（改善速度の既定設定に基づく）";
+  if (rate === 0) return "変動なし（横ばいで固定）";
+  const sign = rate > 0 ? "+" : "";
+  const trend = rate > 0 ? "悪化" : "改善";
+  return `${sign}${rate.toFixed(1)} /時間（${trend}）`;
+}
+
+// テンプレートの治療開始条件（薬剤大分類・処置キーワード）をそのまま表示する用。
+function triggerSummary(trigger: { drugCategories?: string[]; procedureKeywords?: string[] }): string {
+  const parts = [...(trigger.drugCategories ?? []), ...(trigger.procedureKeywords ?? [])];
+  return parts.length > 0 ? parts.join("、") : "―（このテンプレートに治療開始条件が設定されていません）";
+}
 
 export async function SummaryTab({
   caseId,
@@ -36,7 +52,7 @@ export async function SummaryTab({
         )?.dischargedAt
       );
 
-  const [problems, latestNote, recentOrders, evaluations, diseaseLinks, severities] = await Promise.all([
+  const [problems, latestNote, recentOrders, evaluations, diseaseLinks, severities, improvementDetails] = await Promise.all([
     db.problem.findMany({ where: { caseId }, orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }] }),
     db.karteEntry.findFirst({ where: { caseId }, orderBy: { createdAt: "desc" }, include: { author: true } }),
     db.order.findMany({
@@ -52,6 +68,9 @@ export async function SummaryTab({
       ? db.caseDiseaseLink.findMany({ where: { caseId }, include: { template: true }, orderBy: { sortOrder: "asc" } })
       : Promise.resolve([]),
     canManageDiseases ? getDiseaseLinkSeverities(caseId) : Promise.resolve(new Map<string, number | null>()),
+    canManageDiseases
+      ? getDiseaseLinkImprovementDetails(caseId)
+      : Promise.resolve(new Map<string, DiseaseLinkImprovementDetail>()),
   ]);
 
   return (
@@ -167,59 +186,125 @@ export async function SummaryTab({
             diseaseLinks.map((link) => {
               const severity = severities.get(link.id) ?? null;
               const tier = severity !== null ? getSeverityTier(severity) : null;
+              const detail = improvementDetails.get(link.id) ?? null;
               return (
                 <div
                   key={link.id}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    flexWrap: "wrap",
                     padding: "8px 0",
                     borderBottom: "1px solid var(--line-soft)",
                   }}
                 >
-                  <span style={{ fontSize: 12.5, fontWeight: 600, minWidth: 140 }}>
-                    {link.template.name}
-                    {link.isPrimary && (
-                      <span className="badge teal" style={{ marginLeft: 6, fontSize: 10 }}>
-                        主病態
-                      </span>
-                    )}
-                  </span>
-                  <span style={{ fontSize: 12, color: "var(--ink-soft)", minWidth: 90 }}>
-                    {severity !== null && tier ? `重症度 ${Math.round(severity)}（${TIER_LABEL[tier]}）` : "重症度 —"}
-                  </span>
-                  <form
-                    action={updateDiseaseLinkSeverity.bind(null, caseId, link.id)}
-                    style={{ display: "flex", alignItems: "center", gap: 6 }}
-                  >
-                    <input
-                      type="number"
-                      name="severity"
-                      min={0}
-                      max={100}
-                      defaultValue={severity !== null ? Math.round(severity) : 50}
-                      style={{ width: 64 }}
-                    />
-                    <button type="submit" className="btn" style={{ fontSize: 11, padding: "4px 8px" }}>
-                      重症度を変更
-                    </button>
-                  </form>
-                  {diseaseLinks.length > 1 ? (
-                    <form>
-                      <ConfirmButton
-                        formAction={deleteDiseaseLink.bind(null, caseId, link.id)}
-                        confirmText={`「${link.template.name}」を削除しますか？`}
-                        className="btn ghost"
-                        actionLabel="削除する"
-                        actionClassName="btn danger"
-                      >
-                        削除
-                      </ConfirmButton>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, minWidth: 140 }}>
+                      {link.template.name}
+                      {link.isPrimary && (
+                        <span className="badge teal" style={{ marginLeft: 6, fontSize: 10 }}>
+                          主病態
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ fontSize: 12, color: "var(--ink-soft)", minWidth: 90 }}>
+                      {severity !== null && tier ? `重症度 ${Math.round(severity)}（${TIER_LABEL[tier]}）` : "重症度 —"}
+                    </span>
+                    <form
+                      action={updateDiseaseLinkSeverity.bind(null, caseId, link.id)}
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                      <input
+                        type="number"
+                        name="severity"
+                        min={0}
+                        max={100}
+                        defaultValue={severity !== null ? Math.round(severity) : 50}
+                        style={{ width: 64 }}
+                      />
+                      <button type="submit" className="btn" style={{ fontSize: 11, padding: "4px 8px" }}>
+                        重症度を変更
+                      </button>
                     </form>
-                  ) : (
-                    <span style={{ fontSize: 11, color: "var(--ink-soft)" }}>最後の病態のため削除できません</span>
+                    {diseaseLinks.length > 1 ? (
+                      <form>
+                        <ConfirmButton
+                          formAction={deleteDiseaseLink.bind(null, caseId, link.id)}
+                          confirmText={`「${link.template.name}」を削除しますか？`}
+                          className="btn ghost"
+                          actionLabel="削除する"
+                          actionClassName="btn danger"
+                        >
+                          削除
+                        </ConfirmButton>
+                      </form>
+                    ) : (
+                      <span style={{ fontSize: 11, color: "var(--ink-soft)" }}>最後の病態のため削除できません</span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, color: "var(--ink-soft)", minWidth: 90 }}>
+                      変動速度: {rateLabel(link.aiSeverityRatePerHour)}
+                    </span>
+                    {severity !== null && (
+                      <form
+                        action={updateDiseaseLinkRate.bind(null, caseId, link.id)}
+                        style={{ display: "flex", alignItems: "center", gap: 6 }}
+                      >
+                        <input
+                          type="number"
+                          name="rate"
+                          step="0.1"
+                          min={-4}
+                          max={4}
+                          defaultValue={link.aiSeverityRatePerHour ?? 0}
+                          style={{ width: 64 }}
+                        />
+                        <span style={{ fontSize: 11, color: "var(--ink-soft)" }}>/時間（-4〜+4、負=改善・正=悪化）</span>
+                        <button type="submit" className="btn" style={{ fontSize: 11, padding: "4px 8px" }}>
+                          変動速度を変更
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                  {detail && (
+                    <details style={{ marginTop: 6 }}>
+                      <summary style={{ fontSize: 11, color: "var(--ink-soft)", cursor: "pointer" }}>内部判定を表示</summary>
+                      <div style={{ marginTop: 6, fontSize: 11.5, color: "var(--ink-soft)", lineHeight: 1.6 }}>
+                        {!detail.engineReady ? (
+                          <p style={{ margin: 0 }}>このテンプレートはエンジン未設定のため、重症度は動的に変化しません。</p>
+                        ) : detail.mode === "ai" ? (
+                          <p style={{ margin: 0 }}>
+                            <span className="badge blue" style={{ marginRight: 6 }}>
+                              AI治療評価による変動
+                            </span>
+                            変動速度 {detail.aiSeverityRatePerHour.toFixed(1)}/時間を適用中（起点:{" "}
+                            {formatJaDateTimeShort(detail.severityBaselineAt)}）
+                          </p>
+                        ) : detail.resolution.treated ? (
+                          <>
+                            <p style={{ margin: "0 0 4px" }}>
+                              <span className="badge teal" style={{ marginRight: 6 }}>
+                                自然経過（指数減衰）
+                              </span>
+                              半減期 約{detail.halfLifeHours!.toFixed(1)}時間
+                            </p>
+                            <p style={{ margin: 0 }}>
+                              治療開始トリガー一致: {orderTypeLabel[detail.resolution.matchedOrder.orderType]}「
+                              {detail.resolution.matchedOrder.label}」（{formatJaDateTimeShort(detail.resolution.matchedOrder.orderedAt)}）
+                              {detail.resolution.viaBaselineCarryover && "　※前の起点から治療継続を引き継ぎ"}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p style={{ margin: "0 0 4px" }}>
+                              <span className="badge amber" style={{ marginRight: 6 }}>
+                                自然経過（未治療）
+                              </span>
+                              未治療のため悪化中（+{UNTREATED_DRIFT_PER_HOUR.toFixed(1)}/時間）
+                            </p>
+                            <p style={{ margin: 0 }}>治療開始トリガー条件: {triggerSummary(detail.trigger)}</p>
+                          </>
+                        )}
+                      </div>
+                    </details>
                   )}
                 </div>
               );

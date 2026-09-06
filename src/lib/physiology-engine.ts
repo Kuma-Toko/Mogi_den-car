@@ -1,4 +1,4 @@
-import type { Case, CaseDiseaseLink, Order } from "@prisma/client";
+import type { Case, CaseDiseaseLink, Order, OrderType } from "@prisma/client";
 import { DEFAULT_PHYSIOLOGY_PARAMS, type PhysiologyParams } from "@/lib/physiology";
 import { formatLabValues, type LabValue } from "@/lib/lab-reference-ranges";
 
@@ -89,7 +89,8 @@ export type TemplateConfig = {
 export const CRISIS_WINDOW_MINUTES = 480;
 
 const FLOOR_SEVERITY = 5;
-const UNTREATED_DRIFT_PER_HOUR = 2; // 未治療時の悪化速度（重症度ポイント/時間）
+// 未治療時の悪化速度（重症度ポイント/時間）。サマリタブの内部判定表示でも同じ値を参照するためexport。
+export const UNTREATED_DRIFT_PER_HOUR = 2;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -112,31 +113,89 @@ export function getCaseClockNow(caseRecord: Pick<Case, "timeProgressMode" | "sim
   return new Date();
 }
 
+// 病態テンプレート管理画面の可視化グラフでも使う（改善速度スライダー→半減期の対応を一箇所に集約するため export）。
+export function severityHalfLifeHours(improvementSpeedSlider: number): number {
+  return 24 - (improvementSpeedSlider / 100) * 20; // 4〜24時間
+}
+
 function improvementRatePerHour(improvementSpeedSlider: number): number {
-  const halfLifeHours = 24 - (improvementSpeedSlider / 100) * 20; // 4〜24時間
-  return Math.log(2) / halfLifeHours;
+  return Math.log(2) / severityHalfLifeHours(improvementSpeedSlider);
+}
+
+// 治療開始からhoursSinceTreatment時間後の重症度（指数減衰）。管理画面のグラフ描画と
+// computeSeverityAtの両方から使う共通ロジック。
+export function severityDecayAt(startSeverity: number, improvementSpeedSlider: number, hoursSinceTreatment: number): number {
+  const k = improvementRatePerHour(improvementSpeedSlider);
+  const severity = FLOOR_SEVERITY + (startSeverity - FLOOR_SEVERITY) * Math.exp(-k * Math.max(0, hoursSinceTreatment));
+  return clamp(severity, 0, 100);
 }
 
 type TreatmentOrder = Pick<Order, "orderedAt" | "orderType" | "label" | "detail"> & {
   drug: { categoryLinks: { category: { majorCategory: string } }[] } | null;
 };
 
-// 治療開始時刻。薬剤カテゴリ一致（処方・注射、1薬剤が複数カテゴリを持ちうるためいずれか1つでも
-// drugCategoriesに含まれれば治療とみなす。判定は大分類(majorCategory)単位のみ）、または処置ラベルの
-// キーワード一致（処置・手術）のうち、最も早く条件を満たしたオーダーの時刻を返す。未治療ならnull。
-export function findTreatmentStartAt(orders: TreatmentOrder[], trigger: TreatmentTrigger): Date | null {
-  let earliest: Date | null = null;
+// 治療開始トリガーに実際に一致したオーダー本体と、一致理由（薬剤大分類 or 処置キーワード、どの値がヒットしたか）。
+// 教員向け内部判定表示（サマリタブ）用。findTreatmentStartAtはこの関数の時刻だけを取り出す薄いラッパー。
+export type MatchedTreatmentOrder = {
+  orderedAt: Date;
+  orderType: OrderType;
+  label: string;
+  matchedBy: "drugCategory" | "procedureKeyword";
+  matchedValue: string;
+};
+
+// 薬剤カテゴリ一致（処方・注射、1薬剤が複数カテゴリを持ちうるためいずれか1つでもdrugCategoriesに含まれれば
+// 治療とみなす。判定は大分類(majorCategory)単位のみ）、または処置ラベルのキーワード一致（処置・手術）のうち、
+// 最も早く条件を満たしたオーダーを返す。未治療ならnull。
+export function findTreatmentStartOrder(orders: TreatmentOrder[], trigger: TreatmentTrigger): MatchedTreatmentOrder | null {
+  let earliest: MatchedTreatmentOrder | null = null;
   for (const order of orders) {
-    let matched = false;
+    let matched: Pick<MatchedTreatmentOrder, "matchedBy" | "matchedValue"> | null = null;
     if (order.orderType === "MEDICATION" || order.orderType === "INJECTION") {
       const majors = order.drug?.categoryLinks.map((l) => l.category.majorCategory) ?? [];
-      matched = !!trigger.drugCategories?.length && majors.some((m) => trigger.drugCategories!.includes(m));
+      const hit = trigger.drugCategories?.find((c) => majors.includes(c));
+      if (hit) matched = { matchedBy: "drugCategory", matchedValue: hit };
     } else if (order.orderType === "PROCEDURE") {
-      matched = !!trigger.procedureKeywords?.length && trigger.procedureKeywords.some((kw) => order.label.includes(kw));
+      const hit = trigger.procedureKeywords?.find((kw) => order.label.includes(kw));
+      if (hit) matched = { matchedBy: "procedureKeyword", matchedValue: hit };
     }
-    if (matched && (!earliest || order.orderedAt < earliest)) earliest = order.orderedAt;
+    if (matched && (!earliest || order.orderedAt < earliest.orderedAt)) {
+      earliest = { orderedAt: order.orderedAt, orderType: order.orderType, label: order.label, ...matched };
+    }
   }
   return earliest;
+}
+
+// 治療開始時刻。findTreatmentStartOrderの時刻部分だけを使う既存呼び出し元向けの薄いラッパー。
+export function findTreatmentStartAt(orders: TreatmentOrder[], trigger: TreatmentTrigger): Date | null {
+  return findTreatmentStartOrder(orders, trigger)?.orderedAt ?? null;
+}
+
+// 病態の重症度カーブの起点(baselineAt)をまたいで治療が継続しているかどうかの判定結果。
+// computeCaseSeverityAtTimeの自然経過モードが使う判定を、内部判定表示からも再利用できる形に切り出したもの。
+export type TreatmentStartResolution =
+  | { treated: false }
+  | { treated: true; treatmentStartAt: Date; viaBaselineCarryover: boolean; matchedOrder: MatchedTreatmentOrder };
+
+// リセット直前の時点で既に治療開始条件を満たしていた場合（＝救命成功や急変アタッチをまたいで治療が継続している
+// 場合）、baselineAt以降のオーダーだけを見ると新規の治療開始オーダーが無く「未治療」と誤判定されてしまう
+// （UNTREATED_DRIFT_PER_HOURで悪化し続け、100に張り付いて二度と改善しなくなる）。その場合はbaselineAt自体を
+// 治療開始時刻とみなし、治療継続中の扱いを引き継ぐ（＝重症度はbaselineAtの値からそのまま減衰を続ける。
+// 新起点以降に該当オーダーが実際にあればそちらを優先し、従来通りその時刻を治療開始時刻とする）。
+export function resolveTreatmentStart(baselineAt: Date, orders: TreatmentOrder[], trigger: TreatmentTrigger): TreatmentStartResolution {
+  const carryoverMatch = findTreatmentStartOrder(
+    orders.filter((o) => o.orderedAt <= baselineAt),
+    trigger
+  );
+  if (carryoverMatch) {
+    return { treated: true, treatmentStartAt: baselineAt, viaBaselineCarryover: true, matchedOrder: carryoverMatch };
+  }
+  const freshMatch = findTreatmentStartOrder(
+    orders.filter((o) => o.orderedAt >= baselineAt),
+    trigger
+  );
+  if (!freshMatch) return { treated: false };
+  return { treated: true, treatmentStartAt: freshMatch.orderedAt, viaBaselineCarryover: false, matchedOrder: freshMatch };
 }
 
 // 一般指示カテゴリ「酸素投与」のデバイス・流量ごとのSpO2上乗せ幅（%pt）。基礎疾患の重症度自体は
@@ -226,9 +285,7 @@ export function computeSeverityAt(params: {
     100
   );
   const hoursSinceTreatment = Math.max(0, (atTime.getTime() - treatmentStartAt.getTime()) / 3_600_000);
-  const k = improvementRatePerHour(improvementSpeedSlider);
-  const severity = FLOOR_SEVERITY + (severityAtTreatmentStart - FLOOR_SEVERITY) * Math.exp(-k * hoursSinceTreatment);
-  return clamp(severity, 0, 100);
+  return severityDecayAt(severityAtTreatmentStart, improvementSpeedSlider, hoursSinceTreatment);
 }
 
 // AI治療評価のスコア（0-100、50が中立）を「時間あたりの重症度変化量」に変換する。1回の評価で重症度を
@@ -236,7 +293,9 @@ export function computeSeverityAt(params: {
 // 何度出しても（＝評価が何度再発火しても）同じ変化率が再アンカーされるだけで済み、改善が二重・三重に
 // 計上されることがない（適切な治療が続く限り、重症度は0へ向かって単調に収束することが保証される）。
 // スコア50＝現状維持（変化率0）、100＝最速改善、0（ただし禁忌ではない）＝最速悪化。
-const MAX_AI_SEVERITY_RATE_PER_HOUR = 4; // スコア0/100のときの最大変化率。100→0まで最短約25時間で改善する想定
+// スコア0/100のときの最大変化率。100→0まで最短約25時間で改善する想定。
+// 教員・管理者が症例の病態の変動速度を手動設定するUI（サマリタブ）の入力範囲もこれに合わせる。
+export const MAX_AI_SEVERITY_RATE_PER_HOUR = 4;
 
 export function computeAiSeverityRatePerHour(appropriatenessScore: number): number {
   return -((appropriatenessScore - 50) / 50) * MAX_AI_SEVERITY_RATE_PER_HOUR;
@@ -363,23 +422,8 @@ export function computeCaseSeverityAtTime(
     return clamp(params.severitySlider + diseaseLink.aiSeverityRatePerHour * hoursSinceBaseline, 0, 100);
   }
 
-  // リセット直前の時点で既に治療開始条件を満たしていた場合（＝救命成功や急変アタッチをまたいで
-  // 治療が継続している場合）、baselineAt以降のオーダーだけを見ると新規の治療開始オーダーが無く
-  // 「未治療」と誤判定されてしまう（UNTREATED_DRIFT_PER_HOURで悪化し続け、100に張り付いて
-  // 二度と改善しなくなる）。その場合はbaselineAt自体を治療開始時刻とみなし、治療継続中の扱いを
-  // 引き継ぐ（＝重症度はbaselineAtの値からそのまま減衰を続ける。新起点以降に該当オーダーが
-  // 実際にあればそちらを優先し、従来通りその時刻を治療開始時刻とする）。
-  const alreadyTreatedBeforeBaseline =
-    findTreatmentStartAt(
-      orders.filter((o) => o.orderedAt <= baselineAt),
-      config.treatment
-    ) !== null;
-  const treatmentStartAt = alreadyTreatedBeforeBaseline
-    ? baselineAt
-    : findTreatmentStartAt(
-        orders.filter((o) => o.orderedAt >= baselineAt),
-        config.treatment
-      );
+  const resolution = resolveTreatmentStart(baselineAt, orders, config.treatment);
+  const treatmentStartAt = resolution.treated ? resolution.treatmentStartAt : null;
 
   return computeSeverityAt({
     baseSeverity: params.severitySlider,

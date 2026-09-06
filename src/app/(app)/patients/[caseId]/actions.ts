@@ -12,6 +12,7 @@ import {
   computeResultReadyAt,
   createPendingTreatmentEvaluationIfNeeded,
   findCasePathogenId,
+  getDiseaseLinkSeverities,
   loadDiseaseContributionsAt,
   loadDrugEffectRules,
   processTreatmentEvaluation,
@@ -19,7 +20,7 @@ import {
   resolveLabResult,
   runDischargeFeedback,
 } from "@/lib/engine";
-import { getCaseClockNow, parsePhysiologyParams } from "@/lib/physiology-engine";
+import { getCaseClockNow, MAX_AI_SEVERITY_RATE_PER_HOUR, parsePhysiologyParams } from "@/lib/physiology-engine";
 import { getCultureDelayHours } from "@/lib/infection-engine";
 import { advanceSimHoursSchema, cartItemsSchema, updateDrugOrderRpPayloadSchema } from "@/lib/schemas";
 
@@ -705,6 +706,46 @@ export async function updateDiseaseLinkSeverity(caseId: string, linkId: string, 
     targetType: "CaseDiseaseLink",
     targetId: linkId,
     detail: { severity },
+  });
+
+  await reconcileCase(caseId);
+  revalidatePath(`/patients/${caseId}`);
+}
+
+// 教員・管理者が病態（CaseDiseaseLink）の重症度の変動速度（時間あたりの変化量。正=悪化、負=改善。
+// AI治療評価が発火したときに設定されるものと同じフィールド）を、評価を待たずに直接指定する。
+// updateDiseaseLinkSeverityと違い重症度自体はジャンプさせず、現在の重症度（自然経過中でも
+// 既存の変動中でも可）をそのまま起点に引き継ぎ、そこから新しい速度での変動に切り替える。
+export async function updateDiseaseLinkRate(caseId: string, linkId: string, formData: FormData) {
+  const { user, case: caseRecord } = await requireCaseAccess(caseId);
+  if (user.role === "STUDENT") return;
+
+  const link = await db.caseDiseaseLink.findUnique({ where: { id: linkId } });
+  if (!link || link.caseId !== caseId) return;
+
+  const rateRaw = Number(formData.get("rate"));
+  if (!Number.isFinite(rateRaw)) return;
+  const rate = Math.min(MAX_AI_SEVERITY_RATE_PER_HOUR, Math.max(-MAX_AI_SEVERITY_RATE_PER_HOUR, rateRaw));
+
+  const severities = await getDiseaseLinkSeverities(caseId);
+  const currentSeverity = severities.get(linkId);
+  if (currentSeverity === null || currentSeverity === undefined) return;
+
+  const params = parsePhysiologyParams(link.physiologyParams);
+  await db.caseDiseaseLink.update({
+    where: { id: linkId },
+    data: {
+      severityBaselineAt: getCaseClockNow(caseRecord),
+      aiSeverityRatePerHour: rate,
+      physiologyParams: JSON.stringify({ ...params, severitySlider: Math.round(currentSeverity) }),
+    },
+  });
+  await logAudit({
+    userId: user.id,
+    action: "case_disease_rate_override",
+    targetType: "CaseDiseaseLink",
+    targetId: linkId,
+    detail: { rate },
   });
 
   await reconcileCase(caseId);
