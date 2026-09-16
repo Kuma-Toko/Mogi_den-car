@@ -6,10 +6,19 @@ import { formatOrderLine, type TargetedTherapyContext, type TreatmentEvaluationO
 import { ANTIBIOTIC_COVERAGE_LEVEL_LABEL, COVERAGE_SUSCEPTIBILITY_LABEL } from "@/lib/infection-engine";
 
 export type PastEvaluationSummary = {
+  diseaseName: string;
   appropriatenessScore: number | null;
   contraindicated: boolean;
   rationale: string | null;
   completedAt: Date | null;
+};
+
+export type DischargeFeedbackDiseaseTarget = {
+  diseaseLinkId: string;
+  templateName: string;
+  templateDescription: string | null;
+  guideline: string | null;
+  targetedTherapy: TargetedTherapyContext | null;
 };
 
 type FeedbackCase = Pick<Case, "title" | "patientName" | "patientAge" | "patientGender" | "createdAt">;
@@ -30,8 +39,7 @@ function formatTargetedTherapySection(ctx: TargetedTherapyContext | null): strin
           .join("\n")
       : "（抗菌薬オーダーはありませんでした）";
   return `
-
-# 原因菌情報（採点用の確定事実。学生への培養結果開示状況とは無関係に常に提供）
+### 原因菌情報（採点用の確定事実。学生への培養結果開示状況とは無関係に常に提供）
 - 確定した原因菌: ${pathogenName}
 - 症例終了時点の抗菌薬オーダーと原因菌に対する感受性:
 ${detailLines}
@@ -48,25 +56,29 @@ function formatPastEvaluationsSection(evaluations: PastEvaluationSummary[], case
         : null;
       const scoreText = e.appropriatenessScore !== null ? `適切性スコア${e.appropriatenessScore}/100` : "スコアなし";
       const flagText = e.contraindicated ? "（重大な問題を検知）" : "";
-      return `- 症例開始から約${elapsedHours ?? "—"}時間後: ${scoreText}${flagText}${e.rationale ? ` — ${e.rationale}` : ""}`;
+      return `- [${e.diseaseName}] 症例開始から約${elapsedHours ?? "—"}時間後: ${scoreText}${flagText}${e.rationale ? ` — ${e.rationale}` : ""}`;
     })
     .join("\n");
 }
 
+function formatDiseaseGuidelineBlock(disease: DischargeFeedbackDiseaseTarget, index: number): string {
+  const { templateName, templateDescription, guideline, targetedTherapy } = disease;
+  const guidelineText = guideline
+    ? guideline
+    : "（この病態には教員によるルーブリックが登録されていません。一般的な臨床的観点から評価してください）";
+  return `## 病態${index + 1}: ${templateName}${templateDescription ? `（${templateDescription}）` : ""}\n${guidelineText}${formatTargetedTherapySection(targetedTherapy)}`;
+}
+
 function buildDischargeFeedbackPrompt(params: {
   caseRecord: FeedbackCase;
-  templateName: string;
-  templateDescription: string | null;
-  guideline: string | null;
+  diseases: DischargeFeedbackDiseaseTarget[];
   crisisState: CrisisState;
   problems: { label: string; isPrimary: boolean }[];
   orders: TreatmentEvaluationOrder[];
   pastEvaluations: PastEvaluationSummary[];
   latestVital: Vital | null;
-  targetedTherapy: TargetedTherapyContext | null;
 }): string {
-  const { caseRecord, templateName, templateDescription, guideline, crisisState, problems, orders, pastEvaluations, latestVital, targetedTherapy } =
-    params;
+  const { caseRecord, diseases, crisisState, problems, orders, pastEvaluations, latestVital } = params;
 
   const problemLines =
     problems.length > 0 ? problems.map((p) => `- ${p.label}${p.isPrimary ? "（主病態）" : ""}`).join("\n") : "（未登録）";
@@ -84,35 +96,36 @@ function buildDischargeFeedbackPrompt(params: {
     ? `体温${latestVital.temperature ?? "—"}℃ / 血圧${latestVital.systolicBp ?? "—"}/${latestVital.diastolicBp ?? "—"} / 脈拍${latestVital.pulse ?? "—"} / SpO2${latestVital.spo2 ?? "—"}% / 呼吸数${latestVital.respRate ?? "—"}`
     : "（記録なし）";
 
-  const guidelineSection = guideline
-    ? `# 採点ルーブリック（教員が登録した、この症例で期待される治療方針・評価基準）\n${guideline}`
-    : "# 採点ルーブリック\n（この症例には教員によるルーブリックが登録されていません。一般的な臨床的観点から評価してください）";
+  const guidelineSection = diseases.map((d, i) => formatDiseaseGuidelineBlock(d, i)).join("\n\n");
+  const diseaseNames = diseases.map((d) => d.templateName).join("、");
 
   return `あなたは医学教育シミュレーションにおいて、症例終了（退院または死亡）にあたり、学生がこれまでに行った診療全体を振り返る総括フィードバックを作成する評価者です。
 
 # 症例情報
 - 症例名: ${caseRecord.title}
 - 患者: ${caseRecord.patientName}（${caseRecord.patientAge}歳 ${caseRecord.patientGender}）
-- 病態テンプレート: ${templateName}${templateDescription ? `（${templateDescription}）` : ""}
+- 病態テンプレート: ${diseaseNames}
 - プロブレムリスト:
 ${problemLines}
 - 症例転帰: ${CRISIS_STATE_LABEL[crisisState]}
 - 症例終了時点の直近バイタルサイン: ${vitalLine}
 
+# 採点ルーブリック（教員が病態ごとに登録した、この症例で期待される治療方針・評価基準）
 ${guidelineSection}
 
-# 学生がこの症例で行った治療系オーダー（時系列、全件）
+# 学生がこの症例で行った治療系オーダー（時系列、全件、全病態共通）
 ${orderLines}
 
-# 治療方針に対するAI評価の推移（オーダー提出のたびに記録された適切性スコア・根拠の履歴）
+# 治療方針に対するAI評価の推移（オーダー提出のたびに病態ごとに記録された適切性スコア・根拠の履歴）
 ${formatPastEvaluationsSection(pastEvaluations, caseRecord.createdAt)}
-${formatTargetedTherapySection(targetedTherapy)}
+
 # フィードバック作成ルール
 1. summaryには、症例全体を通じた治療方針・診療プロセスに対する総評を日本語で3〜5文程度で記述する。症例転帰（死亡・急変未解決の場合は特に）を踏まえた記述にすること。
 2. strengthsには、学生の診療の中で評価できる点を、具体的な行為やタイミングに触れながら日本語の箇条書き（各1文程度）で列挙する。該当する点が乏しい場合は無理に数を揃えず、最小限（1件）でもよい。
 3. improvementsには、今後の学習のために改善すべき点を、具体的かつ建設的に日本語の箇条書き（各1文程度）で列挙する。ルーブリックがある場合はそれに照らした不足点を優先する。症例転帰が死亡・急変未解決の場合は、その転帰につながった治療上の課題を必ず含めること。改善点が特に無い場合も、今後さらに伸ばせる観点を1件は挙げること。
-4. 採点や説教のような口調ではなく、学習者の今後の成長を支援する建設的なフィードバックの文体で書くこと。
-5. すべて日本語で、指定されたJSON形式のみで返すこと。`;
+4. 複数の病態がある場合は、プロブレムリストや治療オーダーがどの病態に対応するかを区別した上で評価すること。
+5. 採点や説教のような口調ではなく、学習者の今後の成長を支援する建設的なフィードバックの文体で書くこと。
+6. すべて日本語で、指定されたJSON形式のみで返すこと。`;
 }
 
 export type DischargeFeedbackResult = {
@@ -124,15 +137,12 @@ export type DischargeFeedbackResult = {
 
 export async function generateDischargeFeedback(params: {
   caseRecord: FeedbackCase;
-  templateName: string;
-  templateDescription: string | null;
-  guideline: string | null;
+  diseases: DischargeFeedbackDiseaseTarget[];
   crisisState: CrisisState;
   problems: { label: string; isPrimary: boolean }[];
   orders: TreatmentEvaluationOrder[];
   pastEvaluations: PastEvaluationSummary[];
   latestVital: Vital | null;
-  targetedTherapy: TargetedTherapyContext | null;
 }): Promise<DischargeFeedbackResult> {
   const prompt = buildDischargeFeedbackPrompt(params);
 

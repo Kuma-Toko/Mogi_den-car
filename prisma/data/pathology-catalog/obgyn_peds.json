@@ -1,0 +1,106 @@
+[
+  {
+    "key": "obgyn_ectopic_rupture",
+    "name": "異所性妊娠破裂",
+    "description": "卵管妊娠等の異所性妊娠が破裂し、腹腔内に急速に出血する婦人科的緊急疾患。",
+    "category": "産婦人科・小児",
+    "sortOrder": 1,
+    "defaultParams": { "initialTempSlider": 25, "improvementSpeedSlider": 60, "initialSpo2Slider": 75, "severitySlider": 65 },
+    "treatment": { "drugCategories": ["輸液"], "procedureKeywords": ["試験開腹止血術"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -50, "diastolicBp": -22, "pulse": 35, "spo2": -5, "respRate": 8 },
+    "aiEvaluationGuideline": "破裂による腹腔内出血が疑われる場合は輸液蘇生と並行した緊急開腹（または腹腔鏡下）止血術が必須。輸液のみで手術方針の言及がなければ大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "2A030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Hb", "value": 10, "unit": "g/dL" }],
+          "moderate": [{ "label": "Hb", "value": 7, "unit": "g/dL" }],
+          "severe": [{ "label": "Hb", "value": 4, "unit": "g/dL" }]
+        }
+      },
+      { "labItemCode": "IMG-US-009", "kind": "text", "tiers": { "mild": "ダグラス窩にごく少量の液体貯留を認める。", "moderate": "ダグラス窩に中等量の液体貯留（血液）を認める。", "severe": "腹腔内に大量の液体貯留を認め、卵管の腫大・破裂像を伴う。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hemorrhagic_shock", "sustainMinutes": 10, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "obgyn_preeclampsia_hellp",
+    "name": "重症妊娠高血圧腎症・HELLP症候群",
+    "description": "妊娠高血圧腎症の重症化。溶血・肝酵素上昇・血小板減少（HELLP）を伴い、子癇（けいれん）に進展しうる。",
+    "category": "産婦人科・小児",
+    "sortOrder": 2,
+    "defaultParams": { "initialTempSlider": 20, "improvementSpeedSlider": 45, "initialSpo2Slider": 85, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["降圧薬"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": 70, "diastolicBp": 40, "pulse": 10, "spo2": -5, "respRate": 4 },
+    "aiEvaluationGuideline": "降圧薬による厳格な血圧コントロールと硫酸マグネシウムによる子癇発作予防が標準治療（本システムでは硫酸マグネシウムに対応する薬剤カテゴリが無いため、降圧管理を治療の指標として評価する）。根本的な治療は分娩（児娩出）であり、その方針への言及も加点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3B035",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "AST", "value": 60, "unit": "U/L" }],
+          "moderate": [{ "label": "AST", "value": 300, "unit": "U/L" }],
+          "severe": [{ "label": "AST", "value": 1200, "unit": "U/L" }]
+        }
+      },
+      {
+        "labItemCode": "2A050",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Plt", "value": 12, "unit": "万/μL" }],
+          "moderate": [{ "label": "Plt", "value": 7, "unit": "万/μL" }],
+          "severe": [{ "label": "Plt", "value": 3, "unit": "万/μL" }]
+        }
+      },
+      {
+        "labItemCode": "1A015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "尿蛋白定量", "value": 50, "unit": "mg/dL" }],
+          "moderate": [{ "label": "尿蛋白定量", "value": 150, "unit": "mg/dL" }],
+          "severe": [{ "label": "尿蛋白定量", "value": 400, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_status_epilepticus", "sustainMinutes": 15, "triggers": [{ "type": "vital", "field": "systolicBp", "op": ">=", "value": 180 }] }]
+  },
+  {
+    "key": "peds_rsv_bronchiolitis",
+    "name": "RSウイルス細気管支炎（乳児）",
+    "description": "乳児期に好発するRSウイルスによる細気管支の炎症。多呼吸・陥没呼吸・哺乳不良を呈する。",
+    "category": "産婦人科・小児",
+    "sortOrder": 3,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 60, "initialSpo2Slider": 55, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["輸液"] },
+    "vitalsPerSeverity": { "temperature": 1.0, "systolicBp": -5, "diastolicBp": -3, "pulse": 25, "spo2": -25, "respRate": 20 },
+    "aiEvaluationGuideline": "支持療法（酸素投与・経口摂取不良時の輸液）が中心で、気管支拡張薬・全身ステロイド・抗菌薬のルーチン投与は推奨されない。哺乳不良・脱水に対する輸液の指示がなければ減点。不要な抗菌薬投与は減点対象となりうる。",
+    "labPatterns": [
+      { "labItemCode": "5F430", "kind": "text", "tiers": { "mild": "迅速抗原検査でRSウイルス陽性、軽度の喘鳴。", "moderate": "迅速抗原検査でRSウイルス陽性、陥没呼吸を伴う多呼吸。", "severe": "迅速抗原検査でRSウイルス陽性、著明な陥没呼吸とチアノーゼを認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_resp_failure", "sustainMinutes": 15, "triggers": [{ "type": "vital", "field": "spo2", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "peds_dehydration_gastroenteritis",
+    "name": "小児脱水（ウイルス性胃腸炎）",
+    "description": "ウイルス性胃腸炎に伴う嘔吐・下痢による脱水。小児は体重あたりの体液量が少なく急速に脱水が進行しうる。",
+    "category": "産婦人科・小児",
+    "sortOrder": 4,
+    "defaultParams": { "initialTempSlider": 35, "improvementSpeedSlider": 85, "initialSpo2Slider": 85, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["輸液"] },
+    "vitalsPerSeverity": { "temperature": 0.3, "systolicBp": -50, "diastolicBp": -20, "pulse": 30, "spo2": -3, "respRate": 8 },
+    "aiEvaluationGuideline": "経口摂取が困難な中等度以上の脱水では経静脈的輸液が標準治療。軽度であれば経口補水療法（ORS）への言及でも可とする。抗菌薬はウイルス性胃腸炎には無効であり、投与している場合は減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3C025",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "BUN", "value": 20, "unit": "mg/dL" }],
+          "moderate": [{ "label": "BUN", "value": 35, "unit": "mg/dL" }],
+          "severe": [{ "label": "BUN", "value": 55, "unit": "mg/dL" }]
+        }
+      },
+      { "labItemCode": "5F630", "kind": "text", "tiers": { "mild": "迅速抗原検査でノロウイルス陽性、軽度の脱水所見。", "moderate": "迅速抗原検査でノロウイルス陽性、中等度の脱水所見（皮膚ツルゴール低下）。", "severe": "迅速抗原検査でノロウイルス陽性、高度の脱水所見（末梢循環不全）。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hypovolemic_shock", "sustainMinutes": 15, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 70 }] }]
+  }
+]

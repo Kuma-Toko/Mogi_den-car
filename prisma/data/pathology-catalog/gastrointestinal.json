@@ -1,0 +1,302 @@
+[
+  {
+    "key": "gi_upper_gi_bleed",
+    "name": "上部消化管出血（消化性潰瘍）",
+    "description": "胃・十二指腸潰瘍からの出血。吐血・下血（タール便）と貧血の進行を特徴とする。",
+    "category": "消化器",
+    "sortOrder": 1,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 50, "initialSpo2Slider": 70, "severitySlider": 50 },
+    "treatment": { "drugCategories": ["消化性潰瘍治療薬/プロトンポンプ阻害薬(PPI)"], "procedureKeywords": ["内視鏡的止血術"] },
+    "vitalsPerSeverity": { "temperature": -0.3, "systolicBp": -45, "diastolicBp": -20, "pulse": 35, "spo2": -8, "respRate": 8 },
+    "aiEvaluationGuideline": "プロトンポンプ阻害薬の静注に加え、上部消化管内視鏡による止血術が根本治療。輸液・PPIのみで内視鏡的止血の指示がなければ再出血リスクを放置しており減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "2A030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Hb", "value": 11, "unit": "g/dL" }],
+          "moderate": [{ "label": "Hb", "value": 8, "unit": "g/dL" }],
+          "severe": [{ "label": "Hb", "value": 5, "unit": "g/dL" }]
+        }
+      },
+      {
+        "labItemCode": "3C025",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "BUN", "value": 25, "unit": "mg/dL" }],
+          "moderate": [{ "label": "BUN", "value": 45, "unit": "mg/dL" }],
+          "severe": [{ "label": "BUN", "value": 70, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hemorrhagic_shock", "sustainMinutes": 15, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "gi_lower_gi_bleed",
+    "name": "下部消化管出血（憩室出血）",
+    "description": "大腸憩室からの動脈性出血。無痛性の鮮血便で発症することが多い。",
+    "category": "消化器",
+    "sortOrder": 2,
+    "defaultParams": { "initialTempSlider": 35, "improvementSpeedSlider": 55, "initialSpo2Slider": 75, "severitySlider": 45 },
+    "treatment": { "procedureKeywords": ["内視鏡的止血術"] },
+    "vitalsPerSeverity": { "temperature": -0.2, "systolicBp": -45, "diastolicBp": -20, "pulse": 32, "spo2": -5, "respRate": 6 },
+    "aiEvaluationGuideline": "大腸内視鏡による止血術（クリッピング等）が標準治療。輸血基準を満たす場合は赤血球製剤投与も評価する。輸液のみで止血処置の指示がなければ減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "2A030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Hb", "value": 11.5, "unit": "g/dL" }],
+          "moderate": [{ "label": "Hb", "value": 8.5, "unit": "g/dL" }],
+          "severe": [{ "label": "Hb", "value": 6, "unit": "g/dL" }]
+        }
+      },
+      { "labItemCode": "IMG-CT-014", "kind": "text", "tiers": { "mild": "明らかな造影剤漏出は指摘できない。", "moderate": "S状結腸憩室からの造影剤の血管外漏出を疑う所見。", "severe": "造影剤の血管外漏出が明瞭で、活動性出血が疑われる。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hemorrhagic_shock", "sustainMinutes": 15, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "gi_pancreatitis",
+    "name": "急性膵炎",
+    "description": "膵酵素の自己消化による膵の急性炎症。アルコール性・胆石性が多く、重症化すると多臓器不全に至る。",
+    "category": "消化器",
+    "sortOrder": 3,
+    "defaultParams": { "initialTempSlider": 60, "improvementSpeedSlider": 40, "initialSpo2Slider": 65, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["輸液/電解質輸液(細胞外液補充液)"] },
+    "vitalsPerSeverity": { "temperature": 1.0, "systolicBp": -45, "diastolicBp": -22, "pulse": 25, "spo2": -15, "respRate": 10 },
+    "aiEvaluationGuideline": "大量の細胞外液輸液による第三腔への喪失補正が最重要。疼痛コントロール（オピオイド鎮痛薬）の併用も加点。輸液量が不十分（維持輸液程度のみ）と判断される場合は減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3B180",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "リパーゼ", "value": 200, "unit": "U/L" }],
+          "moderate": [{ "label": "リパーゼ", "value": 600, "unit": "U/L" }],
+          "severe": [{ "label": "リパーゼ", "value": 1500, "unit": "U/L" }]
+        }
+      },
+      {
+        "labItemCode": "3H030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Ca", "value": 9, "unit": "mg/dL" }],
+          "moderate": [{ "label": "Ca", "value": 7.5, "unit": "mg/dL" }],
+          "severe": [{ "label": "Ca", "value": 6, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hypovolemic_shock", "sustainMinutes": 30, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "gi_cholangitis",
+    "name": "急性胆管炎",
+    "description": "胆道閉塞に伴う上行性感染。発熱・黄疸・右上腹部痛（Charcot三徴）を特徴とし、急速に敗血症に進展しうる。",
+    "category": "消化器",
+    "sortOrder": 4,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 75, "improvementSpeedSlider": 40, "initialSpo2Slider": 75, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["抗菌薬"], "procedureKeywords": ["内視鏡的胆道ドレナージ（ERCP）"] },
+    "vitalsPerSeverity": { "temperature": 3.0, "systolicBp": -15, "diastolicBp": -8, "pulse": 30, "spo2": -8, "respRate": 10 },
+    "aiEvaluationGuideline": "抗菌薬投与に加え、胆道閉塞を解除する緊急胆道ドレナージ（内視鏡的ERCP等）が根本治療。抗菌薬のみでドレナージの指示がなければ閉塞源が残存するため減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3J010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "T-Bil", "value": 2.5, "unit": "mg/dL" }],
+          "moderate": [{ "label": "T-Bil", "value": 6, "unit": "mg/dL" }],
+          "severe": [{ "label": "T-Bil", "value": 13, "unit": "mg/dL" }]
+        }
+      },
+      { "labItemCode": "IMG-002", "kind": "text", "tiers": { "mild": "総胆管の軽度拡張を認める。", "moderate": "総胆管の拡張と結石像を認める。", "severe": "著明な胆管拡張と肝内胆管への波及を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 85 }] }]
+  },
+  {
+    "key": "gi_cholecystitis",
+    "name": "急性胆嚢炎",
+    "description": "胆嚢管閉塞に伴う胆嚢の急性炎症。右上腹部痛とMurphy徴候を特徴とする。",
+    "category": "消化器",
+    "sortOrder": 5,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 60, "improvementSpeedSlider": 45, "initialSpo2Slider": 80, "severitySlider": 50 },
+    "treatment": { "drugCategories": ["抗菌薬"] },
+    "vitalsPerSeverity": { "temperature": 2.5, "systolicBp": -10, "diastolicBp": -5, "pulse": 22, "spo2": -5, "respRate": 6 },
+    "aiEvaluationGuideline": "抗菌薬投与と早期の胆嚢摘出術（発症72時間以内）が標準治療。手術リスクが高い場合は経皮的胆嚢ドレナージも選択肢となる。抗菌薬未投与は大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "5C070",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "CRP", "value": 4, "unit": "mg/dL" }],
+          "moderate": [{ "label": "CRP", "value": 12, "unit": "mg/dL" }],
+          "severe": [{ "label": "CRP", "value": 22, "unit": "mg/dL" }]
+        }
+      },
+      { "labItemCode": "IMG-002", "kind": "text", "tiers": { "mild": "胆嚢壁のごく軽度の肥厚を認める。", "moderate": "胆嚢腫大と胆嚢壁肥厚、結石像を認める。", "severe": "著明な胆嚢腫大と壁肥厚、胆嚢周囲液体貯留を認める（壊疽性胆嚢炎疑い）。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "gi_appendicitis",
+    "name": "急性虫垂炎",
+    "description": "虫垂の急性炎症。心窩部痛から右下腹部痛への移動と圧痛が典型的で、薬物治療のみでは改善せず外科的治療（虫垂切除術）を要する。",
+    "category": "消化器",
+    "sortOrder": 6,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 55, "improvementSpeedSlider": 70, "initialSpo2Slider": 75, "severitySlider": 55 },
+    "treatment": { "procedureKeywords": ["虫垂切除"] },
+    "vitalsPerSeverity": { "temperature": 2.0, "systolicBp": -8, "diastolicBp": -4, "pulse": 20, "spo2": -5, "respRate": 6 },
+    "aiEvaluationGuideline": "虫垂切除術が根本治療であり、抗菌薬のみでの経過観察は原則として不十分（軽症の一部で保存的治療が選択されることもあるが、その場合も明確な方針の記載が必要）。手術の指示がなければ穿孔・腹膜炎への進展リスクとして大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "2A010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "WBC", "value": 11000, "unit": "/μL" }],
+          "moderate": [{ "label": "WBC", "value": 15000, "unit": "/μL" }],
+          "severe": [{ "label": "WBC", "value": 20000, "unit": "/μL" }]
+        }
+      },
+      { "labItemCode": "IMG-CT-013", "kind": "text", "tiers": { "mild": "虫垂の軽度腫大を認める（径8mm程度）。", "moderate": "虫垂の腫大と周囲脂肪織濃度上昇を認める（径12mm程度）。", "severe": "虫垂の著明な腫大と穿孔・膿瘍形成を疑う周囲液体貯留を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "gi_bowel_obstruction",
+    "name": "腸閉塞",
+    "description": "腸管内容の通過障害。癒着性が多く、絞扼性の場合は腸管虚血から穿孔・敗血症に進展しうる。",
+    "category": "消化器",
+    "sortOrder": 7,
+    "defaultParams": { "initialTempSlider": 30, "improvementSpeedSlider": 45, "initialSpo2Slider": 85, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["輸液"] },
+    "vitalsPerSeverity": { "temperature": 0.5, "systolicBp": -10, "diastolicBp": -5, "pulse": 15, "spo2": -3, "respRate": 4 },
+    "aiEvaluationGuideline": "絶食・経鼻胃管による減圧と輸液管理が基本。腹膜刺激症状や造影所見から絞扼が疑われる場合は緊急手術の適応となり、その判断の記載を評価する。輸液のみで絞扼の除外に触れていない場合は減点。",
+    "labPatterns": [
+      { "labItemCode": "IMG-XP-007", "kind": "text", "tiers": { "mild": "小腸ガス像の軽度拡張を認める。", "moderate": "多発する鏡面像（air-fluid level）を伴う小腸拡張を認める。", "severe": "著明な腸管拡張と腸管壁の造影不良（絞扼疑い）を認める。" } },
+      {
+        "labItemCode": "2A010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "WBC", "value": 9000, "unit": "/μL" }],
+          "moderate": [{ "label": "WBC", "value": 14000, "unit": "/μL" }],
+          "severe": [{ "label": "WBC", "value": 19000, "unit": "/μL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 45, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "gi_perforation_peritonitis",
+    "name": "消化管穿孔・汎発性腹膜炎",
+    "description": "消化管壁の穿孔により腹腔内に消化管内容が漏出し、汎発性腹膜炎に至った状態。緊急手術を要する。",
+    "category": "消化器",
+    "sortOrder": 8,
+    "defaultParams": { "initialTempSlider": 60, "improvementSpeedSlider": 30, "initialSpo2Slider": 65, "severitySlider": 60 },
+    "treatment": { "drugCategories": ["抗菌薬"] },
+    "vitalsPerSeverity": { "temperature": 2.0, "systolicBp": -20, "diastolicBp": -10, "pulse": 25, "spo2": -8, "respRate": 10 },
+    "aiEvaluationGuideline": "広域抗菌薬の投与と緊急開腹手術（穿孔部閉鎖・腹腔洗浄）が標準治療。手術方針への言及がなく抗菌薬のみの場合は根本治療になっておらず大幅減点。",
+    "labPatterns": [
+      { "labItemCode": "IMG-XP-006", "kind": "text", "tiers": { "mild": "横隔膜下にごく少量の遊離ガス像を疑う。", "moderate": "横隔膜下に明瞭な遊離ガス像（free air）を認める。", "severe": "大量の遊離ガス像と腹水貯留を認める。" } },
+      {
+        "labItemCode": "5C070",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "CRP", "value": 5, "unit": "mg/dL" }],
+          "moderate": [{ "label": "CRP", "value": 16, "unit": "mg/dL" }],
+          "severe": [{ "label": "CRP", "value": 30, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 20, "triggers": [{ "type": "severity", "op": ">=", "value": 85 }] }]
+  },
+  {
+    "key": "gi_cirrhosis_encephalopathy",
+    "name": "肝硬変・肝性脳症",
+    "description": "肝硬変の非代償化に伴う高アンモニア血症性脳症。便秘・消化管出血・感染等が誘因となる。",
+    "category": "消化器",
+    "sortOrder": 9,
+    "defaultParams": { "initialTempSlider": 30, "improvementSpeedSlider": 45, "initialSpo2Slider": 80, "severitySlider": 50 },
+    "treatment": { "drugCategories": ["下剤"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -15, "diastolicBp": -8, "pulse": 15, "spo2": -8, "respRate": 5 },
+    "aiEvaluationGuideline": "ラクツロース等の下剤投与によるアンモニア産生・吸収抑制が中心治療。誘因（消化管出血・感染・電解質異常等）の検索と是正の記載も評価する。",
+    "labPatterns": [
+      {
+        "labItemCode": "3C040",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "アンモニア", "value": 80, "unit": "μg/dL" }],
+          "moderate": [{ "label": "アンモニア", "value": 150, "unit": "μg/dL" }],
+          "severe": [{ "label": "アンモニア", "value": 280, "unit": "μg/dL" }]
+        }
+      },
+      {
+        "labItemCode": "3A015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Alb", "value": 3.2, "unit": "g/dL" }],
+          "moderate": [{ "label": "Alb", "value": 2.5, "unit": "g/dL" }],
+          "severe": [{ "label": "Alb", "value": 1.8, "unit": "g/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hepatic_coma", "sustainMinutes": 30, "triggers": [{ "type": "lab", "code": "3C040", "op": ">=", "value": 200 }] }]
+  },
+  {
+    "key": "gi_acute_hepatitis",
+    "name": "急性肝炎",
+    "description": "ウイルス性・薬剤性等による急性肝細胞障害。トランスアミナーゼの著明な上昇を特徴とし、まれに劇症化する。",
+    "category": "消化器",
+    "sortOrder": 10,
+    "defaultParams": { "initialTempSlider": 35, "improvementSpeedSlider": 50, "initialSpo2Slider": 85, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["抗ウイルス薬"] },
+    "vitalsPerSeverity": { "temperature": 0.5, "systolicBp": -8, "diastolicBp": -4, "pulse": 10, "spo2": -3, "respRate": 3 },
+    "aiEvaluationGuideline": "原因（ウイルス性・薬剤性等）の同定と被疑薬中止・該当する場合は抗ウイルス薬投与を行う。プロトロンビン時間の延長など劇症化兆候の監視についての言及があれば加点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3B035",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "AST", "value": 150, "unit": "U/L" }],
+          "moderate": [{ "label": "AST", "value": 800, "unit": "U/L" }],
+          "severe": [{ "label": "AST", "value": 3000, "unit": "U/L" }]
+        }
+      },
+      {
+        "labItemCode": "3J010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "T-Bil", "value": 2, "unit": "mg/dL" }],
+          "moderate": [{ "label": "T-Bil", "value": 6, "unit": "mg/dL" }],
+          "severe": [{ "label": "T-Bil", "value": 15, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hepatic_coma", "sustainMinutes": 45, "triggers": [{ "type": "severity", "op": ">=", "value": 95 }] }]
+  },
+  {
+    "key": "gi_cdiff_colitis",
+    "name": "Clostridioides difficile腸炎",
+    "description": "抗菌薬関連の偽膜性大腸炎。頻回の水様下痢を特徴とし、重症例では中毒性巨大結腸症に至る。",
+    "category": "消化器",
+    "sortOrder": 11,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 45, "improvementSpeedSlider": 45, "initialSpo2Slider": 90, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["抗菌薬"] },
+    "vitalsPerSeverity": { "temperature": 1.5, "systolicBp": -10, "diastolicBp": -5, "pulse": 20, "spo2": -3, "respRate": 5 },
+    "aiEvaluationGuideline": "原因抗菌薬の中止と、経口バンコマイシンまたはフィダキソマイシンによる治療が標準。誘因となった広域抗菌薬を継続している場合は治療方針として矛盾しており減点。",
+    "labPatterns": [
+      { "labItemCode": "MB-007", "kind": "text", "tiers": { "mild": "毒素検査陽性、症状は軽度。", "moderate": "毒素検査陽性、頻回の水様下痢が持続。", "severe": "毒素検査陽性、偽膜性大腸炎・中毒性巨大結腸症を疑う所見。" } },
+      {
+        "labItemCode": "2A010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "WBC", "value": 13000, "unit": "/μL" }],
+          "moderate": [{ "label": "WBC", "value": 20000, "unit": "/μL" }],
+          "severe": [{ "label": "WBC", "value": 32000, "unit": "/μL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  }
+]

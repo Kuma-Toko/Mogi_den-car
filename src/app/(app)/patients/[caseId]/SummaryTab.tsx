@@ -62,7 +62,12 @@ export async function SummaryTab({
       include: { orderedBy: { select: { name: true } } },
     }),
     canViewTreatmentEvaluations
-      ? db.treatmentEvaluation.findMany({ where: { caseId, status: "COMPLETED" }, orderBy: { completedAt: "desc" }, take: 5 })
+      ? db.treatmentEvaluation.findMany({
+          where: { caseId, status: "COMPLETED" },
+          orderBy: { completedAt: "desc" },
+          take: 5,
+          include: { diseaseResults: { include: { diseaseLink: { include: { template: true } } } } },
+        })
       : Promise.resolve([]),
     canManageDiseases
       ? db.caseDiseaseLink.findMany({ where: { caseId }, include: { template: true }, orderBy: { sortOrder: "asc" } })
@@ -157,17 +162,22 @@ export async function SummaryTab({
             </div>
             <div className="card-b">
               {evaluations.map((e) => (
-                <div key={e.id} style={{ marginBottom: 10, fontSize: 12.5 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                    <span className={`badge ${scoreBadgeClass(e.appropriatenessScore ?? 0)}`}>
-                      適切性スコア {e.appropriatenessScore}/100
-                    </span>
-                    {e.contraindicated && <span className="badge red">重大な問題を検知</span>}
-                    <span style={{ color: "var(--ink-soft)", fontSize: 11 }}>
-                      {e.completedAt ? formatJaDateTimeShort(e.completedAt) : ""}
-                    </span>
+                <div key={e.id} style={{ marginBottom: 12, fontSize: 12.5 }}>
+                  <div style={{ color: "var(--ink-soft)", fontSize: 11, marginBottom: 4 }}>
+                    {e.completedAt ? formatJaDateTimeShort(e.completedAt) : ""}
                   </div>
-                  {e.rationale && <p style={{ margin: 0, color: "var(--ink-soft)" }}>{e.rationale}</p>}
+                  {e.diseaseResults.map((r) => (
+                    <div key={r.id} style={{ marginBottom: 6, paddingLeft: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 600 }}>{r.diseaseLink.template.name}</span>
+                        <span className={`badge ${scoreBadgeClass(r.appropriatenessScore)}`}>
+                          適切性スコア {r.appropriatenessScore}/100
+                        </span>
+                        {r.contraindicated && <span className="badge red">重大な問題を検知</span>}
+                      </div>
+                      {r.rationale && <p style={{ margin: 0, color: "var(--ink-soft)" }}>{r.rationale}</p>}
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

@@ -2,7 +2,6 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import bcrypt from "bcryptjs";
 import { normalizeDrugName } from "../src/lib/drugName";
-import type { AmbulanceDetail, ReferralDetail } from "../src/app/(app)/patients/[caseId]/actions";
 
 const adapter = new PrismaLibSql({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" });
 const db = new PrismaClient({ adapter });
@@ -14,7 +13,8 @@ async function hash(pw: string) {
 async function main() {
   const passwordHash = await hash("password1");
 
-  const student1 = await db.user.upsert({
+  // student1/teacher1のUser自体はここで作成する（症例データはprisma/seed-demo-cases.tsが別途担当）。
+  await db.user.upsert({
     where: { loginId: "student1" },
     update: {},
     create: {
@@ -27,7 +27,7 @@ async function main() {
     },
   });
 
-  const teacher1 = await db.user.upsert({
+  await db.user.upsert({
     where: { loginId: "teacher1" },
     update: {},
     create: {
@@ -409,8 +409,52 @@ async function main() {
     { code: "3H040", name: "無機リン（IP）", category: "生化学的検査", subcategory: "電解質", unit: "mg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "IP", value: 3.4, unit: "mg/dL" }]) },
     { code: "3H045", name: "浸透圧", category: "生化学的検査", subcategory: "電解質", unit: "mOsm/L", sampleResult: null, sampleValues: JSON.stringify([{ label: "浸透圧", value: 285, unit: "mOsm/L" }]) },
     // ── 生化学的検査/血液ガス（2026-09-02、単一項目「血液ガス」を動脈・静脈の2項目に分割し独立） ──
-    { code: "3H080", name: "動脈血液ガス分析", category: "生化学的検査", subcategory: "血液ガス", unit: null, sampleResult: "pH 7.40　pCO2 40mmHg　pO2 90mmHg　HCO3 24mEq/L　BE 0mEq/L（room air、異常所見なし）", sampleValues: null },
-    { code: "3H081", name: "静脈血液ガス分析", category: "生化学的検査", subcategory: "血液ガス", unit: null, sampleResult: "pH 7.36　pCO2 46mmHg　pO2 40mmHg　HCO3 25mEq/L　BE 1mEq/L（異常所見なし）", sampleValues: null },
+    // 2026-09-16、sampleValuesを付与（従来null）。多数の病態テンプレートがpH/pCO2/pO2/HCO3/BE/乳酸を
+    // labPatterns(kind=values)で参照するため、基礎値が無いと数値合成できずtext結合にフォールバックしていた
+    // （physiology-engine.tsのaggregateLabResult参照）。
+    {
+      code: "3H080",
+      name: "動脈血液ガス分析",
+      category: "生化学的検査",
+      subcategory: "血液ガス",
+      unit: null,
+      sampleResult: "pH 7.40　pCO2 40mmHg　pO2 90mmHg　HCO3 24mEq/L　BE 0mEq/L　乳酸 10mg/dL（room air、異常所見なし）",
+      sampleValues: JSON.stringify([
+        { label: "動脈血pH", value: 7.4, unit: "" },
+        { label: "pCO2", value: 40, unit: "mmHg" },
+        { label: "pO2", value: 90, unit: "mmHg" },
+        { label: "血漿HCO3", value: 24, unit: "mEq/L" },
+        { label: "BE", value: 0, unit: "mEq/L" },
+        { label: "乳酸", value: 10, unit: "mg/dL" },
+      ]),
+    },
+    {
+      code: "3H081",
+      name: "静脈血液ガス分析",
+      category: "生化学的検査",
+      subcategory: "血液ガス",
+      unit: null,
+      sampleResult: "pH 7.36　pCO2 46mmHg　pO2 40mmHg　HCO3 25mEq/L　BE 1mEq/L　乳酸 10mg/dL（異常所見なし）",
+      sampleValues: JSON.stringify([
+        { label: "動脈血pH", value: 7.36, unit: "" },
+        { label: "pCO2", value: 46, unit: "mmHg" },
+        { label: "pO2", value: 40, unit: "mmHg" },
+        { label: "血漿HCO3", value: 25, unit: "mEq/L" },
+        { label: "BE", value: 1, unit: "mEq/L" },
+        { label: "乳酸", value: 10, unit: "mg/dL" },
+      ]),
+    },
+    // 2026-09-16、一酸化炭素中毒モデル向けに追加。パルスオキシメータでは検出できない
+    // （通常のSpO2は正常〜高値を示す）ため、真の酸素化評価には本項目が必須という教育的意図を持つ。
+    {
+      code: "3H085",
+      name: "一酸化炭素ヘモグロビン（COHb）",
+      category: "生化学的検査",
+      subcategory: "血液ガス",
+      unit: "%",
+      sampleResult: null,
+      sampleValues: JSON.stringify([{ label: "COHb", value: 1, unit: "%" }]),
+    },
     // ── 生化学的検査/生体微量金属 ──
     { code: "3I010", name: "鉄（Fe）", category: "生化学的検査", subcategory: "生体微量金属", unit: "μg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "Fe", value: 100, unit: "μg/dL" }]) },
     { code: "3I015", name: "総鉄結合能（TIBC）", category: "生化学的検査", subcategory: "生体微量金属", unit: "μg/dL", sampleResult: null, sampleValues: JSON.stringify([{ label: "TIBC", value: 330, unit: "μg/dL" }]) },
@@ -649,6 +693,10 @@ async function main() {
     // マンモグラフィ
     { code: "IMG-MG-001", name: "マンモグラフィ（両側2方向）", category: "画像検査", subcategory: "マンモグラフィ", unit: null, sampleResult: "カテゴリ1〜2相当。明らかな腫瘤・石灰化を認めない。", sampleValues: null },
     { code: "IMG-MG-002", name: "マンモグラフィ（片側追加撮影）", category: "画像検査", subcategory: "マンモグラフィ", unit: null, sampleResult: "圧迫拡大撮影で明らかな悪性所見を認めない。", sampleValues: null },
+    // ── 生理検査（2026-09-16、病態モデル再構築に伴い新設。心電図・脳波はテキスト所見のみで数値項目は持たない） ──
+    { code: "PHYS-ECG-001", name: "12誘導心電図", category: "生理検査", subcategory: "循環器", unit: null, sampleResult: "洞調律、心拍数75/分。明らかなST-T変化・不整脈を認めない。", sampleValues: null },
+    { code: "PHYS-EEG-001", name: "脳波検査", category: "生理検査", subcategory: "神経", unit: null, sampleResult: "基礎律動は正常範囲内。明らかなてんかん性放電・徐波化を認めない。", sampleValues: null },
+    { code: "PHYS-EMG-001", name: "反復誘発筋電図（RNS）", category: "生理検査", subcategory: "神経", unit: null, sampleResult: "漸減現象（waning）を認めない。", sampleValues: null },
   ];
   // オーダー画面のタブ表示順（画像検査は別タブ群のため対象外）
   const LAB_CATEGORY_ORDER: Record<string, number> = {
@@ -658,6 +706,7 @@ async function main() {
     "血液学的検査": 3,
     "一般検査": 4,
     "微生物学的検査": 5,
+    "生理検査": 6,
   };
   for (const l of labItems) {
     const sortOrder = LAB_CATEGORY_ORDER[l.category] ?? 99;
@@ -679,109 +728,9 @@ async function main() {
     await db.usageTemplate.upsert({ where: { label: u.label }, update: u, create: u });
   }
 
-  const templateDefs = [
-    {
-      key: "infection",
-      name: "感染症（肺炎・敗血症系）",
-      description: "発熱・炎症反応・酸素化の経時変化",
-      defaultParams: { initialTempSlider: 78, improvementSpeedSlider: 45, initialSpo2Slider: 55, severitySlider: 65 },
-      isInfectious: true,
-    },
-    {
-      key: "heart_failure",
-      name: "心不全",
-      description: "うっ血所見・BNP・体重変化",
-      defaultParams: { initialTempSlider: 30, improvementSpeedSlider: 40, initialSpo2Slider: 60, severitySlider: 55 },
-    },
-    {
-      key: "dehydration",
-      name: "脱水・電解質異常",
-      description: "腎機能・電解質の推移",
-      defaultParams: { initialTempSlider: 40, improvementSpeedSlider: 55, initialSpo2Slider: 25, severitySlider: 40 },
-    },
-    {
-      key: "dka",
-      name: "糖尿病性ケトアシドーシス（DKA）",
-      description: "高血糖・アシドーシス・電解質異常の経時変化",
-      defaultParams: { initialTempSlider: 40, improvementSpeedSlider: 35, initialSpo2Slider: 70, severitySlider: 60 },
-    },
-    {
-      key: "acs",
-      name: "急性冠症候群（ACS）",
-      description: "心筋逸脱酵素・循環動態の経時変化",
-      defaultParams: { initialTempSlider: 45, improvementSpeedSlider: 50, initialSpo2Slider: 60, severitySlider: 60 },
-    },
-    {
-      key: "pe",
-      name: "肺血栓塞栓症（PE）",
-      description: "Dダイマー・酸素化・循環動態の経時変化",
-      defaultParams: { initialTempSlider: 45, improvementSpeedSlider: 40, initialSpo2Slider: 35, severitySlider: 60 },
-    },
-    {
-      key: "asthma_copd",
-      name: "気管支喘息発作・COPD増悪",
-      description: "血液ガス・酸素化の経時変化",
-      defaultParams: { initialTempSlider: 45, improvementSpeedSlider: 55, initialSpo2Slider: 40, severitySlider: 55 },
-    },
-    {
-      key: "thyroid_storm",
-      name: "甲状腺クリーゼ",
-      description: "甲状腺ホルモン・頻脈・発熱の経時変化",
-      defaultParams: { initialTempSlider: 85, improvementSpeedSlider: 35, initialSpo2Slider: 75, severitySlider: 65 },
-    },
-    {
-      key: "gi_bleed",
-      name: "消化管出血",
-      description: "貧血進行・循環動態の経時変化",
-      defaultParams: { initialTempSlider: 40, improvementSpeedSlider: 45, initialSpo2Slider: 80, severitySlider: 55 },
-    },
-    {
-      key: "pancreatitis",
-      name: "急性膵炎",
-      description: "膵酵素・カルシウム・循環動態の経時変化",
-      defaultParams: { initialTempSlider: 60, improvementSpeedSlider: 40, initialSpo2Slider: 65, severitySlider: 55 },
-    },
-    {
-      key: "anaphylaxis",
-      name: "アナフィラキシー",
-      description: "急速な循環虚脱・酸素化低下と治療への速い反応",
-      defaultParams: { initialTempSlider: 35, improvementSpeedSlider: 75, initialSpo2Slider: 35, severitySlider: 70 },
-    },
-    {
-      key: "adrenal_crisis",
-      name: "副腎クリーゼ（急性副腎不全）",
-      description: "低血圧・電解質異常の経時変化",
-      defaultParams: { initialTempSlider: 55, improvementSpeedSlider: 40, initialSpo2Slider: 75, severitySlider: 55 },
-    },
-    {
-      key: "arrhythmia",
-      name: "頻脈性不整脈",
-      description: "電解質異常を背景とした頻脈・循環動態の経時変化",
-      defaultParams: { initialTempSlider: 40, improvementSpeedSlider: 45, initialSpo2Slider: 70, severitySlider: 50 },
-    },
-    {
-      key: "appendicitis",
-      name: "急性虫垂炎",
-      description: "薬物治療では改善せず、虫垂切除術のみが治療開始とみなされる外科的治療モデル",
-      defaultParams: { initialTempSlider: 55, improvementSpeedSlider: 70, initialSpo2Slider: 25, severitySlider: 55 },
-    },
-  ];
-  const templates: Record<string, { id: string }> = {};
-  for (const t of templateDefs) {
-    const rec = await db.diseaseTemplate.upsert({
-      where: { key: t.key },
-      update: {},
-      create: {
-        key: t.key,
-        name: t.name,
-        description: t.description,
-        isCommon: true,
-        defaultParams: JSON.stringify(t.defaultParams),
-        isInfectious: "isInfectious" in t ? t.isInfectious : false,
-      },
-    });
-    templates[t.key] = rec;
-  }
+  // 病態モデル（DiseaseTemplate）は prisma/data/pathology-catalog/*.json が正本であり、
+  // `npm run db:apply-engine-config` で投入する（seed.tsの責務はユーザー・薬剤・検査・基礎生理等の
+  // マスターデータに限定する。2026-09-16、病態モデル再構築に伴いここでの直接投入をやめた）。
 
   await db.basePhysiologyModel.upsert({
     where: { id: "default" },
@@ -805,385 +754,6 @@ async function main() {
         { label: "高齢女性(65歳以上)", minAge: 65, maxAge: 120, gender: "女性", temperature: 36.3, systolicBp: 130, diastolicBp: 74, pulse: 72, spo2: 96, respRate: 18, sortOrder: 7 },
       ],
     });
-  }
-
-  async function ensureCase(input: {
-    caseCode: string;
-    title: string;
-    caseType: "SIMULATION" | "ROUTINE_COMMON" | "ROUTINE_PATIENT";
-    status: "DRAFT" | "ACTIVE" | "SIMULATING" | "CLOSED";
-    timeProgressMode: "REALTIME" | "MANUAL";
-    resultTiming: "IMMEDIATE" | "DELAYED";
-    patientName: string;
-    patientAge: number;
-    patientGender: string;
-    ward?: string;
-    bed?: string;
-    templateKey?: string;
-    problems: string[];
-  }) {
-    const existing = await db.case.findUnique({ where: { caseCode: input.caseCode } });
-    if (existing) return existing;
-
-    const created = await db.case.create({
-      data: {
-        caseCode: input.caseCode,
-        title: input.title,
-        caseType: input.caseType,
-        status: input.status,
-        timeProgressMode: input.timeProgressMode,
-        resultTiming: input.resultTiming,
-        sharingMode: "TEAM",
-        patientName: input.patientName,
-        patientAge: input.patientAge,
-        patientGender: input.patientGender,
-        ward: input.ward,
-        bed: input.bed,
-        visibilityScope: "消化器内科ローテーション学生",
-        createdByUserId: teacher1.id,
-        publishedAt: input.status === "DRAFT" ? null : new Date(),
-      },
-    });
-
-    if (input.templateKey && templates[input.templateKey]) {
-      await db.caseDiseaseLink.create({
-        data: {
-          caseId: created.id,
-          templateId: templates[input.templateKey].id,
-          isPrimary: true,
-          physiologyParams: JSON.stringify(templateDefs.find((t) => t.key === input.templateKey)!.defaultParams),
-        },
-      });
-    }
-
-    for (let i = 0; i < input.problems.length; i++) {
-      await db.problem.create({
-        data: { caseId: created.id, label: input.problems[i], isPrimary: i === 0, sortOrder: i },
-      });
-    }
-
-    return created;
-  }
-
-  const caseP1042 = await ensureCase({
-    caseCode: "P-1042",
-    title: "市中肺炎（敗血症疑い）68歳男性",
-    caseType: "ROUTINE_PATIENT",
-    status: "ACTIVE",
-    timeProgressMode: "REALTIME",
-    resultTiming: "IMMEDIATE",
-    patientName: "模擬 太郎",
-    patientAge: 68,
-    patientGender: "男性",
-    ward: "3階東",
-    bed: "312",
-    templateKey: "infection",
-    problems: ["市中肺炎", "疑い敗血症"],
-  });
-
-  const caseP1039 = await ensureCase({
-    caseCode: "P-1039",
-    title: "うっ血性心不全 急性増悪 74歳女性",
-    caseType: "ROUTINE_PATIENT",
-    status: "ACTIVE",
-    timeProgressMode: "REALTIME",
-    resultTiming: "IMMEDIATE",
-    patientName: "模擬 花子",
-    patientAge: 74,
-    patientGender: "女性",
-    ward: "3階東",
-    bed: "308",
-    templateKey: "heart_failure",
-    problems: ["うっ血性心不全 急性増悪"],
-  });
-
-  const caseP1035 = await ensureCase({
-    caseCode: "P-1035",
-    title: "2型糖尿病 血糖コントロール 55歳男性",
-    caseType: "ROUTINE_PATIENT",
-    status: "ACTIVE",
-    timeProgressMode: "REALTIME",
-    resultTiming: "IMMEDIATE",
-    patientName: "模擬 一郎",
-    patientAge: 55,
-    patientGender: "男性",
-    ward: "3階西",
-    bed: "322",
-    problems: ["2型糖尿病 血糖コントロール"],
-  });
-
-  const caseP1028 = await ensureCase({
-    caseCode: "P-1028",
-    title: "脱水症・電解質異常 81歳女性",
-    caseType: "ROUTINE_PATIENT",
-    status: "ACTIVE",
-    timeProgressMode: "REALTIME",
-    resultTiming: "IMMEDIATE",
-    patientName: "模擬 恵子",
-    patientAge: 81,
-    patientGender: "女性",
-    ward: "3階西",
-    bed: "315",
-    templateKey: "dehydration",
-    problems: ["脱水症", "電解質異常"],
-  });
-
-  const caseSim07 = await ensureCase({
-    caseCode: "SIM-07",
-    title: "急性虫垂炎 疑い（シミュレーション症例）",
-    caseType: "SIMULATION",
-    status: "SIMULATING",
-    timeProgressMode: "MANUAL",
-    resultTiming: "DELAYED",
-    patientName: "（シミュレーション症例）急性腹症",
-    patientAge: 42,
-    patientGender: "女性",
-    templateKey: "appendicitis",
-    problems: ["急性虫垂炎 疑い"],
-  });
-
-  const caseP1051 = await ensureCase({
-    caseCode: "P-1051",
-    title: "脳梗塞疑い（クリニックより紹介搬送）72歳女性",
-    caseType: "ROUTINE_PATIENT",
-    status: "ACTIVE",
-    timeProgressMode: "REALTIME",
-    resultTiming: "IMMEDIATE",
-    patientName: "模擬 悦子",
-    patientAge: 72,
-    patientGender: "女性",
-    ward: "4階東",
-    bed: "402",
-    problems: ["脳梗塞疑い（心原性塞栓症疑い）", "発作性心房細動"],
-  });
-
-  await ensureCase({
-    caseCode: "P-2001",
-    title: "急性膵炎 60歳男性（症例プール）",
-    caseType: "ROUTINE_COMMON",
-    status: "ACTIVE",
-    timeProgressMode: "REALTIME",
-    resultTiming: "IMMEDIATE",
-    patientName: "模擬 三郎",
-    patientAge: 60,
-    patientGender: "男性",
-    ward: "3階東",
-    bed: "301",
-    problems: ["急性膵炎"],
-  });
-
-  for (const c of [caseP1042, caseP1039, caseP1035, caseP1028, caseSim07, caseP1051]) {
-    await db.caseAssignment.upsert({
-      where: { caseId_studentId: { caseId: c.id, studentId: student1.id } },
-      update: {},
-      create: { caseId: c.id, studentId: student1.id },
-    });
-  }
-
-  const existingSoap = await db.karteEntry.findFirst({ where: { caseId: caseP1042.id } });
-  if (!existingSoap) {
-    await db.karteEntry.create({
-      data: {
-        caseId: caseP1042.id,
-        authorUserId: student1.id,
-        entryType: "SOAP",
-        subjective: "発熱・咳嗽が3日前より持続。昨日より息切れを自覚。",
-        objective: "体温38.9℃ SpO2 92%(室内気) 右下肺野にcoarse crackles",
-        assessment: "",
-        plan: "",
-      },
-    });
-  }
-
-  const existingOrders = await db.order.count({ where: { caseId: caseP1042.id } });
-  if (existingOrders === 0) {
-    const bloodCulture = await db.labItemMaster.findUnique({ where: { code: "MB-001" } });
-    const ceftriaxone = await db.drugMaster.findUnique({ where: { hotCode: "HOT-100001" } });
-
-    await db.order.create({
-      data: {
-        caseId: caseP1042.id,
-        orderedByUserId: student1.id,
-        orderType: "LAB",
-        label: bloodCulture!.name,
-        labItemId: bloodCulture!.id,
-        status: "RESULT_PENDING",
-        resultReadyAt: new Date(Date.now() + 20 * 60 * 1000),
-      },
-    });
-    await db.order.create({
-      data: {
-        caseId: caseP1042.id,
-        orderedByUserId: student1.id,
-        orderType: "INJECTION",
-        label: `${ceftriaxone!.name} 2g　点滴静注`,
-        drugId: ceftriaxone!.id,
-        status: "ADMINISTERED",
-      },
-    });
-    await db.order.create({
-      data: {
-        caseId: caseP1042.id,
-        orderedByUserId: student1.id,
-        orderType: "GENERAL",
-        label: "安静度：ベッド上安静",
-        status: "ACTIVE",
-      },
-    });
-  }
-
-  const existingVitals = await db.vital.count({ where: { caseId: caseP1042.id } });
-  if (existingVitals === 0) {
-    const base = new Date();
-    base.setHours(8, 0, 0, 0);
-    const rows = [
-      { h: 8, temperature: 38.9, systolicBp: 128, diastolicBp: 76, pulse: 104, spo2: 92, respRate: 24 },
-      { h: 12, temperature: 38.2, systolicBp: 122, diastolicBp: 74, pulse: 96, spo2: 94, respRate: 22 },
-      { h: 16, temperature: 37.5, systolicBp: 118, diastolicBp: 72, pulse: 88, spo2: 96, respRate: 20 },
-    ];
-    for (const r of rows) {
-      const recordedAt = new Date(base);
-      recordedAt.setHours(r.h);
-      await db.vital.create({
-        data: {
-          caseId: caseP1042.id,
-          recordedAt,
-          temperature: r.temperature,
-          systolicBp: r.systolicBp,
-          diastolicBp: r.diastolicBp,
-          pulse: r.pulse,
-          spo2: r.spo2,
-          respRate: r.respRate,
-        },
-      });
-    }
-  }
-
-  // 模擬症例: 紹介状・救急搬送記録・SOAP記録を組み合わせた複数様式カルテのサンプル。
-  const existingKarteP1051 = await db.karteEntry.count({ where: { caseId: caseP1051.id } });
-  if (existingKarteP1051 === 0) {
-    const day0 = new Date();
-    day0.setHours(0, 0, 0, 0);
-
-    const referralAt = new Date(day0);
-    referralAt.setHours(9, 10);
-    const ambulanceAt = new Date(day0);
-    ambulanceAt.setHours(9, 45);
-    const admissionSoapAt = new Date(day0);
-    admissionSoapAt.setHours(10, 0);
-    const followUpSoapAt = new Date(day0);
-    followUpSoapAt.setDate(followUpSoapAt.getDate() + 1);
-    followUpSoapAt.setHours(8, 30);
-
-    const referralDetail: ReferralDetail = {
-      destination: "○○大学病院 脳神経内科 御中",
-      referringDoctor: "医療法人△△会　△△内科クリニック　院長　△△ △△",
-      diagnosis: "脳梗塞疑い",
-      purpose: "精査加療のお願い",
-      presentIllness:
-        "本日8時50分頃、自宅にて朝食中に右上下肢の脱力とろれつが回らないことに家族が気付き、直後に当院を受診されました。症状の急速な出現から脳血管障害が疑われ、緊急の精査加療が必要と判断し救急搬送にて紹介いたします。",
-      pastHistory: "高血圧症、発作性心房細動（△△病院循環器内科通院中、ワルファリン内服中）",
-      medications: "ワルファリンカリウム錠1mg　2錠　分1（夕食後）／アムロジピン錠5mg　1錠　分1（朝食後）",
-      physicalFindings:
-        "意識清明、血圧168/94mmHg、脈拍92/分（不整）、右上下肢の筋力低下（MMT 2/5程度）、構音障害あり、右顔面神経麻痺を認める。",
-      testFindings: "当院にて頭部CT施行、明らかな出血性病変は認めず。心電図で心房細動を確認。",
-      notes:
-        "抗凝固薬（ワルファリン）内服中のため、血栓溶解療法の適応につきましては貴院にてご判断をお願いいたします。お薬手帳を持参させております。",
-    };
-
-    const ambulanceDetail: AmbulanceDetail = {
-      agencyName: "○○市消防局　△△救急隊",
-      callReceivedAt: "9時16分",
-      sceneArrivalAt: "9時20分（△△内科クリニック）",
-      hospitalArrivalAt: "9時45分（○○大学病院 救急外来）",
-      chiefComplaint: "右上下肢脱力、構音障害",
-      onsetSituation:
-        "本日8時50分頃、自宅で朝食中に突然発症。家族が異変に気付き、徒歩3分のかかりつけクリニックを受診したところ脳卒中疑いのため救急要請となった。",
-      consciousness: "JCS I-1（清明だが軽度の反応緩慢）",
-      vitalsOnScene: "血圧172/96mmHg　脈拍96/分（不整）　SpO2 96%（室内気）　呼吸数18/分　体温36.4℃",
-      pastHistory: "高血圧症、発作性心房細動（ワルファリン内服中）",
-      treatmentEnRoute: "酸素投与（経鼻カニューラ2L/分）、心電図モニター装着、静脈路確保、血糖測定（128mg/dL）",
-      receivingDepartment: "救急科・脳神経内科",
-      notes: "紹介元クリニックより紹介状およびお薬手帳を預かり、患者とともに搬送。搬送中バイタル変化なし。",
-    };
-
-    await db.karteEntry.create({
-      data: {
-        caseId: caseP1051.id,
-        authorUserId: teacher1.id,
-        entryType: "REFERRAL",
-        title: `${referralDetail.destination}　宛`,
-        detail: JSON.stringify(referralDetail),
-        createdAt: referralAt,
-      },
-    });
-
-    await db.karteEntry.create({
-      data: {
-        caseId: caseP1051.id,
-        authorUserId: teacher1.id,
-        entryType: "AMBULANCE",
-        title: ambulanceDetail.agencyName,
-        detail: JSON.stringify(ambulanceDetail),
-        createdAt: ambulanceAt,
-      },
-    });
-
-    await db.karteEntry.create({
-      data: {
-        caseId: caseP1051.id,
-        authorUserId: student1.id,
-        entryType: "SOAP",
-        subjective:
-          "本人は軽度の呂律困難のため詳細な問診は困難。家族によれば8時50分頃に突然の右上下肢脱力とろれつが回らない症状が出現とのこと。頭痛・嘔気は認めない。",
-        objective:
-          "意識清明、血圧166/92mmHg、脈拍94/分（不整）、SpO2 97%（室内気）。右上下肢MMT 2/5、右顔面神経麻痺あり、構音障害あり。NIHSS 9点。頭部CTにて明らかな出血性病変なし。心電図で心房細動確認。",
-        assessment: "心原性脳塞栓症疑い（発作性心房細動、抗凝固薬内服中）。発症から搬入まで約55分。",
-        plan: "頭部MRI/MRAを施行し血栓溶解療法・血管内治療の適応を検討。脳神経内科にコンサルト。抗凝固薬内服歴を踏まえ出血リスクを慎重に評価。",
-        createdAt: admissionSoapAt,
-      },
-    });
-
-    await db.karteEntry.create({
-      data: {
-        caseId: caseP1051.id,
-        authorUserId: student1.id,
-        entryType: "SOAP",
-        subjective: "呂律障害はやや改善したと本人より訴えあり。右上肢の動かしにくさは持続。",
-        objective:
-          "体温36.8℃、血圧142/84mmHg、脈拍88/分（不整）。右上肢MMT 3/5に改善、右下肢MMT 4/5。NIHSS 5点に改善。頭部MRIにて左中大脳動脈領域に急性期梗塞巣を確認。",
-        assessment: "心原性脳塞栓症（左MCA領域）。症状はやや改善傾向。",
-        plan: "リハビリテーション科に依頼し早期離床・嚥下評価を開始。抗凝固療法の再開時期を脳神経内科・循環器内科と相談。",
-        createdAt: followUpSoapAt,
-      },
-    });
-  }
-
-  const existingVitalsP1051 = await db.vital.count({ where: { caseId: caseP1051.id } });
-  if (existingVitalsP1051 === 0) {
-    const base = new Date();
-    base.setHours(0, 0, 0, 0);
-    const rows = [
-      { h: 9, m: 45, temperature: 36.6, systolicBp: 168, diastolicBp: 92, pulse: 94, spo2: 97, respRate: 20 },
-      { h: 14, m: 0, temperature: 37.0, systolicBp: 150, diastolicBp: 86, pulse: 90, spo2: 97, respRate: 18 },
-      { h: 20, m: 0, temperature: 36.9, systolicBp: 144, diastolicBp: 84, pulse: 88, spo2: 98, respRate: 18 },
-    ];
-    for (const r of rows) {
-      const recordedAt = new Date(base);
-      recordedAt.setHours(r.h, r.m);
-      await db.vital.create({
-        data: {
-          caseId: caseP1051.id,
-          recordedAt,
-          temperature: r.temperature,
-          systolicBp: r.systolicBp,
-          diastolicBp: r.diastolicBp,
-          pulse: r.pulse,
-          spo2: r.spo2,
-          respRate: r.respRate,
-        },
-      });
-    }
   }
 
   console.log("Seed data ready.");

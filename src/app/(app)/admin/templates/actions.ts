@@ -26,6 +26,8 @@ export async function createTemplate(formData: FormData) {
   const key = String(formData.get("key") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
+  const category = String(formData.get("category") ?? "").trim() || null;
+  const sortOrder = Math.round(Number(formData.get("sortOrder") ?? 0)) || 0;
   const isCommon = formData.get("isCommon") === "on";
   const isInfectious = formData.get("isInfectious") === "on";
   const isCrisisPathology = formData.get("isCrisisPathology") === "on";
@@ -37,7 +39,7 @@ export async function createTemplate(formData: FormData) {
   }
 
   const created = await db.diseaseTemplate.create({
-    data: { key, name, description, isCommon, isInfectious, isCrisisPathology, defaultParams: JSON.stringify(readParams(formData)) },
+    data: { key, name, description, category, sortOrder, isCommon, isInfectious, isCrisisPathology, defaultParams: JSON.stringify(readParams(formData)) },
   });
   await logAudit({ userId: user.id, action: "master_template_create", targetType: "DiseaseTemplate", targetId: created.id });
 
@@ -49,6 +51,8 @@ export async function updateTemplate(id: string, formData: FormData) {
 
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
+  const category = String(formData.get("category") ?? "").trim() || null;
+  const sortOrder = Math.round(Number(formData.get("sortOrder") ?? 0)) || 0;
   const isCommon = formData.get("isCommon") === "on";
   const isInfectious = formData.get("isInfectious") === "on";
   const isCrisisPathology = formData.get("isCrisisPathology") === "on";
@@ -56,7 +60,7 @@ export async function updateTemplate(id: string, formData: FormData) {
 
   await db.diseaseTemplate.update({
     where: { id },
-    data: { name, description, isCommon, isInfectious, isCrisisPathology, defaultParams: JSON.stringify(readParams(formData)) },
+    data: { name, description, category, sortOrder, isCommon, isInfectious, isCrisisPathology, defaultParams: JSON.stringify(readParams(formData)) },
   });
   await logAudit({ userId: user.id, action: "master_template_update", targetType: "DiseaseTemplate", targetId: id });
 

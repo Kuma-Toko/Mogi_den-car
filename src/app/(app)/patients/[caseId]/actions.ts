@@ -11,7 +11,7 @@ import {
   computeDrugEffectsAt,
   computeResultReadyAt,
   createPendingTreatmentEvaluationIfNeeded,
-  findCasePathogenId,
+  findCaseInfectiousDiseaseLinks,
   getDiseaseLinkSeverities,
   loadDiseaseContributionsAt,
   loadDrugEffectRules,
@@ -292,7 +292,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]): Promi
   const resultReadyAt = computeResultReadyAt(caseRecord.resultTiming, orderedAt);
   // 感染症エンジン: 原因菌が割り当てられた症例では、培養系検査(isCulture)は症例のIMMEDIATE/DELAYED設定に
   // 関わらず常に多段階(速報→確定)の現実的な培養日数で結果を反映する（下のLABオーダー作成時に分岐）。
-  const casePathogenId = findCasePathogenId(caseRecord.diseaseLinks);
+  const hasCaseInfectiousDiseaseLink = findCaseInfectiousDiseaseLinks(caseRecord.diseaseLinks).length > 0;
 
   const treatmentOrders = await db.order.findMany({
     where: { caseId, orderType: { in: ["MEDICATION", "INJECTION", "PROCEDURE"] } },
@@ -302,7 +302,9 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]): Promi
       label: true,
       detail: true,
       discontinuedAt: true,
-      drug: { select: { categoryLinks: { select: { categoryId: true, category: { select: { majorCategory: true } } } } } },
+      drug: {
+        select: { categoryLinks: { select: { categoryId: true, category: { select: { majorCategory: true, subCategory: true } } } } },
+      },
     },
   });
 
@@ -341,7 +343,7 @@ export async function submitOrderBatch(caseId: string, items: CartItem[]): Promi
         const imaging = item.imaging;
         // 感染症エンジン: 原因菌が割り当てられた症例の培養系検査は、症例のIMMEDIATE/DELAYED設定を無視して
         // 常に多段階(速報→確定)の現実的な培養日数で結果を反映する（immediateでも即時結果は返さない）。
-        const useCultureTiming = labItem.isCulture && !!casePathogenId;
+        const useCultureTiming = labItem.isCulture && hasCaseInfectiousDiseaseLink;
         const cultureDelay = useCultureTiming ? getCultureDelayHours(labItem.microbiologyKind) : null;
         const result = immediate && !useCultureTiming ? resolveLabResult(labContributions, labItem, labDrugEffects ?? undefined) : null;
 

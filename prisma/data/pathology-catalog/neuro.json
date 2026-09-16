@@ -1,0 +1,160 @@
+[
+  {
+    "key": "neuro_cardioembolic_stroke",
+    "name": "脳梗塞（心原性塞栓症）",
+    "description": "心房細動等を背景に形成された血栓が脳血管を閉塞する疾患。突然発症の片麻痺・構音障害を特徴とする。",
+    "category": "神経",
+    "sortOrder": 1,
+    "defaultParams": { "initialTempSlider": 35, "improvementSpeedSlider": 40, "initialSpo2Slider": 80, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["抗凝固薬"], "procedureKeywords": ["血栓回収療法（機械的血栓除去）", "血栓溶解療法（tPA静注）"] },
+    "aiEvaluationGuideline": "発症4.5時間以内であればtPA静注療法、主幹動脈閉塞では血栓回収療法（機械的血栓除去）の適応を速やかに評価する。抗凝固薬は再発予防としては重要だが急性期の再灌流治療の代わりにはならない。",
+    "vitalsPerSeverity": { "temperature": 0.3, "systolicBp": 15, "diastolicBp": 8, "pulse": 8, "spo2": -5, "respRate": 3 },
+    "labPatterns": [
+      { "labItemCode": "PHYS-ECG-001", "kind": "text", "tiers": { "mild": "心房細動を認める。", "moderate": "心房細動、頻脈性。", "severe": "心房細動、高度頻脈で塞栓源として矛盾しない。" } },
+      { "labItemCode": "IMG-004", "kind": "text", "tiers": { "mild": "皮質下に小さな急性期梗塞巣を認める。", "moderate": "中大脳動脈領域に急性期梗塞巣を認める。", "severe": "中大脳動脈領域の広範な急性期梗塞巣を認め、脳浮腫を伴う。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_brain_herniation", "sustainMinutes": 45, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "neuro_ich",
+    "name": "脳出血",
+    "description": "高血圧性の細動脈破綻等による脳実質内出血。血腫増大により急速に意識レベルが悪化しうる。",
+    "category": "神経",
+    "sortOrder": 2,
+    "defaultParams": { "initialTempSlider": 35, "improvementSpeedSlider": 35, "initialSpo2Slider": 75, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["降圧薬"] },
+    "vitalsPerSeverity": { "temperature": 0.3, "systolicBp": 30, "diastolicBp": 15, "pulse": -5, "spo2": -8, "respRate": 3 },
+    "aiEvaluationGuideline": "収縮期血圧140mmHg程度を目標とした早期降圧が血腫増大を抑制する。大きな血腫や脳室穿破例では外科的血腫除去も検討する。降圧薬未使用は血腫増大・予後悪化のリスクとして減点。",
+    "labPatterns": [
+      { "labItemCode": "IMG-CT-001", "kind": "text", "tiers": { "mild": "被殻に小さな高吸収域（血腫）を認める（径2cm程度）。", "moderate": "被殻に血腫を認め、脳室穿破を伴う（径4cm程度）。", "severe": "大きな血腫と著明な正中構造偏位を認める（径6cm以上）。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_brain_herniation", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "neuro_sah",
+    "name": "くも膜下出血",
+    "description": "脳動脈瘤破裂等によるくも膜下腔への出血。突然発症の激しい頭痛（雷鳴頭痛）を特徴とする。",
+    "category": "神経",
+    "sortOrder": 3,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 35, "initialSpo2Slider": 75, "severitySlider": 60 },
+    "treatment": { "procedureKeywords": ["開頭術（血腫除去・減圧）"] },
+    "vitalsPerSeverity": { "temperature": 0.5, "systolicBp": 35, "diastolicBp": 18, "pulse": 5, "spo2": -6, "respRate": 4 },
+    "aiEvaluationGuideline": "再破裂予防のための早期の動脈瘤根治術（クリッピングまたはコイル塞栓術）が必須。降圧のみでの経過観察は再破裂のリスクを放置しており大幅減点。",
+    "labPatterns": [
+      { "labItemCode": "IMG-CT-001", "kind": "text", "tiers": { "mild": "脳槽にごく軽度の高吸収域を認める。", "moderate": "脳底槽を中心にくも膜下腔の高吸収域を認める。", "severe": "脳底槽からシルビウス裂にかけて広範な高吸収域と急性水頭症を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_brain_herniation", "sustainMinutes": 20, "triggers": [{ "type": "severity", "op": ">=", "value": 88 }] }]
+  },
+  {
+    "key": "neuro_bacterial_meningitis",
+    "name": "細菌性髄膜炎",
+    "description": "細菌による髄膜の急性感染。発熱・頭痛・項部硬直を三徴とし、急速に進行しうる。",
+    "category": "神経",
+    "sortOrder": 4,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 75, "improvementSpeedSlider": 40, "initialSpo2Slider": 75, "severitySlider": 60 },
+    "treatment": { "drugCategories": ["抗菌薬"] },
+    "vitalsPerSeverity": { "temperature": 3.0, "systolicBp": -10, "diastolicBp": -5, "pulse": 25, "spo2": -5, "respRate": 8 },
+    "aiEvaluationGuideline": "髄液培養採取後、速やかな広域抗菌薬（第3世代セフェム系等）の投与が必須。デキサメタゾン併用への言及があれば加点。抗菌薬投与の遅れは予後を著しく悪化させるため大幅減点対象。",
+    "labPatterns": [
+      {
+        "labItemCode": "1C030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "髄液細胞数", "value": 50, "unit": "/μL" }],
+          "moderate": [{ "label": "髄液細胞数", "value": 500, "unit": "/μL" }],
+          "severe": [{ "label": "髄液細胞数", "value": 3000, "unit": "/μL" }]
+        }
+      },
+      {
+        "labItemCode": "1C015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "髄液糖", "value": 50, "unit": "mg/dL" }],
+          "moderate": [{ "label": "髄液糖", "value": 30, "unit": "mg/dL" }],
+          "severe": [{ "label": "髄液糖", "value": 10, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "neuro_herpes_encephalitis",
+    "name": "単純ヘルペス脳炎",
+    "description": "単純ヘルペスウイルスによる急性脳炎。側頭葉優位の病変とけいれん・意識障害を呈する。",
+    "category": "神経",
+    "sortOrder": 5,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 65, "improvementSpeedSlider": 35, "initialSpo2Slider": 80, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["抗ウイルス薬"] },
+    "vitalsPerSeverity": { "temperature": 2.5, "systolicBp": 5, "diastolicBp": 3, "pulse": 15, "spo2": -5, "respRate": 4 },
+    "aiEvaluationGuideline": "アシクロビル等の抗ウイルス薬の経験的早期投与（確定診断を待たない）が予後を左右する。抗ウイルス薬未投与は不可逆的な脳損傷のリスクとして大幅減点。",
+    "labPatterns": [
+      { "labItemCode": "PHYS-EEG-001", "kind": "text", "tiers": { "mild": "側頭部にごく軽度の徐波化を認める。", "moderate": "側頭葉に周期性一側性てんかん型放電（PLEDs）を認める。", "severe": "両側側頭葉に高振幅の周期性放電が持続する。" } },
+      { "labItemCode": "IMG-004", "kind": "text", "tiers": { "mild": "側頭葉内側にごく淡い高信号を認める。", "moderate": "側頭葉内側から島皮質にかけて高信号を認める。", "severe": "両側側頭葉に出血性変化を伴う広範な高信号を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_status_epilepticus", "sustainMinutes": 20, "triggers": [{ "type": "severity", "op": ">=", "value": 85 }] }]
+  },
+  {
+    "key": "neuro_seizure",
+    "name": "てんかん発作",
+    "description": "大脳ニューロンの過剰な同期性放電による発作。多くは自然頓挫するが、遷延すれば重積状態に至る。",
+    "category": "神経",
+    "sortOrder": 6,
+    "defaultParams": { "initialTempSlider": 25, "improvementSpeedSlider": 65, "initialSpo2Slider": 80, "severitySlider": 40 },
+    "treatment": { "drugCategories": ["抗てんかん薬"] },
+    "vitalsPerSeverity": { "temperature": 0.3, "systolicBp": 10, "diastolicBp": 5, "pulse": 15, "spo2": -5, "respRate": -2 },
+    "aiEvaluationGuideline": "発作の誘因検索と抗てんかん薬による維持療法の開始が標準。発作が5分以上遷延する場合はベンゾジアゼピン系薬剤による頓挫を優先する（重積状態への移行を防ぐ）。",
+    "labPatterns": [
+      { "labItemCode": "PHYS-EEG-001", "kind": "text", "tiers": { "mild": "発作間欠期に散発性のてんかん性放電を認める。", "moderate": "焦点性のてんかん性放電を頻回に認める。", "severe": "全般性のてんかん性放電が遷延する。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_status_epilepticus", "sustainMinutes": 15, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "neuro_gbs",
+    "name": "ギラン・バレー症候群",
+    "description": "先行感染後に生じる急性炎症性脱髄性多発根神経炎。上行性の弛緩性麻痺を特徴とし、呼吸筋麻痺に注意を要する。",
+    "category": "神経",
+    "sortOrder": 7,
+    "defaultParams": { "initialTempSlider": 20, "improvementSpeedSlider": 25, "initialSpo2Slider": 70, "severitySlider": 50 },
+    "treatment": { "drugCategories": ["血液製剤/免疫グロブリン製剤"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -5, "diastolicBp": -3, "pulse": 5, "spo2": -15, "respRate": -8 },
+    "aiEvaluationGuideline": "免疫グロブリン大量静注療法（IVIG）または血漿交換が標準治療。呼吸筋麻痺の進行（努力性肺活量の低下）を監視し、必要時は早期に気管挿管する記載を評価する。",
+    "labPatterns": [
+      {
+        "labItemCode": "1C010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "髄液蛋白", "value": 60, "unit": "mg/dL" }],
+          "moderate": [{ "label": "髄液蛋白", "value": 150, "unit": "mg/dL" }],
+          "severe": [{ "label": "髄液蛋白", "value": 300, "unit": "mg/dL" }]
+        }
+      },
+      {
+        "labItemCode": "1C030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "髄液細胞数", "value": 3, "unit": "/μL" }],
+          "moderate": [{ "label": "髄液細胞数", "value": 3, "unit": "/μL" }],
+          "severe": [{ "label": "髄液細胞数", "value": 3, "unit": "/μL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_resp_failure", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 85 }] }]
+  },
+  {
+    "key": "neuro_mg_crisis",
+    "name": "重症筋無力症クリーゼ",
+    "description": "神経筋接合部の自己免疫的障害により呼吸筋麻痺に至った状態。感染・薬剤（アミノグリコシド系等）が誘因となる。",
+    "category": "神経",
+    "sortOrder": 8,
+    "defaultParams": { "initialTempSlider": 20, "improvementSpeedSlider": 30, "initialSpo2Slider": 65, "severitySlider": 50 },
+    "treatment": { "drugCategories": ["血液製剤/免疫グロブリン製剤"], "procedureKeywords": ["血漿交換療法"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -5, "diastolicBp": -3, "pulse": 5, "spo2": -18, "respRate": -10 },
+    "aiEvaluationGuideline": "免疫グロブリン大量静注療法または血漿交換療法が標準治療。誘因となりうる薬剤（アミノグリコシド系抗菌薬等）の中止への言及も評価する。呼吸筋麻痺進行時の気管挿管判断も重要。",
+    "labPatterns": [
+      { "labItemCode": "PHYS-EMG-001", "kind": "text", "tiers": { "mild": "軽度の漸減現象（waning）を認める。", "moderate": "明らかな漸減現象を認める。", "severe": "著明な漸減現象と複合筋活動電位の著減を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_resp_failure", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 85 }] }]
+  }
+]

@@ -1,0 +1,153 @@
+[
+  {
+    "key": "er_anaphylaxis",
+    "name": "アナフィラキシー",
+    "description": "食物・薬剤・虫刺症等を契機とする即時型全身性アレルギー反応。急速な循環虚脱と気道浮腫を呈しうる。",
+    "category": "救急・中毒・環境",
+    "sortOrder": 1,
+    "defaultParams": { "initialTempSlider": 35, "improvementSpeedSlider": 80, "initialSpo2Slider": 35, "severitySlider": 60 },
+    "treatment": { "drugCategories": ["アドレナリン作動薬"] },
+    "vitalsPerSeverity": { "temperature": -0.3, "systolicBp": -60, "diastolicBp": -25, "pulse": 35, "spo2": -20, "respRate": 14 },
+    "aiEvaluationGuideline": "アドレナリン筋注が唯一の第一選択治療で、抗ヒスタミン薬・ステロイドは補助的治療に過ぎない。アドレナリン投与の指示がなければ大幅減点。",
+    "labPatterns": [],
+    "crisisTriggers": [{ "targetKey": "crisis_anaphylactic_shock", "sustainMinutes": 15, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 65 }] }]
+  },
+  {
+    "key": "er_heat_stroke",
+    "name": "熱中症（重症）",
+    "description": "高温環境下での体温調節機構の破綻。中枢神経症状を伴う重症例では多臓器不全・DICのリスクがある。",
+    "category": "救急・中毒・環境",
+    "sortOrder": 2,
+    "defaultParams": { "initialTempSlider": 90, "improvementSpeedSlider": 60, "initialSpo2Slider": 80, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["輸液"], "procedureKeywords": ["体表冷却"] },
+    "vitalsPerSeverity": { "temperature": 4.0, "systolicBp": -15, "diastolicBp": -8, "pulse": 30, "spo2": -5, "respRate": 10 },
+    "aiEvaluationGuideline": "積極的な体表冷却による深部体温の速やかな低下が最優先で、輸液のみでは不十分。冷却処置の指示がなければ臓器障害進行のリスクとして大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3B035",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "AST", "value": 60, "unit": "U/L" }],
+          "moderate": [{ "label": "AST", "value": 300, "unit": "U/L" }],
+          "severe": [{ "label": "AST", "value": 1200, "unit": "U/L" }]
+        }
+      },
+      {
+        "labItemCode": "2B030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "PT秒", "value": 12, "unit": "秒" }],
+          "moderate": [{ "label": "PT秒", "value": 16, "unit": "秒" }],
+          "severe": [{ "label": "PT秒", "value": 22, "unit": "秒" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hypovolemic_shock", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "er_hypothermia",
+    "name": "偶発性低体温症",
+    "description": "寒冷曝露・高齢・アルコール摂取等による深部体温低下。重症では致死性不整脈のリスクがあり、蘇生は「温まるまで死亡と判断しない」が原則。",
+    "category": "救急・中毒・環境",
+    "sortOrder": 3,
+    "defaultParams": { "initialTempSlider": 0, "improvementSpeedSlider": 30, "initialSpo2Slider": 80, "severitySlider": 55 },
+    "treatment": { "procedureKeywords": ["積極的復温"] },
+    "vitalsPerSeverity": { "temperature": -9.0, "systolicBp": -30, "diastolicBp": -15, "pulse": -40, "spo2": -8, "respRate": -8 },
+    "aiEvaluationGuideline": "積極的な復温（加温輸液・体外循環等）が根本治療。除細動は深部体温が一定以上に回復するまで無効なことが多く、復温を優先する記載を評価する。",
+    "labPatterns": [
+      { "labItemCode": "PHYS-ECG-001", "kind": "text", "tiers": { "mild": "軽度の徐脈を認める。", "moderate": "J波（Osborn波）を認める。", "severe": "著明なJ波と心室性不整脈の出現を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_cardiac_arrest", "sustainMinutes": 15, "triggers": [{ "type": "vital", "field": "temperature", "op": "<=", "value": 28 }] }]
+  },
+  {
+    "key": "er_apap_overdose",
+    "name": "アセトアミノフェン中毒",
+    "description": "アセトアミノフェンの過量服用による肝毒性。服用直後は無症状のことが多く、数日遅れて肝不全が顕在化する。",
+    "category": "救急・中毒・環境",
+    "sortOrder": 4,
+    "defaultParams": { "initialTempSlider": 20, "improvementSpeedSlider": 30, "initialSpo2Slider": 90, "severitySlider": 45 },
+    "treatment": { "procedureKeywords": ["胃洗浄"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -5, "diastolicBp": -3, "pulse": 5, "spo2": -2, "respRate": 2 },
+    "aiEvaluationGuideline": "本来の第一選択はN-アセチルシステインの解毒薬投与だが、本システムでは薬剤マスター上に対応するカテゴリが無いため、服用早期（1時間以内目安）の胃洗浄による消化管除染を治療の指標として評価する。血中濃度に基づく治療適応の評価（Rumack-Matthewノモグラム）への言及も加点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3B035",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "AST", "value": 100, "unit": "U/L" }],
+          "moderate": [{ "label": "AST", "value": 2000, "unit": "U/L" }],
+          "severe": [{ "label": "AST", "value": 8000, "unit": "U/L" }]
+        }
+      },
+      {
+        "labItemCode": "2B030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "PT秒", "value": 13, "unit": "秒" }],
+          "moderate": [{ "label": "PT秒", "value": 20, "unit": "秒" }],
+          "severe": [{ "label": "PT秒", "value": 35, "unit": "秒" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hepatic_coma", "sustainMinutes": 45, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "er_organophosphate_poisoning",
+    "name": "有機リン中毒",
+    "description": "有機リン系農薬等の曝露によるコリンエステラーゼ阻害。縮瞳・流涎・気道分泌過多（コリン作動性クリーゼ）を呈する。",
+    "category": "救急・中毒・環境",
+    "sortOrder": 5,
+    "defaultParams": { "initialTempSlider": 15, "improvementSpeedSlider": 40, "initialSpo2Slider": 55, "severitySlider": 55 },
+    "treatment": { "procedureKeywords": ["胃洗浄"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -10, "diastolicBp": -5, "pulse": -20, "spo2": -20, "respRate": -10 },
+    "aiEvaluationGuideline": "本来の第一選択はアトロピン（ムスカリン様症状の拮抗）とプラリドキシム（PAM、コリンエステラーゼ再賦活化）の解毒薬投与だが、本システムでは対応する薬剤カテゴリが無いため、皮膚・消化管除染（胃洗浄）を治療の指標として評価する。気道分泌過多による窒息リスクへの言及も加点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3B110",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "ChE", "value": 150, "unit": "U/L" }],
+          "moderate": [{ "label": "ChE", "value": 60, "unit": "U/L" }],
+          "severe": [{ "label": "ChE", "value": 10, "unit": "U/L" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_resp_failure", "sustainMinutes": 20, "triggers": [{ "type": "severity", "op": ">=", "value": 85 }] }]
+  },
+  {
+    "key": "er_co_poisoning",
+    "name": "一酸化炭素中毒",
+    "description": "不完全燃焼等によるCO曝露。COはヘモグロビンとの親和性が酸素の約200倍で組織低酸素をきたすが、通常のパルスオキシメータのSpO2は正常〜高値を示すため見逃しやすい（COHbを酸素化Hbと誤認識するため）。",
+    "category": "救急・中毒・環境",
+    "sortOrder": 6,
+    "defaultParams": { "initialTempSlider": 20, "improvementSpeedSlider": 55, "initialSpo2Slider": 20, "severitySlider": 50 },
+    "treatment": { "procedureKeywords": ["高気圧酸素療法"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -5, "diastolicBp": -3, "pulse": 20, "spo2": 0, "respRate": 8 },
+    "aiEvaluationGuideline": "高濃度酸素投与（リザーバーマスク等）または高気圧酸素療法によるCOHbの排出促進が治療の中心。パルスオキシメータのSpO2は本病態では信頼できないため、SpO2が正常であることを理由に酸素投与を見送っている場合は重大な誤りとして大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H085",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "COHb", "value": 15, "unit": "%" }],
+          "moderate": [{ "label": "COHb", "value": 30, "unit": "%" }],
+          "severe": [{ "label": "COHb", "value": 50, "unit": "%" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_cardiac_arrest", "sustainMinutes": 20, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "er_alcohol_withdrawal",
+    "name": "アルコール離脱症候群",
+    "description": "慢性飲酒者の断酒・減量後に生じる自律神経過活動状態。振戦せん妄（DTs）に進展すると重積けいれんのリスクがある。",
+    "category": "救急・中毒・環境",
+    "sortOrder": 7,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 55, "initialSpo2Slider": 90, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["抗不安薬・睡眠薬/ベンゾジアゼピン系"] },
+    "vitalsPerSeverity": { "temperature": 1.0, "systolicBp": 15, "diastolicBp": 10, "pulse": 30, "spo2": -2, "respRate": 5 },
+    "aiEvaluationGuideline": "ベンゾジアゼピン系薬剤による症状コントロール（症状トリガー式投与）が標準治療。ビタミンB1（チアミン）投与によるWernicke脳症予防への言及があれば加点。無投薬での経過観察は振戦せん妄・けいれん重積への進展リスクとして減点。",
+    "labPatterns": [],
+    "crisisTriggers": [{ "targetKey": "crisis_status_epilepticus", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  }
+]

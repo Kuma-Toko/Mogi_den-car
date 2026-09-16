@@ -1,0 +1,337 @@
+[
+  {
+    "key": "crisis_septic_shock",
+    "name": "敗血症性ショック",
+    "description": "感染症の重症化に伴う血管拡張性ショック。末梢血管抵抗の低下と血管透過性亢進により、輸液に反応しにくい低血圧が持続する。",
+    "category": "急変",
+    "sortOrder": 1,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "drugCategories": ["循環作動薬/ノルアドレナリン"] },
+    "vitalsPerSeverity": { "temperature": 3.0, "systolicBp": -50, "diastolicBp": -30, "pulse": 55, "spo2": -10, "respRate": 14 },
+    "aiEvaluationGuideline": "第一選択はノルアドレナリンによる循環作動薬投与と原因感染巣に対する広域抗菌薬の早期投与。輸液のみで循環作動薬を開始していない場合は治療として不十分。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H080",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "乳酸", "value": 20, "unit": "mg/dL" }],
+          "moderate": [{ "label": "乳酸", "value": 45, "unit": "mg/dL" }],
+          "severe": [{ "label": "乳酸", "value": 80, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisRescue": { "postRescueSeverity": 40, "actions": [{ "label": "ノルアドレナリン投与", "drugCategories": ["循環作動薬/ノルアドレナリン"] }] }
+  },
+  {
+    "key": "crisis_hemorrhagic_shock",
+    "name": "出血性ショック",
+    "description": "急性大量出血による循環血液量減少性ショック。頻脈・血圧低下とともにヘモグロビンが急速に低下する。",
+    "category": "急変",
+    "sortOrder": 2,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "drugCategories": ["輸液"] },
+    "vitalsPerSeverity": { "temperature": -1.2, "systolicBp": -55, "diastolicBp": -35, "pulse": 65, "spo2": -8, "respRate": 12 },
+    "aiEvaluationGuideline": "急速輸液に加え、止血源のコントロール（内視鏡的止血・手術等）が生命予後を左右する。輸液のみで止血処置がなければ大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "2A030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Hb", "value": 10, "unit": "g/dL" }],
+          "moderate": [{ "label": "Hb", "value": 7.5, "unit": "g/dL" }],
+          "severe": [{ "label": "Hb", "value": 5, "unit": "g/dL" }]
+        }
+      }
+    ],
+    "crisisRescue": { "postRescueSeverity": 35, "actions": [{ "label": "輸液・止血処置", "drugCategories": ["輸液"], "procedureKeywords": ["内視鏡的止血術", "試験開腹止血術"] }] }
+  },
+  {
+    "key": "crisis_hypovolemic_shock",
+    "name": "循環血液量減少性ショック",
+    "description": "高度脱水・サードスペースへの体液喪失による循環血液量減少性ショック。",
+    "category": "急変",
+    "sortOrder": 3,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "drugCategories": ["輸液"] },
+    "vitalsPerSeverity": { "temperature": -0.5, "systolicBp": -50, "diastolicBp": -30, "pulse": 60, "spo2": -6, "respRate": 10 },
+    "aiEvaluationGuideline": "細胞外液の急速輸液が唯一の治療。輸液速度・量が不十分と判断される場合（少量の維持輸液のみ等）は減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3C015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Cr", "value": 1.3, "unit": "mg/dL" }],
+          "moderate": [{ "label": "Cr", "value": 2.2, "unit": "mg/dL" }],
+          "severe": [{ "label": "Cr", "value": 3.5, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisRescue": { "postRescueSeverity": 35, "actions": [{ "label": "急速輸液", "drugCategories": ["輸液"] }] }
+  },
+  {
+    "key": "crisis_cardiogenic_shock",
+    "name": "心原性ショック",
+    "description": "心ポンプ機能の急激な低下による末梢循環不全。肺うっ血を伴うことが多い。",
+    "category": "急変",
+    "sortOrder": 4,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "drugCategories": ["循環作動薬"], "procedureKeywords": ["経皮的冠動脈インターベンション（PCI）"] },
+    "vitalsPerSeverity": { "temperature": -0.5, "systolicBp": -45, "diastolicBp": -22, "pulse": 40, "spo2": -13, "respRate": 12 },
+    "aiEvaluationGuideline": "強心薬・循環作動薬（ドブタミン等）による血行動態の維持と、原因（冠動脈閉塞等）に対する再灌流治療が必要。輸液のみの投与は肺うっ血を悪化させるため禁忌に近い判断となりうる。",
+    "labPatterns": [
+      {
+        "labItemCode": "H8039",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "BNP", "value": 400, "unit": "pg/mL" }],
+          "moderate": [{ "label": "BNP", "value": 900, "unit": "pg/mL" }],
+          "severe": [{ "label": "BNP", "value": 1800, "unit": "pg/mL" }]
+        }
+      }
+    ],
+    "crisisRescue": { "postRescueSeverity": 40, "actions": [{ "label": "循環作動薬・PCI", "drugCategories": ["循環作動薬"], "procedureKeywords": ["経皮的冠動脈インターベンション（PCI）"] }] }
+  },
+  {
+    "key": "crisis_tension_pneumothorax",
+    "name": "緊張性気胸",
+    "description": "胸腔内圧の急激な上昇により静脈還流が阻害される、即時介入を要する呼吸循環緊急事態。",
+    "category": "急変",
+    "sortOrder": 5,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "procedureKeywords": ["胸腔穿刺", "胸腔ドレナージ"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -50, "diastolicBp": -28, "pulse": 65, "spo2": -20, "respRate": 18 },
+    "aiEvaluationGuideline": "診断と同時に緊急脱気（胸腔穿刺）または胸腔ドレナージが必須。画像検査の指示のみで手技を行っていない場合は致命的な遅延として大幅減点。",
+    "labPatterns": [
+      { "labItemCode": "IMG-XP-006", "kind": "text", "tiers": { "mild": "軽度の気胸を認める。", "moderate": "肺の虚脱を認め、縦隔の健側への偏位を疑う。", "severe": "高度の肺虚脱と著明な縦隔偏位を認め、緊張性気胸が疑われる。" } }
+    ],
+    "crisisRescue": { "postRescueSeverity": 30, "actions": [{ "label": "緊急脱気・胸腔ドレナージ", "procedureKeywords": ["胸腔穿刺", "胸腔ドレナージ"] }] }
+  },
+  {
+    "key": "crisis_tamponade_shock",
+    "name": "心タンポナーデによるショック",
+    "description": "心嚢液貯留により心室拡張が制限され、心拍出量が急激に低下する状態。脈圧の狭小化を特徴とする。",
+    "category": "急変",
+    "sortOrder": 6,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "procedureKeywords": ["心嚢穿刺"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -48, "diastolicBp": -12, "pulse": 55, "spo2": -10, "respRate": 10 },
+    "aiEvaluationGuideline": "心嚢穿刺による緊急減圧が唯一の根本的治療。輸液は一時的な代償に過ぎず、心嚢穿刺の指示がなければ大幅減点。",
+    "labPatterns": [
+      { "labItemCode": "IMG-US-001", "kind": "text", "tiers": { "mild": "軽度の心嚢液貯留を認める。", "moderate": "中等量の心嚢液貯留を認め、右室の拡張期虚脱を疑う所見あり。", "severe": "大量の心嚢液貯留と心タンポナーデ所見（右房・右室の虚脱）を認める。" } }
+    ],
+    "crisisRescue": { "postRescueSeverity": 35, "actions": [{ "label": "心嚢穿刺", "procedureKeywords": ["心嚢穿刺"] }] }
+  },
+  {
+    "key": "crisis_massive_pe",
+    "name": "広範型肺血栓塞栓症（閉塞性ショック）",
+    "description": "肺動脈の広範な閉塞により右心負荷とガス交換障害が急激に進行し、閉塞性ショックに至る状態。",
+    "category": "急変",
+    "sortOrder": 7,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "procedureKeywords": ["血栓溶解療法（tPA静注）"], "drugCategories": ["抗凝固薬/ヘパリン"] },
+    "vitalsPerSeverity": { "temperature": -0.2, "systolicBp": -48, "diastolicBp": -26, "pulse": 53, "spo2": -18, "respRate": 16 },
+    "aiEvaluationGuideline": "血行動態が破綻した広範型PEでは血栓溶解療法が第一選択。抗凝固薬（ヘパリン）単独では効果発現が遅く不十分。",
+    "labPatterns": [
+      {
+        "labItemCode": "2B140",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Dダイマー", "value": 5, "unit": "μg/mL" }],
+          "moderate": [{ "label": "Dダイマー", "value": 15, "unit": "μg/mL" }],
+          "severe": [{ "label": "Dダイマー", "value": 30, "unit": "μg/mL" }]
+        }
+      }
+    ],
+    "crisisRescue": { "postRescueSeverity": 40, "actions": [{ "label": "血栓溶解療法", "procedureKeywords": ["血栓溶解療法（tPA静注）"] }, { "label": "抗凝固療法強化", "drugCategories": ["抗凝固薬/ヘパリン"] }] }
+  },
+  {
+    "key": "crisis_anaphylactic_shock",
+    "name": "アナフィラキシーショック",
+    "description": "急速な血管拡張・血管透過性亢進による分布性ショック。上気道浮腫を伴うことがある。",
+    "category": "急変",
+    "sortOrder": 8,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "drugCategories": ["アドレナリン作動薬"] },
+    "vitalsPerSeverity": { "temperature": -0.5, "systolicBp": -60, "diastolicBp": -38, "pulse": 65, "spo2": -16, "respRate": 16 },
+    "aiEvaluationGuideline": "アドレナリン筋注が唯一の第一選択治療。抗ヒスタミン薬・ステロイドのみで対応している場合は初期対応の遅れとして大幅減点。",
+    "labPatterns": [],
+    "crisisRescue": { "postRescueSeverity": 30, "actions": [{ "label": "アドレナリン筋注", "drugCategories": ["アドレナリン作動薬"] }] }
+  },
+  {
+    "key": "crisis_cardiac_arrest",
+    "name": "心停止（心室細動・無脈性電気活動）",
+    "description": "有効な心拍出のない致死的不整脈または電気機械解離。直ちに心肺蘇生を要する。",
+    "category": "急変",
+    "sortOrder": 9,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "procedureKeywords": ["除細動", "心肺蘇生（胸骨圧迫）"] },
+    "vitalsPerSeverity": { "temperature": -2.5, "systolicBp": -90, "diastolicBp": -58, "pulse": -60, "spo2": -43, "respRate": -13 },
+    "aiEvaluationGuideline": "心肺蘇生（胸骨圧迫）の開始と、波形に応じた除細動が最優先。原因検索・投薬の指示のみで蘇生手技の指示がなければ致命的な遅延。",
+    "labPatterns": [
+      { "labItemCode": "PHYS-ECG-001", "kind": "text", "tiers": { "mild": "多形性の心室期外収縮を頻発。", "moderate": "心室頻拍を認める。", "severe": "心室細動、または波形を伴わない電気活動（PEA）を認める。" } }
+    ],
+    "crisisRescue": { "postRescueSeverity": 55, "actions": [{ "label": "除細動・心肺蘇生", "procedureKeywords": ["除細動", "心肺蘇生（胸骨圧迫）"] }] }
+  },
+  {
+    "key": "crisis_resp_failure",
+    "name": "急性呼吸不全（CO2ナルコーシス含む）",
+    "description": "自発換気とガス交換の破綻。CO2ナルコーシスでは高濃度酸素投与による呼吸抑制にも注意を要する。",
+    "category": "急変",
+    "sortOrder": 10,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "procedureKeywords": ["気管挿管"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -20, "diastolicBp": -10, "pulse": 37, "spo2": -33, "respRate": -10 },
+    "aiEvaluationGuideline": "気道確保・気管挿管による人工呼吸管理が唯一の根本対応。酸素投与の増量のみで挿管の指示がなければ大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H080",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "動脈血pH", "value": 7.3, "unit": "" }, { "label": "pCO2", "value": 55, "unit": "mmHg" }],
+          "moderate": [{ "label": "動脈血pH", "value": 7.15, "unit": "" }, { "label": "pCO2", "value": 75, "unit": "mmHg" }],
+          "severe": [{ "label": "動脈血pH", "value": 6.95, "unit": "" }, { "label": "pCO2", "value": 100, "unit": "mmHg" }]
+        }
+      }
+    ],
+    "crisisRescue": { "postRescueSeverity": 45, "actions": [{ "label": "気管挿管・人工呼吸管理", "procedureKeywords": ["気管挿管"] }] }
+  },
+  {
+    "key": "crisis_status_epilepticus",
+    "name": "けいれん重積状態",
+    "description": "けいれん発作が5分以上持続、または意識回復のないまま再発を繰り返す状態。神経学的後遺症のリスクが高い。",
+    "category": "急変",
+    "sortOrder": 11,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "drugCategories": ["抗不安薬・睡眠薬/ベンゾジアゼピン系", "抗てんかん薬"] },
+    "vitalsPerSeverity": { "temperature": 2.3, "systolicBp": 35, "diastolicBp": 28, "pulse": 65, "spo2": -13, "respRate": -8 },
+    "aiEvaluationGuideline": "ベンゾジアゼピン系薬剤の静注が第一選択、無効なら抗てんかん薬の追加投与を行う。経過観察のみでは大幅減点。",
+    "labPatterns": [
+      { "labItemCode": "PHYS-EEG-001", "kind": "text", "tiers": { "mild": "散発性のてんかん性放電を認める。", "moderate": "頻回のてんかん性放電が持続。", "severe": "持続性のてんかん性放電（電気的重積状態）を認める。" } }
+    ],
+    "crisisRescue": { "postRescueSeverity": 40, "actions": [{ "label": "ベンゾジアゼピン系薬剤投与", "drugCategories": ["抗不安薬・睡眠薬/ベンゾジアゼピン系"] }, { "label": "抗てんかん薬投与", "drugCategories": ["抗てんかん薬"] }] }
+  },
+  {
+    "key": "crisis_brain_herniation",
+    "name": "頭蓋内圧亢進・脳ヘルニア",
+    "description": "頭蓋内圧の急激な上昇により脳組織が偏位する致死的病態。Cushing徴候（高血圧・徐脈・呼吸不規則化）を呈する。",
+    "category": "急変",
+    "sortOrder": 12,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "procedureKeywords": ["高張食塩水投与", "開頭術（血腫除去・減圧）"] },
+    "vitalsPerSeverity": { "temperature": 2.0, "systolicBp": 65, "diastolicBp": 35, "pulse": -30, "spo2": -10, "respRate": -8 },
+    "aiEvaluationGuideline": "高張食塩水等による浸透圧利尿と、原因病変に対する開頭減圧術の検討が必要。血圧を下げる降圧薬投与は脳灌流を悪化させるため禁忌。",
+    "labPatterns": [
+      { "labItemCode": "IMG-CT-001", "kind": "text", "tiers": { "mild": "軽度の脳浮腫を認める。", "moderate": "正中構造の偏位を伴う脳浮腫を認める。", "severe": "著明な正中構造偏位と脳ヘルニア所見（脳槽の消失等）を認める。" } }
+    ],
+    "crisisRescue": { "postRescueSeverity": 45, "actions": [{ "label": "浸透圧利尿・開頭減圧", "procedureKeywords": ["高張食塩水投与", "開頭術（血腫除去・減圧）"] }] }
+  },
+  {
+    "key": "crisis_lethal_hyperkalemia",
+    "name": "高カリウム血症による致死性不整脈",
+    "description": "高度な高K血症により心室細動・心停止に直結しうる不整脈が出現した状態。",
+    "category": "急変",
+    "sortOrder": 13,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "procedureKeywords": ["血液透析"], "drugCategories": ["糖尿病治療薬/インスリン製剤"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -40, "diastolicBp": -20, "pulse": -40, "spo2": -4, "respRate": 4 },
+    "aiEvaluationGuideline": "インスリン・グルコース療法による細胞内シフトは一時的な時間稼ぎに過ぎず、血液透析によるカリウム除去が根本治療。透析の指示がなければ再燃のリスクを説明できていないとして減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "K", "value": 6.5, "unit": "mEq/L" }],
+          "moderate": [{ "label": "K", "value": 7.5, "unit": "mEq/L" }],
+          "severe": [{ "label": "K", "value": 8.5, "unit": "mEq/L" }]
+        }
+      },
+      { "labItemCode": "PHYS-ECG-001", "kind": "text", "tiers": { "mild": "テント状T波を認める。", "moderate": "QRS幅の延長とテント状T波を認める。", "severe": "サインカーブ様波形を呈し、心室細動への移行が切迫している。" } }
+    ],
+    "crisisRescue": { "postRescueSeverity": 35, "actions": [{ "label": "緊急血液透析", "procedureKeywords": ["血液透析"] }] }
+  },
+  {
+    "key": "crisis_hypoglycemic_coma",
+    "name": "重症低血糖昏睡",
+    "description": "高度な低血糖により意識障害・けいれんをきたした状態。ブドウ糖投与への反応は通常速やかである。",
+    "category": "急変",
+    "sortOrder": 14,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "drugCategories": ["輸液/糖輸液"] },
+    "vitalsPerSeverity": { "temperature": -1.2, "systolicBp": -20, "diastolicBp": -8, "pulse": 37, "spo2": -4, "respRate": 2 },
+    "aiEvaluationGuideline": "高濃度ブドウ糖の静注が唯一の即効性治療。血糖測定の指示のみでブドウ糖投与がなければ大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3D010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Glu", "value": 50, "unit": "mg/dL" }],
+          "moderate": [{ "label": "Glu", "value": 35, "unit": "mg/dL" }],
+          "severe": [{ "label": "Glu", "value": 20, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisRescue": { "postRescueSeverity": 25, "actions": [{ "label": "高濃度ブドウ糖投与", "drugCategories": ["輸液/糖輸液"] }] }
+  },
+  {
+    "key": "crisis_hyperosmolar_coma",
+    "name": "高浸透圧性昏睡（DKA重症化・HHS）",
+    "description": "著明な高血糖と高浸透圧血症により意識障害をきたした状態。高度の脱水を伴う。",
+    "category": "急変",
+    "sortOrder": 15,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "drugCategories": ["輸液/電解質輸液(細胞外液補充液)", "糖尿病治療薬/インスリン製剤"] },
+    "vitalsPerSeverity": { "temperature": 0.7, "systolicBp": -35, "diastolicBp": -18, "pulse": 50, "spo2": -6, "respRate": 12 },
+    "aiEvaluationGuideline": "大量輸液による脱水補正を先行させ、その後インスリンの持続投与を行う。カリウム値を確認せずインスリンのみ先行投与するのは禁忌に近い危険な判断。",
+    "labPatterns": [
+      {
+        "labItemCode": "3D010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Glu", "value": 500, "unit": "mg/dL" }],
+          "moderate": [{ "label": "Glu", "value": 750, "unit": "mg/dL" }],
+          "severe": [{ "label": "Glu", "value": 1000, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisRescue": { "postRescueSeverity": 40, "actions": [{ "label": "輸液・インスリン持続投与", "drugCategories": ["輸液/電解質輸液(細胞外液補充液)", "糖尿病治療薬/インスリン製剤"] }] }
+  },
+  {
+    "key": "crisis_hepatic_coma",
+    "name": "肝性昏睡",
+    "description": "肝不全に伴う高アンモニア血症により昏睡に至った状態。",
+    "category": "急変",
+    "sortOrder": 16,
+    "isCrisisPathology": true,
+    "defaultParams": { "initialTempSlider": 50, "improvementSpeedSlider": 50, "initialSpo2Slider": 50, "severitySlider": 85 },
+    "treatment": { "drugCategories": ["下剤"] },
+    "vitalsPerSeverity": { "temperature": -0.5, "systolicBp": -30, "diastolicBp": -15, "pulse": 25, "spo2": -8, "respRate": 6 },
+    "aiEvaluationGuideline": "ラクツロース等の下剤投与による腸管内アンモニア産生・吸収の抑制が中心治療。誘因（消化管出血・感染・便秘等）の検索と是正も重要。",
+    "labPatterns": [
+      {
+        "labItemCode": "3C040",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "アンモニア", "value": 120, "unit": "μg/dL" }],
+          "moderate": [{ "label": "アンモニア", "value": 200, "unit": "μg/dL" }],
+          "severe": [{ "label": "アンモニア", "value": 300, "unit": "μg/dL" }]
+        }
+      }
+    ],
+    "crisisRescue": { "postRescueSeverity": 45, "actions": [{ "label": "ラクツロース等投与", "drugCategories": ["下剤"] }] }
+  }
+]

@@ -131,8 +131,20 @@ export function severityDecayAt(startSeverity: number, improvementSpeedSlider: n
 }
 
 type TreatmentOrder = Pick<Order, "orderedAt" | "orderType" | "label" | "detail"> & {
-  drug: { categoryLinks: { category: { majorCategory: string } }[] } | null;
+  drug: { categoryLinks: { category: { majorCategory: string; subCategory: string | null } }[] } | null;
 };
+
+// drugCategories/procedureKeywordsの各要素は"大分類"（例:"循環作動薬"）または"大分類/系統"
+// （例:"循環作動薬/ノルアドレナリン"）の2形式を許す。系統まで指定した場合は、その系統(subCategory)
+// まで一致するカテゴリリンクを持つ薬剤だけを対象にする（例: 同じ「循環作動薬」でもドパミンは対象外にできる）。
+// スラッシュ無しの指定は従来どおり大分類の一致のみを見る（subCategoryは問わない）。
+function matchesDrugCategorySpec(links: { majorCategory: string; subCategory: string | null }[], spec: string): boolean {
+  const slashIndex = spec.indexOf("/");
+  if (slashIndex === -1) return links.some((l) => l.majorCategory === spec);
+  const major = spec.slice(0, slashIndex);
+  const sub = spec.slice(slashIndex + 1);
+  return links.some((l) => l.majorCategory === major && l.subCategory === sub);
+}
 
 // 治療開始トリガーに実際に一致したオーダー本体と、一致理由（薬剤大分類 or 処置キーワード、どの値がヒットしたか）。
 // 教員向け内部判定表示（サマリタブ）用。findTreatmentStartAtはこの関数の時刻だけを取り出す薄いラッパー。
@@ -152,8 +164,8 @@ export function findTreatmentStartOrder(orders: TreatmentOrder[], trigger: Treat
   for (const order of orders) {
     let matched: Pick<MatchedTreatmentOrder, "matchedBy" | "matchedValue"> | null = null;
     if (order.orderType === "MEDICATION" || order.orderType === "INJECTION") {
-      const majors = order.drug?.categoryLinks.map((l) => l.category.majorCategory) ?? [];
-      const hit = trigger.drugCategories?.find((c) => majors.includes(c));
+      const links = order.drug?.categoryLinks.map((l) => l.category) ?? [];
+      const hit = trigger.drugCategories?.find((c) => matchesDrugCategorySpec(links, c));
       if (hit) matched = { matchedBy: "drugCategory", matchedValue: hit };
     } else if (order.orderType === "PROCEDURE") {
       const hit = trigger.procedureKeywords?.find((kw) => order.label.includes(kw));

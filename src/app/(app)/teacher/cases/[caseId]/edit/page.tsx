@@ -5,6 +5,7 @@ import { formatJaDateTime } from "@/lib/format";
 import { parsePhysiologyParams } from "@/lib/physiology-engine";
 import { CaseForm, type CaseFormInitial } from "../../CaseForm";
 import { updateCase } from "../../actions";
+import { sortTemplatesByCategory } from "@/lib/pathology-categories";
 
 export default async function EditCasePage({ params }: { params: Promise<{ caseId: string }> }) {
   const { caseId } = await params;
@@ -21,16 +22,17 @@ export default async function EditCasePage({ params }: { params: Promise<{ caseI
         diseaseLinks: { orderBy: { sortOrder: "asc" } },
       },
     }),
-    db.diseaseTemplate.findMany({ orderBy: { createdAt: "asc" } }),
+    db.diseaseTemplate.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }),
     db.pathogenMaster.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
   ]);
   if (!caseRecord) notFound();
   if (user.role === "TEACHER" && caseRecord.createdByUserId !== user.id) redirect("/teacher/cases");
 
-  const templateProps = templates.map((t) => ({
+  const templateProps = sortTemplatesByCategory(templates).map((t) => ({
     id: t.id,
     name: t.name,
     description: t.description,
+    category: t.category,
     defaultParams: parsePhysiologyParams(t.defaultParams),
     isInfectious: t.isInfectious,
   }));

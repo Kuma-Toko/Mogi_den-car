@@ -1,52 +1,41 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@libsql/client";
+import type { PathologyTemplateCatalog } from "./pathology-catalog/types";
 
-// prisma/data/engine-config/*.json（export-engine-config.tsがdev.dbから書き出し、リポジトリに
-// コミットしたもの）を、DATABASE_URLが指すDBへ冪等に適用する。ローカル・Turso本番のどちらに対しても
-// 同じスクリプトを使うことで、「ローカルにしか正しい設定が無い」状態を構造的に無くすのが狙い
-// （sync-*-to-turso.ts 3本が抱えていた実際の障害の根本原因）。
+// prisma/data/pathology-catalog/*.json（病態モデルの正本）と prisma/data/engine-config/drug-categories.json
+// （薬効カテゴリ辞書）を、DATABASE_URLが指すDBへ冪等に適用する。ローカル・Turso本番のどちらに対しても
+// 同じスクリプトを使うことで、「ローカルにしか正しい設定が無い」状態を構造的に無くすのが狙い。
 // 自然キーで引き直す（cuidはDB毎に異なるため）: DiseaseTemplate.key / DrugMaster.hotCode /
 // DrugCategoryMaster(majorCategory, subCategory)
+//
+// pathology-catalogは disease-templates.json/crisis-scenarios.json(旧)と異なり、DiseaseTemplate自体を
+// 新規作成できる（旧スクリプトは既存レコードのUPDATEのみで、テンプレートの追加はseed.ts/管理画面が担っていた）。
+// 実行順序: 1) 全テンプレートをupsert（name/description/category/engine設定/labPatterns/crisisRescue）
+//           2) 全テンプレートが揃ってから crisisTriggers を解決（targetKeyが他ファイルのテンプレートを
+//              指してもよいように、必ずパス1の後で行う）
+//           3) drug-categories.json（従来どおり）
+//
+// カタログに存在しないkeyのDiseaseTemplateは、既定では警告のみ（削除しない）。--prune指定時のみ、
+// 使用中でなければ削除する（admin/templates/actions.tsのdeleteTemplateと同じ安全確認）。
 
 const rawUrl = process.env.DATABASE_URL;
 if (!rawUrl) throw new Error("DATABASE_URL is not set.");
 const destUrl: string = rawUrl;
+const shouldPrune = process.argv.includes("--prune");
 
-const dataDir = join(__dirname, "data", "engine-config");
+const engineConfigDir = join(__dirname, "data", "engine-config");
+const catalogDir = join(__dirname, "data", "pathology-catalog");
 
-function readJson<T>(name: string): T {
-  return JSON.parse(readFileSync(join(dataDir, name), "utf-8")) as T;
+function readJson<T>(dir: string, name: string): T {
+  return JSON.parse(readFileSync(join(dir, name), "utf-8")) as T;
 }
 
-type DiseaseTemplateConfig = {
-  key: string;
-  treatmentConfig: string | null;
-  vitalsConfig: string | null;
-  aiEvaluationGuideline: string | null;
-  labPatterns: {
-    labItemCode: string;
-    kind: string;
-    mildText: string | null;
-    moderateText: string | null;
-    severeText: string | null;
-    sortOrder: number;
-    values: { tier: string; label: string; value: number; unit: string; note: string | null; sortOrder: number }[];
-  }[];
-  crisisRescue: {
-    postRescueSeverity: number;
-    actions: { label: string; drugCategories: string; procedureKeywords: string; sortOrder: number }[];
-  } | null;
-};
-
-type CrisisScenarioConfig = {
-  watcherKey: string;
-  targetKey: string;
-  sustainMinutes: number;
-  sortOrder: number;
-  triggers: { type: string; code: string | null; label: string | null; field: string | null; op: string; value: number; sortOrder: number }[];
-};
+function loadCatalog(): PathologyTemplateCatalog[] {
+  const files = readdirSync(catalogDir).filter((f) => f.endsWith(".json"));
+  return files.flatMap((file) => readJson<PathologyTemplateCatalog[]>(catalogDir, file));
+}
 
 type DrugCategoriesConfig = {
   categories: { majorCategory: string; subCategory: string | null; sortOrder: number }[];
@@ -55,34 +44,66 @@ type DrugCategoriesConfig = {
 
 async function main() {
   const dest = createClient({ url: destUrl });
+  const templates = loadCatalog();
+  console.log(`pathology-catalog: ${templates.length}件のテンプレートを適用します...`);
 
-  // ── disease-templates.json ──
-  const templates = readJson<DiseaseTemplateConfig[]>("disease-templates.json");
-  console.log(`disease-templates.json: ${templates.length}件を適用します...`);
-  let templatesUpdated = 0;
-  let templatesNotFound = 0;
+  // ── パス1: テンプレート本体・labPatterns・crisisRescue ──
+  const templateIdByKey = new Map<string, string>();
+  let created = 0;
+  let updated = 0;
 
   for (const t of templates) {
-    const destTemplate = await dest.execute({ sql: `SELECT id FROM DiseaseTemplate WHERE key = ?`, args: [t.key] });
-    if (destTemplate.rows.length === 0) {
-      templatesNotFound++;
-      console.warn(`  警告: DiseaseTemplate(key=${t.key})が見つかりません。スキップします。`);
-      continue;
+    const existing = await dest.execute({ sql: `SELECT id FROM DiseaseTemplate WHERE key = ?`, args: [t.key] });
+    const treatmentConfig = JSON.stringify(t.treatment);
+    const vitalsConfig = JSON.stringify({ perSeverity: t.vitalsPerSeverity });
+    const defaultParams = JSON.stringify(t.defaultParams);
+    const isInfectious = t.isInfectious ?? false;
+    const isCrisisPathology = t.isCrisisPathology ?? false;
+
+    let templateId: string;
+    if (existing.rows.length > 0) {
+      templateId = existing.rows[0].id as string;
+      await dest.execute({
+        sql: `UPDATE DiseaseTemplate SET name=?, description=?, category=?, sortOrder=?, isCommon=1,
+                isInfectious=?, isCrisisPathology=?, defaultParams=?, treatmentConfig=?, vitalsConfig=?, aiEvaluationGuideline=?
+              WHERE id=?`,
+        args: [t.name, t.description, t.category, t.sortOrder, isInfectious ? 1 : 0, isCrisisPathology ? 1 : 0, defaultParams, treatmentConfig, vitalsConfig, t.aiEvaluationGuideline, templateId],
+      });
+      updated++;
+    } else {
+      templateId = randomUUID();
+      await dest.execute({
+        sql: `INSERT INTO DiseaseTemplate (id, key, name, description, category, sortOrder, isCommon, isInfectious, isCrisisPathology, defaultParams, treatmentConfig, vitalsConfig, aiEvaluationGuideline, createdAt)
+              VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          templateId, t.key, t.name, t.description, t.category, t.sortOrder,
+          isInfectious ? 1 : 0, isCrisisPathology ? 1 : 0, defaultParams, treatmentConfig, vitalsConfig, t.aiEvaluationGuideline,
+          new Date().toISOString(),
+        ],
+      });
+      created++;
     }
-    const templateId = destTemplate.rows[0].id as string;
+    templateIdByKey.set(t.key, templateId);
 
-    await dest.execute({
-      sql: `UPDATE DiseaseTemplate SET treatmentConfig = ?, vitalsConfig = ?, aiEvaluationGuideline = ? WHERE id = ?`,
-      args: [t.treatmentConfig, t.vitalsConfig, t.aiEvaluationGuideline, templateId],
-    });
-    templatesUpdated++;
+    // labPatterns: カタログに無いlabItemCodeは削除する（このテンプレートの全パターンをカタログで置き換える）
+    const existingPatterns = await dest.execute({ sql: `SELECT id, labItemCode FROM TemplateLabPattern WHERE templateId = ?`, args: [templateId] });
+    const catalogCodes = new Set(t.labPatterns.map((p) => p.labItemCode));
+    for (const row of existingPatterns.rows) {
+      if (!catalogCodes.has(row.labItemCode as string)) {
+        await dest.execute({ sql: `DELETE FROM TemplateLabPattern WHERE id = ?`, args: [row.id as string] });
+      }
+    }
 
-    for (const p of t.labPatterns) {
-      const existing = await dest.execute({
+    for (let i = 0; i < t.labPatterns.length; i++) {
+      const p = t.labPatterns[i];
+      const existingPattern = await dest.execute({
         sql: `SELECT id FROM TemplateLabPattern WHERE templateId = ? AND labItemCode = ?`,
         args: [templateId, p.labItemCode],
       });
-      const patternId = existing.rows.length > 0 ? (existing.rows[0].id as string) : randomUUID();
+      const patternId = existingPattern.rows.length > 0 ? (existingPattern.rows[0].id as string) : randomUUID();
+      const mildText = p.kind === "text" ? p.tiers.mild : null;
+      const moderateText = p.kind === "text" ? p.tiers.moderate : null;
+      const severeText = p.kind === "text" ? p.tiers.severe : null;
 
       await dest.execute({
         sql: `INSERT INTO TemplateLabPattern (id, templateId, labItemCode, kind, mildText, moderateText, severeText, sortOrder)
@@ -90,81 +111,136 @@ async function main() {
               ON CONFLICT(templateId, labItemCode) DO UPDATE SET
                 kind=excluded.kind, mildText=excluded.mildText, moderateText=excluded.moderateText,
                 severeText=excluded.severeText, sortOrder=excluded.sortOrder`,
-        args: [patternId, templateId, p.labItemCode, p.kind, p.mildText, p.moderateText, p.severeText, p.sortOrder],
+        args: [patternId, templateId, p.labItemCode, p.kind, mildText, moderateText, severeText, i],
       });
 
       await dest.execute({ sql: `DELETE FROM TemplateLabPatternValue WHERE patternId = ?`, args: [patternId] });
-      for (const v of p.values) {
-        await dest.execute({
-          sql: `INSERT INTO TemplateLabPatternValue (id, patternId, tier, label, value, unit, note, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          args: [randomUUID(), patternId, v.tier, v.label, v.value, v.unit, v.note, v.sortOrder],
-        });
+      if (p.kind === "values") {
+        let sortOrder = 0;
+        for (const tier of ["mild", "moderate", "severe"] as const) {
+          for (const v of p.tiers[tier]) {
+            await dest.execute({
+              sql: `INSERT INTO TemplateLabPatternValue (id, patternId, tier, label, value, unit, note, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              args: [randomUUID(), patternId, tier, v.label, v.value, v.unit, v.note ?? null, sortOrder++],
+            });
+          }
+        }
       }
     }
 
+    // crisisRescue（危機病態自身の救命設定。isCrisisPathology=trueのテンプレートのみ持つ）
     if (t.crisisRescue) {
-      const existing = await dest.execute({ sql: `SELECT id FROM CrisisRescueConfig WHERE templateId = ?`, args: [templateId] });
-      const rescueConfigId = existing.rows.length > 0 ? (existing.rows[0].id as string) : randomUUID();
-
+      const existingRescue = await dest.execute({ sql: `SELECT id FROM CrisisRescueConfig WHERE templateId = ?`, args: [templateId] });
+      const rescueConfigId = existingRescue.rows.length > 0 ? (existingRescue.rows[0].id as string) : randomUUID();
       await dest.execute({
         sql: `INSERT INTO CrisisRescueConfig (id, templateId, postRescueSeverity)
               VALUES (?, ?, ?)
               ON CONFLICT(templateId) DO UPDATE SET postRescueSeverity=excluded.postRescueSeverity`,
         args: [rescueConfigId, templateId, t.crisisRescue.postRescueSeverity],
       });
-
       await dest.execute({ sql: `DELETE FROM CrisisRescueActionRow WHERE rescueConfigId = ?`, args: [rescueConfigId] });
-      for (const a of t.crisisRescue.actions) {
+      for (let i = 0; i < t.crisisRescue.actions.length; i++) {
+        const a = t.crisisRescue.actions[i];
         await dest.execute({
           sql: `INSERT INTO CrisisRescueActionRow (id, rescueConfigId, label, drugCategories, procedureKeywords, sortOrder) VALUES (?, ?, ?, ?, ?, ?)`,
-          args: [randomUUID(), rescueConfigId, a.label, a.drugCategories, a.procedureKeywords, a.sortOrder],
+          args: [randomUUID(), rescueConfigId, a.label, JSON.stringify(a.drugCategories ?? []), JSON.stringify(a.procedureKeywords ?? []), i],
         });
       }
-    }
-  }
-  console.log(`DiseaseTemplate 更新: ${templatesUpdated}件 / 見つからずスキップ: ${templatesNotFound}件`);
-
-  // ── crisis-scenarios.json ──
-  const scenarios = readJson<CrisisScenarioConfig[]>("crisis-scenarios.json");
-  console.log(`\ncrisis-scenarios.json: ${scenarios.length}件を適用します...`);
-
-  for (const s of scenarios) {
-    const destWatcher = await dest.execute({ sql: `SELECT id FROM DiseaseTemplate WHERE key = ?`, args: [s.watcherKey] });
-    const destTarget = await dest.execute({ sql: `SELECT id FROM DiseaseTemplate WHERE key = ?`, args: [s.targetKey] });
-    if (destWatcher.rows.length === 0 || destTarget.rows.length === 0) {
-      console.warn(`  警告: DiseaseTemplate(${s.watcherKey} または ${s.targetKey})が見つかりません。スキップします。`);
-      continue;
-    }
-    const watcherId = destWatcher.rows[0].id as string;
-    const targetId = destTarget.rows[0].id as string;
-
-    const existing = await dest.execute({
-      sql: `SELECT id FROM TemplateCrisisScenario WHERE templateId = ? AND targetTemplateId = ? AND sortOrder = ?`,
-      args: [watcherId, targetId, s.sortOrder],
-    });
-    const scenarioId = existing.rows.length > 0 ? (existing.rows[0].id as string) : randomUUID();
-
-    if (existing.rows.length > 0) {
-      await dest.execute({ sql: `UPDATE TemplateCrisisScenario SET sustainMinutes = ? WHERE id = ?`, args: [s.sustainMinutes, scenarioId] });
     } else {
-      await dest.execute({
-        sql: `INSERT INTO TemplateCrisisScenario (id, templateId, targetTemplateId, sustainMinutes, sortOrder) VALUES (?, ?, ?, ?, ?)`,
-        args: [scenarioId, watcherId, targetId, s.sustainMinutes, s.sortOrder],
-      });
+      // カタログ側で救命設定が無くなった場合はDBからも削除する（CrisisRescueActionRowはonDelete: Cascade）
+      await dest.execute({ sql: `DELETE FROM CrisisRescueConfig WHERE templateId = ?`, args: [templateId] });
+    }
+  }
+  console.log(`DiseaseTemplate: 新規作成 ${created}件 / 更新 ${updated}件`);
+
+  // ── パス2: crisisTriggers（全テンプレートのIDが出揃った後でtargetKeyを解決する） ──
+  let scenariosApplied = 0;
+  for (const t of templates) {
+    const watcherId = templateIdByKey.get(t.key)!;
+    const catalogScenarios = t.crisisTriggers ?? [];
+
+    // 既存のTemplateCrisisScenarioのうち、カタログに存在しない分岐(targetKey)は削除する
+    const existingScenarios = await dest.execute({
+      sql: `SELECT tcs.id, dt.key as targetKey FROM TemplateCrisisScenario tcs JOIN DiseaseTemplate dt ON dt.id = tcs.targetTemplateId WHERE tcs.templateId = ?`,
+      args: [watcherId],
+    });
+    const catalogTargetKeys = new Set(catalogScenarios.map((s) => s.targetKey));
+    for (const row of existingScenarios.rows) {
+      if (!catalogTargetKeys.has(row.targetKey as string)) {
+        await dest.execute({ sql: `DELETE FROM TemplateCrisisScenario WHERE id = ?`, args: [row.id as string] });
+      }
     }
 
-    await dest.execute({ sql: `DELETE FROM CrisisTriggerRow WHERE scenarioId = ?`, args: [scenarioId] });
-    for (const t of s.triggers) {
-      await dest.execute({
-        sql: `INSERT INTO CrisisTriggerRow (id, scenarioId, type, code, label, field, op, value, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [randomUUID(), scenarioId, t.type, t.code, t.label, t.field, t.op, t.value, t.sortOrder],
+    for (let i = 0; i < catalogScenarios.length; i++) {
+      const s = catalogScenarios[i];
+      const targetId = templateIdByKey.get(s.targetKey);
+      if (!targetId) {
+        console.warn(`  警告: ${t.key} のcrisisTriggers.targetKey="${s.targetKey}" が見つかりません。スキップします。`);
+        continue;
+      }
+      const existing = await dest.execute({
+        sql: `SELECT id FROM TemplateCrisisScenario WHERE templateId = ? AND targetTemplateId = ?`,
+        args: [watcherId, targetId],
       });
+      const scenarioId = existing.rows.length > 0 ? (existing.rows[0].id as string) : randomUUID();
+      if (existing.rows.length > 0) {
+        await dest.execute({ sql: `UPDATE TemplateCrisisScenario SET sustainMinutes = ?, sortOrder = ? WHERE id = ?`, args: [s.sustainMinutes, i, scenarioId] });
+      } else {
+        await dest.execute({
+          sql: `INSERT INTO TemplateCrisisScenario (id, templateId, targetTemplateId, sustainMinutes, sortOrder) VALUES (?, ?, ?, ?, ?)`,
+          args: [scenarioId, watcherId, targetId, s.sustainMinutes, i],
+        });
+      }
+      await dest.execute({ sql: `DELETE FROM CrisisTriggerRow WHERE scenarioId = ?`, args: [scenarioId] });
+      for (let j = 0; j < s.triggers.length; j++) {
+        const trig = s.triggers[j];
+        await dest.execute({
+          sql: `INSERT INTO CrisisTriggerRow (id, scenarioId, type, code, label, field, op, value, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            randomUUID(), scenarioId, trig.type,
+            trig.type === "lab" ? trig.code : null,
+            trig.type === "lab" ? (trig.label ?? null) : null,
+            trig.type === "vital" ? trig.field : null,
+            trig.op, trig.value, j,
+          ],
+        });
+      }
+      scenariosApplied++;
     }
-    console.log(`  ${s.watcherKey} -> ${s.targetKey}: sustainMinutes=${s.sustainMinutes} トリガー${s.triggers.length}件`);
+  }
+  console.log(`TemplateCrisisScenario: ${scenariosApplied}件を適用しました。`);
+
+  // ── カタログに存在しないDiseaseTemplateの扱い ──
+  const catalogKeys = new Set(templates.map((t) => t.key));
+  const destTemplates = await dest.execute(`SELECT id, key FROM DiseaseTemplate`);
+  const orphanKeys = destTemplates.rows.filter((r) => !catalogKeys.has(r.key as string));
+  if (orphanKeys.length > 0) {
+    if (shouldPrune) {
+      let pruned = 0;
+      let skipped = 0;
+      for (const row of orphanKeys) {
+        const id = row.id as string;
+        const [usageCount, crisisTargetUsage] = await Promise.all([
+          dest.execute({ sql: `SELECT COUNT(*) as n FROM CaseDiseaseLink WHERE templateId = ?`, args: [id] }),
+          dest.execute({ sql: `SELECT COUNT(*) as n FROM TemplateCrisisScenario WHERE targetTemplateId = ?`, args: [id] }),
+        ]);
+        if (Number(usageCount.rows[0].n) > 0 || Number(crisisTargetUsage.rows[0].n) > 0) {
+          console.warn(`  警告: DiseaseTemplate(key=${row.key})はカタログに存在しませんが使用中のため削除しません。`);
+          skipped++;
+          continue;
+        }
+        await dest.execute({ sql: `DELETE FROM DiseaseTemplate WHERE id = ?`, args: [id] });
+        pruned++;
+      }
+      console.log(`--pruneによりDiseaseTemplateを削除: ${pruned}件 / 使用中でスキップ: ${skipped}件`);
+    } else {
+      console.warn(`\n警告: カタログに存在しないDiseaseTemplateが${orphanKeys.length}件あります（--pruneで削除可）:`);
+      for (const row of orphanKeys) console.warn(`  - ${row.key}`);
+    }
   }
 
-  // ── drug-categories.json ──
-  const drugCategories = readJson<DrugCategoriesConfig>("drug-categories.json");
+  // ── drug-categories.json（従来どおり） ──
+  const drugCategories = readJson<DrugCategoriesConfig>(engineConfigDir, "drug-categories.json");
   console.log(`\ndrug-categories.json: カテゴリ${drugCategories.categories.length}件、リンク${drugCategories.links.length}件を適用します...`);
 
   for (const c of drugCategories.categories) {
@@ -186,7 +262,7 @@ async function main() {
 
   const destCategories = await dest.execute(`SELECT id, majorCategory, subCategory FROM DrugCategoryMaster`);
   const categoryIdByKey = new Map<string, string>();
-  for (const c of destCategories.rows) categoryIdByKey.set(`${c.majorCategory as string} ${(c.subCategory as string | null) ?? ""}`, c.id as string);
+  for (const c of destCategories.rows) categoryIdByKey.set(`${c.majorCategory as string} ${(c.subCategory as string | null) ?? ""}`, c.id as string);
 
   const destDrugs = await dest.execute(`SELECT id, hotCode FROM DrugMaster`);
   const drugIdByHotCode = new Map<string, string>();
@@ -201,7 +277,7 @@ async function main() {
       missingDrug++;
       continue;
     }
-    const categoryId = categoryIdByKey.get(`${l.majorCategory} ${l.subCategory ?? ""}`);
+    const categoryId = categoryIdByKey.get(`${l.majorCategory} ${l.subCategory ?? ""}`);
     if (!categoryId) {
       missingCategory++;
       continue;
