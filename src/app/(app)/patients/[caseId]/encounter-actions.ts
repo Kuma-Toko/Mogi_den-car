@@ -6,7 +6,7 @@ import { requireCaseAccess } from "@/lib/case-access";
 import { generatePatientReply } from "@/lib/gemini";
 import { logAudit } from "@/lib/audit";
 import { loadEncounterLog, type EncounterLogItem } from "@/lib/encounter-log";
-import { findCasePathogenId, loadPathogenProfile } from "@/lib/engine";
+import { findCaseInfectiousDiseaseLinks, loadPathogenProfile } from "@/lib/engine";
 
 export type EncounterMessageView = EncounterLogItem;
 
@@ -32,8 +32,9 @@ export async function sendEncounterMessage(caseId: string, content: string): Pro
     db.caseDiseaseLink.findMany({ where: { caseId }, select: { pathogenId: true } }),
   ]);
 
-  const casePathogenId = findCasePathogenId(diseaseLinks);
-  const pathogen = casePathogenId ? await loadPathogenProfile(casePathogenId) : null;
+  const infectiousLinks = findCaseInfectiousDiseaseLinks(diseaseLinks);
+  const pathogens = await Promise.all(infectiousLinks.map((l) => loadPathogenProfile(l.pathogenId)));
+  const pathogenNames = pathogens.filter((p): p is NonNullable<typeof p> => !!p).map((p) => p.name);
 
   let reply: string;
   try {
@@ -41,7 +42,7 @@ export async function sendEncounterMessage(caseId: string, content: string): Pro
       caseRecord,
       problems,
       latestVital,
-      pathogenName: pathogen?.name ?? null,
+      pathogenName: pathogenNames.length > 0 ? pathogenNames.join("、") : null,
       history: history.map((m) => ({ role: m.role, content: m.content })),
     });
   } catch (err) {

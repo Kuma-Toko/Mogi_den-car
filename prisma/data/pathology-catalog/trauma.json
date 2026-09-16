@@ -1,0 +1,73 @@
+[
+  {
+    "key": "trauma_splenic_injury",
+    "name": "腹部外傷（脾損傷）",
+    "description": "鈍的腹部外傷による脾臓の損傷。左季肋部痛と出血性ショックへの進行に注意を要する。",
+    "category": "外傷・外科",
+    "sortOrder": 1,
+    "defaultParams": { "initialTempSlider": 30, "improvementSpeedSlider": 45, "initialSpo2Slider": 80, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["輸液"], "procedureKeywords": ["試験開腹止血術"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -45, "diastolicBp": -20, "pulse": 30, "spo2": -5, "respRate": 8 },
+    "aiEvaluationGuideline": "血行動態が安定していれば輸液のみでの保存的治療・経過観察も許容されるが、不安定な場合は緊急開腹による止血術（脾摘出術等）が必要。血行動態不安定にもかかわらず輸液のみの場合は減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "2A030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Hb", "value": 11, "unit": "g/dL" }],
+          "moderate": [{ "label": "Hb", "value": 8, "unit": "g/dL" }],
+          "severe": [{ "label": "Hb", "value": 5, "unit": "g/dL" }]
+        }
+      },
+      { "labItemCode": "IMG-CT-014", "kind": "text", "tiers": { "mild": "脾臓に被膜下血腫を認める（グレードI程度）。", "moderate": "脾実質の裂創と腹腔内出血を認める（グレードIII程度）。", "severe": "脾臓の粉砕像と多量の腹腔内出血を認める（グレードV程度）。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hemorrhagic_shock", "sustainMinutes": 10, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "trauma_hemopneumothorax",
+    "name": "血気胸",
+    "description": "胸部外傷による胸腔内への血液・空気の貯留。緊張性気胸への進展と循環動態悪化に注意を要する。",
+    "category": "外傷・外科",
+    "sortOrder": 2,
+    "defaultParams": { "initialTempSlider": 25, "improvementSpeedSlider": 55, "initialSpo2Slider": 55, "severitySlider": 55 },
+    "treatment": { "procedureKeywords": ["胸腔ドレナージ"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -40, "diastolicBp": -18, "pulse": 30, "spo2": -25, "respRate": 16 },
+    "aiEvaluationGuideline": "胸腔ドレナージによる排液・脱気が標準治療。排液量が持続的に多い場合は開胸止血術の適応となるため、その判断への言及も評価する。胸腔穿刺・ドレナージの指示がなければ大幅減点。",
+    "labPatterns": [
+      { "labItemCode": "IMG-XP-006", "kind": "text", "tiers": { "mild": "軽度の血胸と気胸を認める。", "moderate": "中等量の血胸と肺虚脱を認める。", "severe": "大量血胸と高度の肺虚脱、縦隔偏位を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_tension_pneumothorax", "sustainMinutes": 10, "triggers": [{ "type": "vital", "field": "spo2", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "trauma_extensive_burns",
+    "name": "広範囲熱傷",
+    "description": "体表面積の広範囲に及ぶ熱傷。血管透過性亢進による第三腔への大量体液喪失（熱傷ショック）が生じる。",
+    "category": "外傷・外科",
+    "sortOrder": 3,
+    "defaultParams": { "initialTempSlider": 25, "improvementSpeedSlider": 35, "initialSpo2Slider": 75, "severitySlider": 60 },
+    "treatment": { "drugCategories": ["輸液"] },
+    "vitalsPerSeverity": { "temperature": -0.5, "systolicBp": -35, "diastolicBp": -18, "pulse": 28, "spo2": -12, "respRate": 10 },
+    "aiEvaluationGuideline": "受傷面積に応じた計算式（Parkland公式等）に基づく大量輸液が最重要。輸液量が明らかに不十分な場合は熱傷ショックへの進行リスクとして減点。気道熱傷合併が疑われる場合の早期気管挿管への言及も評価する。",
+    "labPatterns": [
+      {
+        "labItemCode": "3A015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Alb", "value": 3.5, "unit": "g/dL" }],
+          "moderate": [{ "label": "Alb", "value": 2.5, "unit": "g/dL" }],
+          "severe": [{ "label": "Alb", "value": 1.5, "unit": "g/dL" }]
+        }
+      },
+      {
+        "labItemCode": "3C015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Cr", "value": 1, "unit": "mg/dL" }],
+          "moderate": [{ "label": "Cr", "value": 2, "unit": "mg/dL" }],
+          "severe": [{ "label": "Cr", "value": 4, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hypovolemic_shock", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 85 }] }]
+  }
+]

@@ -1,3 +1,4 @@
+import React from "react";
 import type { Prisma, PhysiologyBaselineBand } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -11,6 +12,7 @@ import { parsePhysiologyParams } from "@/lib/physiology-engine";
 import { safeJsonParse } from "@/lib/engine";
 import { treatmentTriggerSchema, vitalCoefficientsSchema } from "@/lib/schemas";
 import { VITAL_FIELDS } from "@/lib/vital-fields";
+import { CATEGORY_ORDER, sortTemplatesByCategory } from "@/lib/pathology-categories";
 import {
   addCrisisRescueAction,
   addCrisisTrigger,
@@ -82,7 +84,8 @@ export default async function AdminTemplatesPage({
   await requireAdmin();
   const { error } = await searchParams;
 
-  const templates = await db.diseaseTemplate.findMany({ orderBy: { createdAt: "asc" }, include: TEMPLATE_INCLUDE });
+  const templatesUnsorted = await db.diseaseTemplate.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], include: TEMPLATE_INCLUDE });
+  const templates = sortTemplatesByCategory(templatesUnsorted);
   const basePhysiology = await db.basePhysiologyModel.findUnique({ where: { id: "default" } });
   const baselineBands = await db.physiologyBaselineBand.findMany({ orderBy: { sortOrder: "asc" } });
 
@@ -160,6 +163,20 @@ export default async function AdminTemplatesPage({
                     <input id="new-description" name="description" placeholder="例: 呼吸困難・SpO2低下の経時変化" />
                   </div>
                   <div className="field">
+                    <label htmlFor="new-category">臓器系分類</label>
+                    <select id="new-category" name="category" defaultValue={CATEGORY_ORDER[0]}>
+                      {CATEGORY_ORDER.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="new-sortOrder">分類内の表示順（小さいほど上）</label>
+                    <input id="new-sortOrder" name="sortOrder" type="number" defaultValue={0} />
+                  </div>
+                  <div className="field">
                     <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, padding: "8px 0" }}>
                       <input type="checkbox" name="isCommon" defaultChecked />
                       共通テンプレートとして全教員に公開する
@@ -207,7 +224,9 @@ export default async function AdminTemplatesPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {templates.map((t) => {
+                  {templates.map((t, i) => {
+                    const prevCategory = i > 0 ? templates[i - 1].category : null;
+                    const showCategoryHeader = t.category !== prevCategory;
                     // engine.tsのloadTemplateConfigと同じ検証済みパーサーを使う。手入力・Turso手動同期を経由するJSON
                     // なので、壊れた値が1件でもあると未ガードのJSON.parseはこの管理画面全体をクラッシュさせてしまう。
                     const vitalsParsed = t.vitalsConfig ? safeJsonParse(t.vitalsConfig, vitalCoefficientsSchema) : null;
@@ -218,7 +237,15 @@ export default async function AdminTemplatesPage({
                     const params = parsePhysiologyParams(t.defaultParams);
 
                     return (
-                      <tr className="row" key={t.id}>
+                      <React.Fragment key={t.id}>
+                        {showCategoryHeader && (
+                          <tr>
+                            <td colSpan={5} style={{ background: "var(--line-soft)", fontWeight: 700, fontSize: 12 }}>
+                              {t.category ?? "未分類"}
+                            </td>
+                          </tr>
+                        )}
+                        <tr className="row">
                         <td>{t.name}</td>
                         <td style={{ color: "var(--ink-soft)", fontSize: 11 }}>{t.key}</td>
                         <td>
@@ -261,6 +288,20 @@ export default async function AdminTemplatesPage({
                                 <div className="field" style={{ gridColumn: "1 / -1" }}>
                                   <label htmlFor={`description-${t.id}`}>説明</label>
                                   <input id={`description-${t.id}`} name="description" defaultValue={t.description ?? ""} />
+                                </div>
+                                <div className="field">
+                                  <label htmlFor={`category-${t.id}`}>臓器系分類</label>
+                                  <select id={`category-${t.id}`} name="category" defaultValue={t.category ?? CATEGORY_ORDER[0]}>
+                                    {CATEGORY_ORDER.map((c) => (
+                                      <option key={c} value={c}>
+                                        {c}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="field">
+                                  <label htmlFor={`sortOrder-${t.id}`}>分類内の表示順（小さいほど上）</label>
+                                  <input id={`sortOrder-${t.id}`} name="sortOrder" type="number" defaultValue={t.sortOrder} />
                                 </div>
                               </div>
 
@@ -324,7 +365,8 @@ export default async function AdminTemplatesPage({
                             <CrisisSection template={t} allTemplates={templates} />
                           </Modal>
                         </td>
-                      </tr>
+                        </tr>
+                      </React.Fragment>
                     );
                   })}
                 </tbody>

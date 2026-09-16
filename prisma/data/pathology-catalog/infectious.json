@@ -1,0 +1,117 @@
+[
+  {
+    "key": "inf_sepsis_unknown_source",
+    "name": "敗血症（感染巣不明）",
+    "description": "感染に対する制御不能な生体反応により臓器障害を呈する状態。感染巣の探索と経験的抗菌薬の早期投与が重要。",
+    "category": "感染症・全身",
+    "sortOrder": 1,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 70, "improvementSpeedSlider": 30, "initialSpo2Slider": 60, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["抗菌薬"] },
+    "vitalsPerSeverity": { "temperature": 3.0, "systolicBp": -25, "diastolicBp": -15, "pulse": 30, "spo2": -8, "respRate": 12 },
+    "aiEvaluationGuideline": "血液培養採取後1時間以内の広域経験的抗菌薬投与（Surviving Sepsis Campaign）と細胞外液の急速輸液が標準治療。抗菌薬投与の遅れ、または輸液のみで抗菌薬が投与されていない場合は大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H080",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "乳酸", "value": 15, "unit": "mg/dL" }],
+          "moderate": [{ "label": "乳酸", "value": 30, "unit": "mg/dL" }],
+          "severe": [{ "label": "乳酸", "value": 50, "unit": "mg/dL" }]
+        }
+      },
+      {
+        "labItemCode": "5C215",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "PCT", "value": 1, "unit": "ng/mL" }],
+          "moderate": [{ "label": "PCT", "value": 5, "unit": "ng/mL" }],
+          "severe": [{ "label": "PCT", "value": 20, "unit": "ng/mL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 20, "triggers": [{ "type": "severity", "op": ">=", "value": 85 }, { "type": "lab", "code": "3H080", "label": "乳酸", "op": ">=", "value": 40 }] }]
+  },
+  {
+    "key": "inf_cellulitis_nf",
+    "name": "蜂窩織炎・壊死性筋膜炎",
+    "description": "皮膚軟部組織の細菌感染。壊死性筋膜炎では急速に進行し、デブリードマンの遅れが致命的となる。",
+    "category": "感染症・全身",
+    "sortOrder": 2,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 55, "improvementSpeedSlider": 40, "initialSpo2Slider": 85, "severitySlider": 50 },
+    "treatment": { "drugCategories": ["抗菌薬"], "procedureKeywords": ["壊死組織デブリードマン"] },
+    "vitalsPerSeverity": { "temperature": 2.0, "systolicBp": -15, "diastolicBp": -8, "pulse": 25, "spo2": -3, "respRate": 6 },
+    "aiEvaluationGuideline": "単純な蜂窩織炎は抗菌薬のみで軽快しうるが、疼痛が視診所見に不釣り合いに強い・CK上昇等で壊死性筋膜炎が疑われる場合は緊急デブリードマンが必須。CK著明高値にもかかわらず抗菌薬のみの場合は大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "5C070",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "CRP", "value": 3, "unit": "mg/dL" }],
+          "moderate": [{ "label": "CRP", "value": 15, "unit": "mg/dL" }],
+          "severe": [{ "label": "CRP", "value": 30, "unit": "mg/dL" }]
+        }
+      },
+      {
+        "labItemCode": "3B010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "CK", "value": 100, "unit": "U/L" }],
+          "moderate": [{ "label": "CK", "value": 2000, "unit": "U/L" }],
+          "severe": [{ "label": "CK", "value": 15000, "unit": "U/L" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 20, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "inf_influenza",
+    "name": "インフルエンザ",
+    "description": "インフルエンザウイルスによる急性上気道・全身感染症。高熱と全身倦怠感を特徴とし、まれに重症肺炎を合併する。",
+    "category": "感染症・全身",
+    "sortOrder": 3,
+    "defaultParams": { "initialTempSlider": 75, "improvementSpeedSlider": 65, "initialSpo2Slider": 85, "severitySlider": 35 },
+    "treatment": { "drugCategories": ["抗ウイルス薬"] },
+    "vitalsPerSeverity": { "temperature": 3.0, "systolicBp": -3, "diastolicBp": -2, "pulse": 15, "spo2": -25, "respRate": 8 },
+    "aiEvaluationGuideline": "発症48時間以内の抗ウイルス薬（ノイラミニダーゼ阻害薬等）投与が有症状期間短縮に有効。重症化・肺炎合併が疑われる場合の胸部画像評価も評価する。",
+    "labPatterns": [
+      { "labItemCode": "5F399", "kind": "text", "tiers": { "mild": "迅速抗原検査でA型陽性。", "moderate": "迅速抗原検査でA型陽性、症状は増悪傾向。", "severe": "迅速抗原検査でA型陽性、二次性肺炎の合併を疑う。" } },
+      { "labItemCode": "IMG-001", "kind": "text", "tiers": { "mild": "明らかな浸潤影を認めない。", "moderate": "軽度のすりガラス影を認める。", "severe": "両側性の浸潤影拡大を認め、ウイルス性肺炎または二次性細菌性肺炎の合併を疑う。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_resp_failure", "sustainMinutes": 30, "triggers": [{ "type": "vital", "field": "spo2", "op": "<=", "value": 75 }] }]
+  },
+  {
+    "key": "inf_febrile_neutropenia",
+    "name": "発熱性好中球減少症",
+    "description": "化学療法後等の好中球減少下での発熱。感染巣が不明瞭でも急速に敗血症性ショックに進展しうるため緊急対応を要する。",
+    "category": "感染症・全身",
+    "sortOrder": 4,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 70, "improvementSpeedSlider": 40, "initialSpo2Slider": 80, "severitySlider": 50 },
+    "treatment": { "drugCategories": ["抗菌薬"] },
+    "vitalsPerSeverity": { "temperature": 3.0, "systolicBp": -15, "diastolicBp": -8, "pulse": 25, "spo2": -5, "respRate": 8 },
+    "aiEvaluationGuideline": "発熱を確認したら1時間以内の広域抗菌薬（緑膿菌カバーを含む）経験的投与が必須。好中球減少の原因検索より治療開始を優先すべきであり、抗菌薬投与の遅れは大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "2A010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "WBC", "value": 1500, "unit": "/μL" }],
+          "moderate": [{ "label": "WBC", "value": 500, "unit": "/μL" }],
+          "severe": [{ "label": "WBC", "value": 100, "unit": "/μL" }]
+        }
+      },
+      {
+        "labItemCode": "5C070",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "CRP", "value": 3, "unit": "mg/dL" }],
+          "moderate": [{ "label": "CRP", "value": 12, "unit": "mg/dL" }],
+          "severe": [{ "label": "CRP", "value": 25, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 15, "triggers": [{ "type": "severity", "op": ">=", "value": 85 }] }]
+  }
+]

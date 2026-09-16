@@ -1,0 +1,178 @@
+[
+  {
+    "key": "cv_stemi",
+    "name": "急性心筋梗塞（STEMI）",
+    "description": "冠動脈の急性完全閉塞による貫壁性心筋壊死。心筋逸脱酵素の上昇と心電図のST上昇を特徴とする。",
+    "category": "循環器",
+    "sortOrder": 1,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 50, "initialSpo2Slider": 55, "severitySlider": 60 },
+    "treatment": { "drugCategories": ["抗血小板薬"], "procedureKeywords": ["経皮的冠動脈インターベンション（PCI）"] },
+    "vitalsPerSeverity": { "temperature": 0.3, "systolicBp": -45, "diastolicBp": -20, "pulse": 30, "spo2": -10, "respRate": 8 },
+    "aiEvaluationGuideline": "発症後できるだけ早期の経皮的冠動脈インターベンション（PCI）による再灌流が予後を決定する。抗血小板薬（アスピリン等）の早期投与も加点。再灌流治療の指示がなく抗血小板薬のみの場合は不十分な対応として減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "5C093",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "トロポニンT", "value": 0.1, "unit": "ng/mL" }],
+          "moderate": [{ "label": "トロポニンT", "value": 1.5, "unit": "ng/mL" }],
+          "severe": [{ "label": "トロポニンT", "value": 8, "unit": "ng/mL" }]
+        }
+      },
+      {
+        "labItemCode": "3B015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "CK-MB", "value": 40, "unit": "U/L" }],
+          "moderate": [{ "label": "CK-MB", "value": 120, "unit": "U/L" }],
+          "severe": [{ "label": "CK-MB", "value": 300, "unit": "U/L" }]
+        }
+      },
+      { "labItemCode": "PHYS-ECG-001", "kind": "text", "tiers": { "mild": "軽度のST上昇を認める。", "moderate": "誘導群にわたる有意なST上昇を認める。", "severe": "広範囲誘導での著明なST上昇とQ波形成を認める。" } }
+    ],
+    "crisisTriggers": [
+      { "targetKey": "crisis_cardiogenic_shock", "sustainMinutes": 30, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 80 }] },
+      { "targetKey": "crisis_cardiac_arrest", "sustainMinutes": 15, "triggers": [{ "type": "severity", "op": ">=", "value": 95 }] }
+    ]
+  },
+  {
+    "key": "cv_nstemi",
+    "name": "不安定狭心症・NSTEMI",
+    "description": "冠動脈の不完全閉塞または高度狭窄による心筋虚血。STEMIより緩徐だが放置すれば進行しうる。",
+    "category": "循環器",
+    "sortOrder": 2,
+    "defaultParams": { "initialTempSlider": 35, "improvementSpeedSlider": 50, "initialSpo2Slider": 65, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["抗血小板薬", "抗凝固薬"] },
+    "vitalsPerSeverity": { "temperature": 0.2, "systolicBp": -18, "diastolicBp": -10, "pulse": 16, "spo2": -6, "respRate": 5 },
+    "aiEvaluationGuideline": "抗血小板薬・抗凝固薬による早期の薬物療法と、リスク評価に基づく待機的〜早期のカテーテル検査の検討が標準治療。無投薬での経過観察は減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "5C093",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "トロポニンT", "value": 0.03, "unit": "ng/mL" }],
+          "moderate": [{ "label": "トロポニンT", "value": 0.2, "unit": "ng/mL" }],
+          "severe": [{ "label": "トロポニンT", "value": 0.6, "unit": "ng/mL" }]
+        }
+      },
+      { "labItemCode": "PHYS-ECG-001", "kind": "text", "tiers": { "mild": "軽度のST低下を認める。", "moderate": "有意なST低下と陰性T波を認める。", "severe": "広範な誘導でのST低下が持続する。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_cardiogenic_shock", "sustainMinutes": 45, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "cv_acute_hf",
+    "name": "急性心不全（うっ血性）",
+    "description": "心ポンプ機能低下による肺うっ血・体液貯留。呼吸困難とBNP上昇を特徴とする。",
+    "category": "循環器",
+    "sortOrder": 3,
+    "defaultParams": { "initialTempSlider": 30, "improvementSpeedSlider": 40, "initialSpo2Slider": 60, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["利尿薬/ループ利尿薬"] },
+    "vitalsPerSeverity": { "temperature": -0.2, "systolicBp": -45, "diastolicBp": -20, "pulse": 30, "spo2": -20, "respRate": 16 },
+    "aiEvaluationGuideline": "ループ利尿薬による体液除去が第一選択。酸素投与のみで利尿薬の指示がなければうっ血の原因治療になっておらず減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "H8039",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "BNP", "value": 300, "unit": "pg/mL" }],
+          "moderate": [{ "label": "BNP", "value": 700, "unit": "pg/mL" }],
+          "severe": [{ "label": "BNP", "value": 1500, "unit": "pg/mL" }]
+        }
+      },
+      { "labItemCode": "IMG-001", "kind": "text", "tiers": { "mild": "軽度の肺血管陰影増強を認める。", "moderate": "両側肺うっ血像とKerley B線を認める。", "severe": "著明な肺うっ血・胸水貯留を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_cardiogenic_shock", "sustainMinutes": 30, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "cv_afib_rvr",
+    "name": "心房細動（頻脈性）",
+    "description": "心房細動による頻脈性不整脈。心拍数コントロールが不十分だと血行動態が破綻しうる。",
+    "category": "循環器",
+    "sortOrder": 4,
+    "defaultParams": { "initialTempSlider": 35, "improvementSpeedSlider": 55, "initialSpo2Slider": 70, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["β遮断薬", "抗不整脈薬"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -12, "diastolicBp": -6, "pulse": 130, "spo2": -3, "respRate": 5 },
+    "aiEvaluationGuideline": "β遮断薬等によるレートコントロールが基本。血栓塞栓症予防の抗凝固薬（CHADS2スコアに応じて）の検討も評価対象。",
+    "labPatterns": [
+      { "labItemCode": "PHYS-ECG-001", "kind": "text", "tiers": { "mild": "心房細動、心拍数110/分程度。", "moderate": "心房細動、心拍数140/分程度の頻脈。", "severe": "心房細動、心拍数170/分以上の高度頻脈。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_cardiogenic_shock", "sustainMinutes": 30, "triggers": [{ "type": "vital", "field": "pulse", "op": ">=", "value": 170 }] }]
+  },
+  {
+    "key": "cv_complete_avb",
+    "name": "完全房室ブロック",
+    "description": "心房から心室への電気伝導が完全に途絶した状態。補充調律が不十分だと心停止に至る。",
+    "category": "循環器",
+    "sortOrder": 5,
+    "defaultParams": { "initialTempSlider": 30, "improvementSpeedSlider": 45, "initialSpo2Slider": 75, "severitySlider": 55 },
+    "treatment": { "procedureKeywords": ["経皮的ペーシング・ペースメーカー植込み"] },
+    "vitalsPerSeverity": { "temperature": -0.1, "systolicBp": -30, "diastolicBp": -14, "pulse": -50, "spo2": -5, "respRate": 4 },
+    "aiEvaluationGuideline": "一時ペーシング・恒久ペースメーカー植込みが根本治療。経過観察のみは徐脈の進行・心停止のリスクを見逃しており大幅減点。",
+    "labPatterns": [
+      { "labItemCode": "PHYS-ECG-001", "kind": "text", "tiers": { "mild": "PR間隔の延長を伴う房室ブロックを認める。", "moderate": "心房と心室の調律が解離した完全房室ブロックを認める。", "severe": "高度徐脈を伴う完全房室ブロックで補充調律が不安定。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_cardiac_arrest", "sustainMinutes": 20, "triggers": [{ "type": "vital", "field": "pulse", "op": "<=", "value": 30 }] }]
+  },
+  {
+    "key": "cv_aortic_dissection",
+    "name": "急性大動脈解離",
+    "description": "大動脈壁の中膜が裂けて生じる致死的疾患。突然発症の引き裂かれるような胸背部痛を特徴とする。",
+    "category": "循環器",
+    "sortOrder": 6,
+    "defaultParams": { "initialTempSlider": 35, "improvementSpeedSlider": 35, "initialSpo2Slider": 60, "severitySlider": 60 },
+    "treatment": { "drugCategories": ["β遮断薬"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": 25, "diastolicBp": 15, "pulse": 18, "spo2": -6, "respRate": 6 },
+    "aiEvaluationGuideline": "β遮断薬を中心とした厳格な降圧・心拍数コントロールが初期治療の要。Stanford A型は緊急手術の適応となるため外科コンサルトの記載も評価する。降圧薬未使用は解離進展のリスクを放置しており大幅減点。",
+    "labPatterns": [
+      { "labItemCode": "IMG-CT-008", "kind": "text", "tiers": { "mild": "上行大動脈にごく限局した解離腔を疑う所見。", "moderate": "上行大動脈から下行大動脈に及ぶ解離腔（フラップ）を認める。", "severe": "広範囲に及ぶ解離腔と心嚢液貯留を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hemorrhagic_shock", "sustainMinutes": 20, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "cv_hypertensive_emergency",
+    "name": "高血圧緊急症",
+    "description": "急激な血圧上昇に臓器障害（脳症・急性心不全・急性腎障害等）を伴う状態。",
+    "category": "循環器",
+    "sortOrder": 7,
+    "defaultParams": { "initialTempSlider": 30, "improvementSpeedSlider": 55, "initialSpo2Slider": 75, "severitySlider": 50 },
+    "treatment": { "drugCategories": ["降圧薬/Ca拮抗薬"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": 100, "diastolicBp": 55, "pulse": 12, "spo2": -2, "respRate": 4 },
+    "aiEvaluationGuideline": "静注降圧薬による緩徐な血圧コントロール（急激な降圧は臓器灌流低下を招くため避ける）が標準治療。降圧薬の指示がなければ臓器障害進行のリスクを放置しており減点。",
+    "labPatterns": [
+      { "labItemCode": "IMG-CT-001", "kind": "text", "tiers": { "mild": "明らかな急性期病変を認めない。", "moderate": "後頭葉優位の脳浮腫（高血圧性脳症）を疑う所見。", "severe": "広範な脳浮腫と皮質下出血を疑う所見を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_brain_herniation", "sustainMinutes": 30, "triggers": [{ "type": "vital", "field": "systolicBp", "op": ">=", "value": 200 }] }]
+  },
+  {
+    "key": "cv_tamponade",
+    "name": "心タンポナーデ",
+    "description": "心嚢液の貯留により心拡張が制限され心拍出量が低下する状態。急速に進行すると循環虚脱に至る。",
+    "category": "循環器",
+    "sortOrder": 8,
+    "defaultParams": { "initialTempSlider": 30, "improvementSpeedSlider": 45, "initialSpo2Slider": 65, "severitySlider": 55 },
+    "treatment": { "procedureKeywords": ["心嚢穿刺"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -45, "diastolicBp": -10, "pulse": 26, "spo2": -5, "respRate": 6 },
+    "aiEvaluationGuideline": "心嚢穿刺による減圧が根本治療。輸液のみでの経過観察は一時的な代償にとどまり、心嚢穿刺の指示がなければ大幅減点。",
+    "labPatterns": [
+      { "labItemCode": "IMG-US-001", "kind": "text", "tiers": { "mild": "軽度の心嚢液貯留を認める。", "moderate": "中等量の心嚢液貯留を認める。", "severe": "大量の心嚢液貯留と右室拡張期虚脱を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_tamponade_shock", "sustainMinutes": 15, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "cv_infective_endocarditis",
+    "name": "感染性心内膜炎",
+    "description": "心内膜・弁膜への細菌感染。持続する菌血症と塞栓症状、心雑音を特徴とする。",
+    "category": "循環器",
+    "sortOrder": 9,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 65, "improvementSpeedSlider": 25, "initialSpo2Slider": 75, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["抗菌薬"] },
+    "vitalsPerSeverity": { "temperature": 2.2, "systolicBp": -10, "diastolicBp": -8, "pulse": 22, "spo2": -6, "respRate": 6 },
+    "aiEvaluationGuideline": "長期（通常4〜6週間）の静注抗菌薬治療が必要。血液培養結果に基づく標的治療への変更、弁破壊が高度な場合の弁置換術の検討も評価する。",
+    "labPatterns": [
+      { "labItemCode": "MB-001", "kind": "text", "tiers": { "mild": "グラム陽性球菌を少数検出（同定検査中）。", "moderate": "グラム陽性球菌が複数セットで陽性。", "severe": "グラム陽性球菌が全セットで陽性、持続菌血症を示唆。" } },
+      { "labItemCode": "IMG-US-001", "kind": "text", "tiers": { "mild": "弁尖にごく軽微な肥厚を認める。", "moderate": "弁尖に疣贅（vegetation）を認める。", "severe": "大型の疣贅と弁破壊・逆流を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 45, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  }
+]

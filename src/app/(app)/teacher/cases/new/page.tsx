@@ -5,21 +5,24 @@ import { formatJaDateTime } from "@/lib/format";
 import { CaseForm } from "../CaseForm";
 import { createCase } from "../actions";
 import { parsePhysiologyParams } from "@/lib/physiology-engine";
+import { sortTemplatesByCategory } from "@/lib/pathology-categories";
 
 export default async function NewCasePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.role === "STUDENT") redirect("/patients");
 
-  const [templates, pathogens] = await Promise.all([
-    db.diseaseTemplate.findMany({ orderBy: { createdAt: "asc" } }),
+  const [templatesUnsorted, pathogens] = await Promise.all([
+    db.diseaseTemplate.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }),
     db.pathogenMaster.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
   ]);
+  const templates = sortTemplatesByCategory(templatesUnsorted);
 
   const templateProps = templates.map((t) => ({
     id: t.id,
     name: t.name,
     description: t.description,
+    category: t.category,
     defaultParams: parsePhysiologyParams(t.defaultParams),
     isInfectious: t.isInfectious,
   }));

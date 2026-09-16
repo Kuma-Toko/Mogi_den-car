@@ -81,6 +81,7 @@ export const REFERENCE_RANGES: Record<string, { low: number; high: number }> = {
   O2飽和度: { low: 95, high: 100 },
   血漿HCO3: { low: 22, high: 26 },
   BE: { low: -2, high: 2 },
+  COHb: { low: 0, high: 5 },
   Fe: { low: 60, high: 200 },
   TIBC: { low: 240, high: 400 },
   Zn: { low: 65, high: 110 },

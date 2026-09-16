@@ -1,0 +1,227 @@
+[
+  {
+    "key": "resp_cap",
+    "name": "市中肺炎",
+    "description": "市中で発症する細菌性肺炎。発熱・咳嗽・膿性痰と炎症反応上昇、酸素化低下を特徴とする。",
+    "category": "呼吸器",
+    "sortOrder": 1,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 78, "improvementSpeedSlider": 45, "initialSpo2Slider": 55, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["抗菌薬"] },
+    "vitalsPerSeverity": { "temperature": 3.5, "systolicBp": -15, "diastolicBp": -8, "pulse": 35, "spo2": -30, "respRate": 20 },
+    "aiEvaluationGuideline": "第一選択は広域抗菌薬（セフェム系またはカルバペネム系）の早期静注投与。発症から投与開始が早いほど加点。血圧低下・頻脈時の輸液併用も加点。解熱剤のみで抗菌薬未投与は原因治療になっておらず大幅減点。感染巣と明らかに合わない抗菌薬選択（グラム陽性菌用薬のみ等）も減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "5C070",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "CRP", "value": 3, "unit": "mg/dL" }],
+          "moderate": [{ "label": "CRP", "value": 12, "unit": "mg/dL" }],
+          "severe": [{ "label": "CRP", "value": 28, "unit": "mg/dL" }]
+        }
+      },
+      {
+        "labItemCode": "2A010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "WBC", "value": 11000, "unit": "/μL" }],
+          "moderate": [{ "label": "WBC", "value": 16000, "unit": "/μL" }],
+          "severe": [{ "label": "WBC", "value": 22000, "unit": "/μL" }]
+        }
+      },
+      {
+        "labItemCode": "5C215",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "PCT", "value": 0.3, "unit": "ng/mL" }],
+          "moderate": [{ "label": "PCT", "value": 2, "unit": "ng/mL" }],
+          "severe": [{ "label": "PCT", "value": 15, "unit": "ng/mL" }]
+        }
+      },
+      { "labItemCode": "IMG-001", "kind": "text", "tiers": { "mild": "右下肺野に浸潤影を疑う淡い陰影を認める。", "moderate": "右下肺野に明瞭な浸潤影を認める。", "severe": "両側性に浸潤影が拡大し、胸水貯留を伴う。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 30, "triggers": [{ "type": "vital", "field": "spo2", "op": "<=", "value": 80 }, { "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "resp_aspiration_pneumonia",
+    "name": "誤嚥性肺炎",
+    "description": "咽頭・口腔内容物の誤嚥に伴う肺炎。嚥下機能低下を背景に高齢者で多く、反復傾向がある。",
+    "category": "呼吸器",
+    "sortOrder": 2,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 70, "improvementSpeedSlider": 35, "initialSpo2Slider": 60, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["抗菌薬"] },
+    "vitalsPerSeverity": { "temperature": 3.0, "systolicBp": -15, "diastolicBp": -8, "pulse": 30, "spo2": -35, "respRate": 18 },
+    "aiEvaluationGuideline": "嫌気性菌もカバーする広域抗菌薬の早期投与が標準治療。誤嚥予防（体位管理・嚥下評価）の指示があれば加点。抗菌薬未投与は大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "5C070",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "CRP", "value": 4, "unit": "mg/dL" }],
+          "moderate": [{ "label": "CRP", "value": 14, "unit": "mg/dL" }],
+          "severe": [{ "label": "CRP", "value": 25, "unit": "mg/dL" }]
+        }
+      },
+      { "labItemCode": "IMG-001", "kind": "text", "tiers": { "mild": "右下葉背側にごく淡い浸潤影を認める。", "moderate": "右下葉背側優位に浸潤影を認める（誤嚥性肺炎パターン）。", "severe": "両側下葉に浸潤影が拡大し、膿瘍形成を疑う空洞影を伴う。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 20, "triggers": [{ "type": "vital", "field": "spo2", "op": "<=", "value": 78 }, { "type": "severity", "op": ">=", "value": 85 }] }]
+  },
+  {
+    "key": "resp_tb",
+    "name": "肺結核",
+    "description": "結核菌による慢性肺感染症。微熱・盗汗・体重減少と血痰、慢性咳嗽を特徴とする。",
+    "category": "呼吸器",
+    "sortOrder": 3,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 45, "improvementSpeedSlider": 12, "initialSpo2Slider": 65, "severitySlider": 40 },
+    "treatment": { "drugCategories": ["抗結核薬"] },
+    "vitalsPerSeverity": { "temperature": 1.5, "systolicBp": -5, "diastolicBp": -3, "pulse": 10, "spo2": -15, "respRate": 6 },
+    "aiEvaluationGuideline": "イソニアジド・リファンピシン・エタンブトール・ピラジナミドの多剤併用療法（少なくとも2剤以上の併用）が標準治療。単剤投与は耐性化リスクがあり減点。空気感染対策（陰圧個室隔離等）の記載があれば加点。",
+    "labPatterns": [
+      { "labItemCode": "MB-003", "kind": "text", "tiers": { "mild": "抗酸菌塗抹陰性、培養で少数のコロニー発育。", "moderate": "抗酸菌塗抹陽性（1+程度）。", "severe": "抗酸菌塗抹強陽性（3+以上）、排菌量が多い。" } },
+      { "labItemCode": "IMG-001", "kind": "text", "tiers": { "mild": "両側上肺野にごく淡い粒状影を認める。", "moderate": "右上肺野に空洞形成を伴う浸潤影を認める。", "severe": "両側上肺野に多発空洞と気管支散布性病変を認める。" } }
+    ]
+  },
+  {
+    "key": "resp_asthma",
+    "name": "気管支喘息発作",
+    "description": "気道の可逆性狭窄による喘鳴・呼吸困難発作。夜間・早朝の増悪が典型的。",
+    "category": "呼吸器",
+    "sortOrder": 4,
+    "defaultParams": { "initialTempSlider": 20, "improvementSpeedSlider": 65, "initialSpo2Slider": 55, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["気管支拡張薬/β2刺激薬", "副腎皮質ステロイド"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -5, "diastolicBp": -3, "pulse": 25, "spo2": -25, "respRate": 16 },
+    "aiEvaluationGuideline": "短時間作用性β2刺激薬の吸入・ネブライザーが第一選択、中等症以上は全身ステロイドを併用する。気管支拡張薬のみでステロイド併用がない中等症以上は減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H080",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "動脈血pH", "value": 7.48, "unit": "" }, { "label": "pCO2", "value": 30, "unit": "mmHg" }],
+          "moderate": [{ "label": "動脈血pH", "value": 7.4, "unit": "" }, { "label": "pCO2", "value": 40, "unit": "mmHg" }],
+          "severe": [{ "label": "動脈血pH", "value": 7.28, "unit": "" }, { "label": "pCO2", "value": 55, "unit": "mmHg" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_resp_failure", "sustainMinutes": 15, "triggers": [{ "type": "vital", "field": "spo2", "op": "<=", "value": 75 }] }]
+  },
+  {
+    "key": "resp_copd_exacerbation",
+    "name": "COPD増悪",
+    "description": "慢性閉塞性肺疾患の急性増悪。感染契機が多く、CO2貯留（CO2ナルコーシス）に注意を要する。",
+    "category": "呼吸器",
+    "sortOrder": 5,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 40, "initialSpo2Slider": 50, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["気管支拡張薬", "副腎皮質ステロイド"] },
+    "vitalsPerSeverity": { "temperature": 0.8, "systolicBp": -5, "diastolicBp": -3, "pulse": 20, "spo2": -22, "respRate": -4 },
+    "aiEvaluationGuideline": "気管支拡張薬吸入と全身ステロイドが基本治療、感染契機を疑う場合は抗菌薬を併用する。高濃度酸素の漫然投与はCO2ナルコーシスを誘発しうるため、酸素投与量への言及がなければ注意喚起として減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H080",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "動脈血pH", "value": 7.36, "unit": "" }, { "label": "pCO2", "value": 48, "unit": "mmHg" }],
+          "moderate": [{ "label": "動脈血pH", "value": 7.28, "unit": "" }, { "label": "pCO2", "value": 62, "unit": "mmHg" }],
+          "severe": [{ "label": "動脈血pH", "value": 7.15, "unit": "" }, { "label": "pCO2", "value": 85, "unit": "mmHg" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_resp_failure", "sustainMinutes": 20, "triggers": [{ "type": "lab", "code": "3H080", "label": "pCO2", "op": ">=", "value": 80 }] }]
+  },
+  {
+    "key": "resp_pneumothorax",
+    "name": "自然気胸",
+    "description": "肺嚢胞の破裂等による胸腔内への空気漏出。若年やせ型男性に好発し、突然の胸痛・呼吸困難を呈する。",
+    "category": "呼吸器",
+    "sortOrder": 6,
+    "defaultParams": { "initialTempSlider": 15, "improvementSpeedSlider": 60, "initialSpo2Slider": 55, "severitySlider": 50 },
+    "treatment": { "procedureKeywords": ["胸腔穿刺", "胸腔ドレナージ"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -10, "diastolicBp": -5, "pulse": 20, "spo2": -20, "respRate": 14 },
+    "aiEvaluationGuideline": "軽度なら経過観察も許容されるが、中等度以上は胸腔ドレナージが必要。緊張性気胸への進展兆候（血圧低下・頻脈増悪）を見逃さず速やかに処置する記載を評価する。",
+    "labPatterns": [
+      { "labItemCode": "IMG-XP-006", "kind": "text", "tiers": { "mild": "肺尖部に軽度の気胸を認める（虚脱率20%未満）。", "moderate": "中等度の肺虚脱を認める（虚脱率50%程度）。", "severe": "高度の肺虚脱を認め、緊張性気胸への進展が懸念される。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_tension_pneumothorax", "sustainMinutes": 10, "triggers": [{ "type": "vital", "field": "spo2", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "resp_pe",
+    "name": "肺血栓塞栓症（PE）",
+    "description": "下肢深部静脈血栓等の塞栓子が肺動脈を閉塞する疾患。突然の呼吸困難・胸痛・低酸素血症を呈する。",
+    "category": "呼吸器",
+    "sortOrder": 7,
+    "defaultParams": { "initialTempSlider": 45, "improvementSpeedSlider": 40, "initialSpo2Slider": 35, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["抗凝固薬"] },
+    "vitalsPerSeverity": { "temperature": 0.3, "systolicBp": -45, "diastolicBp": -22, "pulse": 35, "spo2": -35, "respRate": 18 },
+    "aiEvaluationGuideline": "抗凝固療法（ヘパリン等）の早期開始が標準治療。血行動態が不安定な広範型では血栓溶解療法への切り替えも検討する。抗凝固薬未投与は大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "2B140",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Dダイマー", "value": 3, "unit": "μg/mL" }],
+          "moderate": [{ "label": "Dダイマー", "value": 10, "unit": "μg/mL" }],
+          "severe": [{ "label": "Dダイマー", "value": 25, "unit": "μg/mL" }]
+        }
+      },
+      { "labItemCode": "IMG-CT-009", "kind": "text", "tiers": { "mild": "亜区域枝レベルに小さな陰影欠損を認める。", "moderate": "葉動脈レベルに陰影欠損を認める。", "severe": "主肺動脈〜両側肺動脈にわたる広範な陰影欠損（鞍状血栓）を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_massive_pe", "sustainMinutes": 20, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "resp_ards",
+    "name": "急性呼吸窮迫症候群（ARDS）",
+    "description": "重症肺炎・敗血症・誤嚥等を契機とする両側性の急性炎症性肺障害。高濃度酸素投与でも改善しない低酸素血症が特徴。",
+    "category": "呼吸器",
+    "sortOrder": 8,
+    "defaultParams": { "initialTempSlider": 55, "improvementSpeedSlider": 20, "initialSpo2Slider": 30, "severitySlider": 60 },
+    "treatment": { "procedureKeywords": ["気管挿管"] },
+    "vitalsPerSeverity": { "temperature": 0.5, "systolicBp": -10, "diastolicBp": -5, "pulse": 25, "spo2": -35, "respRate": 20 },
+    "aiEvaluationGuideline": "肺保護換気（低1回換気量）を目的とした気管挿管・人工呼吸管理が中心治療。原疾患（肺炎・敗血症等）への治療も並行して評価する。酸素投与の増量のみで挿管の指示がなければ減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3F253",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "SP-D", "value": 150, "unit": "ng/mL" }],
+          "moderate": [{ "label": "SP-D", "value": 350, "unit": "ng/mL" }],
+          "severe": [{ "label": "SP-D", "value": 700, "unit": "ng/mL" }]
+        }
+      },
+      {
+        "labItemCode": "3H080",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "pO2", "value": 70, "unit": "mmHg" }],
+          "moderate": [{ "label": "pO2", "value": 55, "unit": "mmHg" }],
+          "severe": [{ "label": "pO2", "value": 40, "unit": "mmHg" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_resp_failure", "sustainMinutes": 20, "triggers": [{ "type": "vital", "field": "spo2", "op": "<=", "value": 70 }] }]
+  },
+  {
+    "key": "resp_ip_exacerbation",
+    "name": "間質性肺炎急性増悪",
+    "description": "既存の間質性肺炎（特発性肺線維症等）が急速に悪化する状態。予後不良で早期のステロイド治療を要する。",
+    "category": "呼吸器",
+    "sortOrder": 9,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 20, "initialSpo2Slider": 35, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["副腎皮質ステロイド"] },
+    "vitalsPerSeverity": { "temperature": 0.5, "systolicBp": -8, "diastolicBp": -4, "pulse": 20, "spo2": -30, "respRate": 18 },
+    "aiEvaluationGuideline": "ステロイドパルス療法を含む高用量ステロイド治療の早期開始が標準治療。感染合併の除外（培養検査等）の記載も評価する。ステロイド未投与は大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "5C210",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "KL-6", "value": 800, "unit": "U/mL" }],
+          "moderate": [{ "label": "KL-6", "value": 2000, "unit": "U/mL" }],
+          "severe": [{ "label": "KL-6", "value": 5000, "unit": "U/mL" }]
+        }
+      },
+      { "labItemCode": "IMG-CT-007", "kind": "text", "tiers": { "mild": "両側下肺野にごく淡いすりガラス影の増加を認める。", "moderate": "両側にすりガラス影の拡大と蜂巣肺を認める。", "severe": "両側肺野にびまん性のすりガラス影が拡大し、著明な蜂巣肺を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_resp_failure", "sustainMinutes": 30, "triggers": [{ "type": "vital", "field": "spo2", "op": "<=", "value": 70 }] }]
+  }
+]

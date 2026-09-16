@@ -18,6 +18,7 @@ type Template = {
   id: string;
   name: string;
   description: string | null;
+  category: string | null;
   defaultParams: PhysiologyParams;
   isInfectious: boolean;
 };
@@ -76,6 +77,14 @@ export function CaseForm({
   const [primaryTemplateId, setPrimaryTemplateId] = useState<string | null>(
     initial?.primaryTemplateId ?? templates[0]?.id ?? null
   );
+  // templatesは呼び出し側（category, sortOrder順）で既に並んでいる想定。連続する同一categoryをグループ化して
+  // 見出し付きで表示する（急変病態カテゴリは症例作成の選択肢としては末尾に来る想定）。
+  const templateGroups: [string | null, Template[]][] = [];
+  for (const t of templates) {
+    const last = templateGroups[templateGroups.length - 1];
+    if (last && last[0] === t.category) last[1].push(t);
+    else templateGroups.push([t.category, [t]]);
+  }
   const [resultTiming, setResultTiming] = useState<"IMMEDIATE" | "DELAYED">(initial?.resultTiming ?? "IMMEDIATE");
   const [sharingMode, setSharingMode] = useState<"SOLO" | "TEAM">(initial?.sharingMode ?? "TEAM");
   const [crisisMode, setCrisisMode] = useState<CrisisMode>(initial?.crisisMode ?? "LETHAL");
@@ -269,34 +278,39 @@ ${context}
       <div className="card">
         <div className="card-h">病態テンプレート（複数選択可）</div>
         <div className="card-b">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10, marginBottom: 16 }}>
-            {templates.map((t) => {
-              const isSelected = selectedTemplateIds.includes(t.id);
-              const isPrimary = primaryTemplateId === t.id;
-              return (
-                <div key={t.id} className={`tpl-card${isSelected ? " on" : ""}`} onClick={() => toggleTemplate(t.id)}>
-                  <div className="t" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    {t.name}
-                    {isPrimary && <span className="badge teal" style={{ fontSize: 10 }}>主病態</span>}
-                  </div>
-                  <div className="d">{t.description}</div>
-                  {isSelected && !isPrimary && (
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      style={{ fontSize: 10.5, padding: "2px 8px", marginTop: 6 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPrimaryTemplateId(t.id);
-                      }}
-                    >
-                      主病態にする
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {templateGroups.map(([category, items]) => (
+            <div key={category ?? "__none"} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 700, marginBottom: 6 }}>{category ?? "未分類"}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+                {items.map((t) => {
+                  const isSelected = selectedTemplateIds.includes(t.id);
+                  const isPrimary = primaryTemplateId === t.id;
+                  return (
+                    <div key={t.id} className={`tpl-card${isSelected ? " on" : ""}`} onClick={() => toggleTemplate(t.id)}>
+                      <div className="t" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {t.name}
+                        {isPrimary && <span className="badge teal" style={{ fontSize: 10 }}>主病態</span>}
+                      </div>
+                      <div className="d">{t.description}</div>
+                      {isSelected && !isPrimary && (
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          style={{ fontSize: 10.5, padding: "2px 8px", marginTop: 6 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPrimaryTemplateId(t.id);
+                          }}
+                        >
+                          主病態にする
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
           {selectedTemplateIds.map((id) => (
             <input key={id} type="hidden" name="diseaseTemplateIds" value={id} />
           ))}

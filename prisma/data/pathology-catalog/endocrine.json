@@ -1,0 +1,201 @@
+[
+  {
+    "key": "endo_dka",
+    "name": "糖尿病性ケトアシドーシス（DKA）",
+    "description": "インスリン欠乏による高血糖・ケトーシス・代謝性アシドーシス。Kussmaul呼吸を特徴とする。",
+    "category": "内分泌・代謝",
+    "sortOrder": 1,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 35, "initialSpo2Slider": 70, "severitySlider": 60 },
+    "treatment": { "drugCategories": ["糖尿病治療薬/インスリン製剤", "輸液/電解質輸液(細胞外液補充液)"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -20, "diastolicBp": -10, "pulse": 25, "spo2": -5, "respRate": 18 },
+    "aiEvaluationGuideline": "大量輸液による脱水補正を先行させ、カリウム値確認後にインスリン持続投与を開始するのが標準治療。カリウムを確認せずインスリンのみ先行投与するのは致死性不整脈を誘発しうるため禁忌に近い危険な判断。",
+    "labPatterns": [
+      {
+        "labItemCode": "3D010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Glu", "value": 300, "unit": "mg/dL" }],
+          "moderate": [{ "label": "Glu", "value": 450, "unit": "mg/dL" }],
+          "severe": [{ "label": "Glu", "value": 700, "unit": "mg/dL" }]
+        }
+      },
+      {
+        "labItemCode": "3H080",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "動脈血pH", "value": 7.25, "unit": "" }, { "label": "血漿HCO3", "value": 15, "unit": "mEq/L" }],
+          "moderate": [{ "label": "動脈血pH", "value": 7.05, "unit": "" }, { "label": "血漿HCO3", "value": 8, "unit": "mEq/L" }],
+          "severe": [{ "label": "動脈血pH", "value": 6.85, "unit": "" }, { "label": "血漿HCO3", "value": 3, "unit": "mEq/L" }]
+        }
+      },
+      { "labItemCode": "1A060", "kind": "text", "tiers": { "mild": "尿ケトン体弱陽性。", "moderate": "尿ケトン体陽性。", "severe": "尿ケトン体強陽性。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hyperosmolar_coma", "sustainMinutes": 30, "triggers": [{ "type": "lab", "code": "3H080", "label": "動脈血pH", "op": "<=", "value": 6.9 }] }]
+  },
+  {
+    "key": "endo_hhs",
+    "name": "高浸透圧高血糖状態（HHS）",
+    "description": "著明な高血糖と高浸透圧血症による脱水・意識障害。ケトーシスを伴わないことが多く、高齢の2型糖尿病患者に多い。",
+    "category": "内分泌・代謝",
+    "sortOrder": 2,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 30, "initialSpo2Slider": 75, "severitySlider": 60 },
+    "treatment": { "drugCategories": ["輸液/電解質輸液(細胞外液補充液)", "糖尿病治療薬/インスリン製剤"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -25, "diastolicBp": -12, "pulse": 20, "spo2": -3, "respRate": 5 },
+    "aiEvaluationGuideline": "DKAと同様に大量輸液による脱水補正が最優先で、インスリンは補助的に用いる。輸液量が不十分（少量の維持輸液のみ）と判断される場合は減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3D010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Glu", "value": 400, "unit": "mg/dL" }],
+          "moderate": [{ "label": "Glu", "value": 700, "unit": "mg/dL" }],
+          "severe": [{ "label": "Glu", "value": 1000, "unit": "mg/dL" }]
+        }
+      },
+      {
+        "labItemCode": "3H045",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "浸透圧", "value": 320, "unit": "mOsm/L" }],
+          "moderate": [{ "label": "浸透圧", "value": 350, "unit": "mOsm/L" }],
+          "severe": [{ "label": "浸透圧", "value": 380, "unit": "mOsm/L" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hyperosmolar_coma", "sustainMinutes": 30, "triggers": [{ "type": "lab", "code": "3D010", "op": ">=", "value": 900 }] }]
+  },
+  {
+    "key": "endo_hypoglycemia",
+    "name": "低血糖症",
+    "description": "インスリン・SU薬の過量投与等による血糖低下。冷汗・動悸から意識障害・けいれんに至る。",
+    "category": "内分泌・代謝",
+    "sortOrder": 3,
+    "defaultParams": { "initialTempSlider": 20, "improvementSpeedSlider": 90, "initialSpo2Slider": 90, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["輸液/糖輸液"] },
+    "vitalsPerSeverity": { "temperature": -0.3, "systolicBp": -5, "diastolicBp": -3, "pulse": 20, "spo2": -2, "respRate": 2 },
+    "aiEvaluationGuideline": "高濃度ブドウ糖の速やかな静注が唯一の即効性治療。血糖測定の指示のみでブドウ糖投与がなければ大幅減点。原因薬剤（インスリン・SU薬）の見直しへの言及も評価する。",
+    "labPatterns": [
+      {
+        "labItemCode": "3D010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Glu", "value": 55, "unit": "mg/dL" }],
+          "moderate": [{ "label": "Glu", "value": 40, "unit": "mg/dL" }],
+          "severe": [{ "label": "Glu", "value": 25, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hypoglycemic_coma", "sustainMinutes": 15, "triggers": [{ "type": "lab", "code": "3D010", "op": "<=", "value": 30 }] }]
+  },
+  {
+    "key": "endo_thyroid_storm",
+    "name": "甲状腺クリーゼ",
+    "description": "甲状腺中毒症の急性増悪。高熱・著明な頻脈・意識障害を三徴とし、死亡率が高い。",
+    "category": "内分泌・代謝",
+    "sortOrder": 4,
+    "defaultParams": { "initialTempSlider": 85, "improvementSpeedSlider": 35, "initialSpo2Slider": 75, "severitySlider": 60 },
+    "treatment": { "drugCategories": ["甲状腺関連薬", "β遮断薬"] },
+    "vitalsPerSeverity": { "temperature": 3.5, "systolicBp": -5, "diastolicBp": -5, "pulse": 140, "spo2": -3, "respRate": 8 },
+    "aiEvaluationGuideline": "抗甲状腺薬・β遮断薬・ヨウ素剤・ステロイドを組み合わせた集学的治療が必要。β遮断薬単独では甲状腺ホルモン産生を抑制できないため、抗甲状腺薬の併用がなければ減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "4B035",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "FT4", "value": 3, "unit": "ng/dL" }],
+          "moderate": [{ "label": "FT4", "value": 6, "unit": "ng/dL" }],
+          "severe": [{ "label": "FT4", "value": 10, "unit": "ng/dL" }]
+        }
+      },
+      {
+        "labItemCode": "4A055",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "TSH", "value": 0.05, "unit": "μIU/mL" }],
+          "moderate": [{ "label": "TSH", "value": 0.01, "unit": "μIU/mL" }],
+          "severe": [{ "label": "TSH", "value": 0.005, "unit": "μIU/mL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_cardiac_arrest", "sustainMinutes": 20, "triggers": [{ "type": "vital", "field": "pulse", "op": ">=", "value": 180 }] }]
+  },
+  {
+    "key": "endo_myxedema_coma",
+    "name": "粘液水腫性昏睡",
+    "description": "高度甲状腺機能低下症の急性増悪。低体温・徐脈・低換気・意識障害を呈する。",
+    "category": "内分泌・代謝",
+    "sortOrder": 5,
+    "defaultParams": { "initialTempSlider": 5, "improvementSpeedSlider": 20, "initialSpo2Slider": 40, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["甲状腺関連薬"] },
+    "vitalsPerSeverity": { "temperature": -3.0, "systolicBp": -15, "diastolicBp": -8, "pulse": -25, "spo2": -10, "respRate": -12 },
+    "aiEvaluationGuideline": "甲状腺ホルモン（レボチロキシン）の静注に加え、副腎不全合併を想定したステロイドの同時投与が推奨される。復温は急激に行うと血管拡張性ショックを誘発しうるため緩徐に行う。",
+    "labPatterns": [
+      {
+        "labItemCode": "4B035",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "FT4", "value": 0.5, "unit": "ng/dL" }],
+          "moderate": [{ "label": "FT4", "value": 0.2, "unit": "ng/dL" }],
+          "severe": [{ "label": "FT4", "value": 0.05, "unit": "ng/dL" }]
+        }
+      },
+      {
+        "labItemCode": "4A055",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "TSH", "value": 15, "unit": "μIU/mL" }],
+          "moderate": [{ "label": "TSH", "value": 60, "unit": "μIU/mL" }],
+          "severe": [{ "label": "TSH", "value": 150, "unit": "μIU/mL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_resp_failure", "sustainMinutes": 30, "triggers": [{ "type": "vital", "field": "respRate", "op": "<=", "value": 6 }] }]
+  },
+  {
+    "key": "endo_adrenal_crisis",
+    "name": "副腎クリーゼ（急性副腎不全）",
+    "description": "急激なコルチゾール欠乏による循環虚脱。感染・ストレス・ステロイド急な中断が誘因となる。",
+    "category": "内分泌・代謝",
+    "sortOrder": 6,
+    "defaultParams": { "initialTempSlider": 55, "improvementSpeedSlider": 40, "initialSpo2Slider": 75, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["副腎皮質ステロイド"] },
+    "vitalsPerSeverity": { "temperature": 0.7, "systolicBp": -48, "diastolicBp": -18, "pulse": 22, "spo2": -4, "respRate": 7 },
+    "aiEvaluationGuideline": "ヒドロコルチゾンの緊急静注と大量輸液が救命の鍵。輸液のみでステロイド投与がなければ根本治療になっておらず大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "4D040",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "コルチゾール", "value": 3, "unit": "μg/dL" }],
+          "moderate": [{ "label": "コルチゾール", "value": 1.5, "unit": "μg/dL" }],
+          "severe": [{ "label": "コルチゾール", "value": 0.5, "unit": "μg/dL" }]
+        }
+      },
+      {
+        "labItemCode": "3H010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Na", "value": 132, "unit": "mEq/L" }],
+          "moderate": [{ "label": "Na", "value": 125, "unit": "mEq/L" }],
+          "severe": [{ "label": "Na", "value": 115, "unit": "mEq/L" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hypovolemic_shock", "sustainMinutes": 15, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 75 }] }]
+  },
+  {
+    "key": "endo_pheochromocytoma_crisis",
+    "name": "褐色腫クリーゼ",
+    "description": "褐色細胞腫からのカテコールアミン大量放出による高血圧クリーゼ。動悸・頭痛・発汗を伴う発作性の血圧上昇を特徴とする。",
+    "category": "内分泌・代謝",
+    "sortOrder": 7,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 50, "initialSpo2Slider": 85, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["降圧薬/Ca拮抗薬"] },
+    "vitalsPerSeverity": { "temperature": 0.5, "systolicBp": 150, "diastolicBp": 80, "pulse": 40, "spo2": -2, "respRate": 4 },
+    "aiEvaluationGuideline": "α受容体遮断薬による降圧が第一選択で、β遮断薬を先行させると相対的α刺激優位となり血圧がさらに上昇するため単独投与は禁忌。α遮断薬が使用できない場合はCa拮抗薬で代替する。",
+    "labPatterns": [
+      { "labItemCode": "4E010", "kind": "text", "tiers": { "mild": "血中カテコールアミンの軽度上昇を認める。", "moderate": "血中カテコールアミンの著明な上昇を認める。", "severe": "血中カテコールアミンが基準上限の10倍以上に上昇。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_brain_herniation", "sustainMinutes": 15, "triggers": [{ "type": "vital", "field": "systolicBp", "op": ">=", "value": 260 }] }]
+  }
+]

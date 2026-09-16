@@ -195,21 +195,22 @@ model CaseAssignment {
 }
 
 // 症例に複数アタッチできる病態モデル。各疾患は完全に独立した重症度カーブ・治療トリガー・改善速度を持つ
-// （疾患間の相互作用は今回スコープ外）。isPrimaryの1件だけが危機シナリオ・AI治療評価の対象になる。
+// （疾患間の相互作用は今回スコープ外）。isPrimaryの1件だけが危機シナリオの対象になる。
+// AI治療評価は、aiEvaluationGuideline設定済みの全リンクを対象にする（isPrimary限定ではない）。
 model CaseDiseaseLink {
   id                 String          @id @default(cuid())
   caseId             String
   case               Case            @relation(fields: [caseId], references: [id], onDelete: Cascade)
   templateId         String
   template           DiseaseTemplate @relation(fields: [templateId], references: [id])
-  isPrimary          Boolean         @default(false) // 危機シナリオ・AI治療評価の対象として使う1件（症例につき1つ）
+  isPrimary          Boolean         @default(false) // 危機シナリオの対象として使う1件（症例につき1つ）
   physiologyParams   String // JSON文字列(PhysiologyParams): 初期値・変化パラメータ（改善速度・重症度 等）
   // 重症度カーブの起点。通常は症例作成時刻相当だが、危機シナリオからの救命成功時やAI治療評価時に
   // その時刻へリセットされ、以降はそこを新たな起点として重症度が再計算される
   severityBaselineAt DateTime @default(now())
-  // AI治療評価（isPrimaryの疾患のみ対象）が一度でも発火すると設定される、時間あたりの重症度変化量
-  // （正=悪化、負=改善）。null＝AI評価が未発火で、従来のtreatmentStartAt起点の指数減衰カーブを使う
-  // （physiology-engine.tsのcomputeCaseSeverityAtTime参照）
+  // AI治療評価（このリンクのテンプレートにaiEvaluationGuidelineが設定されていれば対象）が一度でも
+  // 発火すると設定される、時間あたりの重症度変化量（正=悪化、負=改善）。null＝AI評価が未発火で、
+  // 従来のtreatmentStartAt起点の指数減衰カーブを使う（physiology-engine.tsのcomputeCaseSeverityAtTime参照）
   aiSeverityRatePerHour Float?
   sortOrder          Int      @default(0)
   // 感染症エンジン: この疾患リンクの「真の原因菌」。感染症系テンプレート(isInfectious)でのみ教員が設定する。
@@ -220,6 +221,7 @@ model CaseDiseaseLink {
   // null=制限なし(既存挙動。どの培養系検査でも原因菌を開示)。空配列は「どこにも該当しない」という意味になり
   // nullとは異なるため、教員画面では明示的にON/OFFを切り替えるUIにする。pathogenId未設定なら無視される。
   relevantSpecimenSites String?
+  treatmentEvaluationResults TreatmentEvaluationDiseaseResult[]
 
   @@unique([caseId, templateId])
 }
@@ -421,6 +423,8 @@ model DiseaseTemplate {
   key             String   @unique
   name            String
   description     String?
+  category        String? // 臓器系分類（例:"循環器","呼吸器",…,"急変"）。一覧・症例作成フォームのグループ化に使用
+  sortOrder       Int      @default(0) // category内での表示順
   isCommon        Boolean  @default(true)
   defaultParams   String // JSON文字列
   treatmentConfig String? // JSON文字列（TreatmentTrigger: drugCategories/procedureKeywords）。vitalsConfigと両方揃って初めてエンジン対応
@@ -587,24 +591,38 @@ model CrisisRescueActionRow {
 // AI治療評価1回分。オーダー提出をきっかけに作成され（PENDING）、バックグラウンドでGeminiの評価結果を書き戻す（COMPLETED/FAILED）。
 // 成功時はseverityBaselineAtのリセット（急変救命成功時と同じ仕組み）を通じて重症度カーブへ反映する。
 // ordersSnapshotHashで同一オーダー集合への重複評価を防ぐ。監査用に評価対象オーダーIDと根拠テキストを保持する。
+// 1回のAI治療評価API呼び出し（オーダー提出のたび）を表す封筒。1回の呼び出しで、その時点で
+// aiEvaluationGuideline設定済みの全CaseDiseaseLinkをまとめて採点する（病態ごとの結果はdiseaseResults参照）。
 model TreatmentEvaluation {
-  id                   String                    @id @default(cuid())
-  caseId               String
-  case                 Case                      @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  status               TreatmentEvaluationStatus @default(PENDING)
-  ordersSnapshotHash   String
-  orderIdsSnapshot     String // JSON配列（string[]）。評価対象としたオーダーID（監査・教員閲覧用）
-  appropriatenessScore Int? // 0-100。AIによる治療適切性スコア
-  contraindicated      Boolean @default(false) // AIが禁忌等の重大な問題を検知した場合true（即座に重症度がジャンプする）
-  severityRatePerHour  Float? // このAI評価から主病態のCaseDiseaseLink.aiSeverityRatePerHourへ適用した時間あたりの重症度変化量
-  resetSeverity        Int? // 成功時にseverityBaselineAtリセットとともに適用した重症度（0-100、禁忌ジャンプ後の値）
-  rationale            String? // AIの評価根拠（教員監査用に表示）
-  rawResponse          String? // 生レスポンス（デバッグ用）
-  errorMessage         String? // FAILED時のエラー内容
-  requestedAt          DateTime                  @default(now())
-  completedAt          DateTime?
+  id                 String                    @id @default(cuid())
+  caseId             String
+  case               Case                      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  status             TreatmentEvaluationStatus @default(PENDING)
+  ordersSnapshotHash String
+  orderIdsSnapshot   String // JSON配列（string[]）。評価対象としたオーダーID（監査・教員閲覧用）
+  rawResponse        String? // 生レスポンス（デバッグ用）
+  errorMessage       String? // FAILED時のエラー内容
+  requestedAt        DateTime                  @default(now())
+  completedAt        DateTime?
+  diseaseResults     TreatmentEvaluationDiseaseResult[]
 
   @@index([caseId, ordersSnapshotHash])
+}
+
+// 1回のTreatmentEvaluation（1API呼び出し）の中の、病態（CaseDiseaseLink）1件分の採点結果。
+model TreatmentEvaluationDiseaseResult {
+  id                   String              @id @default(cuid())
+  evaluationId         String
+  evaluation           TreatmentEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  diseaseLinkId        String
+  diseaseLink          CaseDiseaseLink     @relation(fields: [diseaseLinkId], references: [id], onDelete: Cascade)
+  appropriatenessScore Int // 0-100。AIによる治療適切性スコア
+  contraindicated      Boolean @default(false) // AIが禁忌等の重大な問題を検知した場合true（即座に重症度がジャンプする）
+  severityRatePerHour  Float? // このAI評価からこの病態のCaseDiseaseLink.aiSeverityRatePerHourへ適用した時間あたりの重症度変化量
+  resetSeverity        Int? // 成功時にseverityBaselineAtリセットとともに適用した重症度（0-100、禁忌ジャンプ後の値）
+  rationale            String? // AIの評価根拠（教員監査用に表示）
+
+  @@unique([evaluationId, diseaseLinkId])
 }
 
 model Order {

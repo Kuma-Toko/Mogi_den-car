@@ -1,0 +1,156 @@
+[
+  {
+    "key": "heme_dic",
+    "name": "播種性血管内凝固症候群（DIC）",
+    "description": "基礎疾患（敗血症・悪性腫瘍等）を背景に全身性の凝固活性化と線溶亢進が生じ、出血傾向と微小血栓形成を同時に呈する病態。",
+    "category": "血液・腫瘍",
+    "sortOrder": 1,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 35, "initialSpo2Slider": 80, "severitySlider": 55 },
+    "treatment": { "drugCategories": ["抗凝固薬/ヘパリン", "血液製剤"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -15, "diastolicBp": -8, "pulse": 15, "spo2": -5, "respRate": 3 },
+    "aiEvaluationGuideline": "基礎疾患の治療を最優先とし、出血傾向が強い病型では血液製剤（血小板・凝固因子）補充、血栓傾向が強い病型ではヘパリン等の抗凝固療法を選択する。基礎疾患への言及がない対症療法のみは減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "2A050",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Plt", "value": 10, "unit": "万/μL" }],
+          "moderate": [{ "label": "Plt", "value": 5, "unit": "万/μL" }],
+          "severe": [{ "label": "Plt", "value": 2, "unit": "万/μL" }]
+        }
+      },
+      {
+        "labItemCode": "2B140",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Dダイマー", "value": 5, "unit": "μg/mL" }],
+          "moderate": [{ "label": "Dダイマー", "value": 20, "unit": "μg/mL" }],
+          "severe": [{ "label": "Dダイマー", "value": 50, "unit": "μg/mL" }]
+        }
+      },
+      {
+        "labItemCode": "2B100",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "フィブリノゲン", "value": 150, "unit": "mg/dL" }],
+          "moderate": [{ "label": "フィブリノゲン", "value": 80, "unit": "mg/dL" }],
+          "severe": [{ "label": "フィブリノゲン", "value": 40, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hemorrhagic_shock", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "heme_ttp",
+    "name": "血栓性血小板減少性紫斑病（TTP）",
+    "description": "ADAMTS13活性の著明な低下による微小血管障害性溶血性貧血と血小板減少。神経症状・腎障害・発熱を伴う（Moschcowitz五徴）。",
+    "category": "血液・腫瘍",
+    "sortOrder": 2,
+    "defaultParams": { "initialTempSlider": 45, "improvementSpeedSlider": 30, "initialSpo2Slider": 85, "severitySlider": 55 },
+    "treatment": { "procedureKeywords": ["血漿交換療法"] },
+    "vitalsPerSeverity": { "temperature": 0.5, "systolicBp": -5, "diastolicBp": -3, "pulse": 10, "spo2": -3, "respRate": 2 },
+    "aiEvaluationGuideline": "血漿交換療法が唯一のエビデンスに基づく根本治療で、診断が疑われた時点で速やかに開始する。血小板輸血は微小血栓を悪化させうるため原則禁忌（出血が生命を脅かす場合を除く）。",
+    "labPatterns": [
+      {
+        "labItemCode": "2A050",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Plt", "value": 8, "unit": "万/μL" }],
+          "moderate": [{ "label": "Plt", "value": 3, "unit": "万/μL" }],
+          "severe": [{ "label": "Plt", "value": 1, "unit": "万/μL" }]
+        }
+      },
+      {
+        "labItemCode": "2B495",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "ADAMTS13", "value": 50, "unit": "%" }],
+          "moderate": [{ "label": "ADAMTS13", "value": 15, "unit": "%" }],
+          "severe": [{ "label": "ADAMTS13", "value": 3, "unit": "%" }]
+        }
+      },
+      {
+        "labItemCode": "3B050",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "LD", "value": 300, "unit": "U/L" }],
+          "moderate": [{ "label": "LD", "value": 800, "unit": "U/L" }],
+          "severe": [{ "label": "LD", "value": 2000, "unit": "U/L" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_status_epilepticus", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  },
+  {
+    "key": "heme_tls",
+    "name": "腫瘍崩壊症候群",
+    "description": "化学療法等による大量の腫瘍細胞崩壊で高K血症・高尿酸血症・高リン血症が急速に生じる病態。",
+    "category": "血液・腫瘍",
+    "sortOrder": 3,
+    "defaultParams": { "initialTempSlider": 30, "improvementSpeedSlider": 45, "initialSpo2Slider": 90, "severitySlider": 50 },
+    "treatment": { "drugCategories": ["輸液"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -10, "diastolicBp": -5, "pulse": 10, "spo2": -2, "respRate": 2 },
+    "aiEvaluationGuideline": "大量輸液による尿量確保と、高尿酸血症治療薬・高カリウム血症への早期対応が重要。輸液のみでカリウム値の監視への言及がない場合は減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "K", "value": 5.5, "unit": "mEq/L" }],
+          "moderate": [{ "label": "K", "value": 6.8, "unit": "mEq/L" }],
+          "severe": [{ "label": "K", "value": 8, "unit": "mEq/L" }]
+        }
+      },
+      {
+        "labItemCode": "3C020",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "UA", "value": 9, "unit": "mg/dL" }],
+          "moderate": [{ "label": "UA", "value": 14, "unit": "mg/dL" }],
+          "severe": [{ "label": "UA", "value": 20, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_lethal_hyperkalemia", "sustainMinutes": 15, "triggers": [{ "type": "lab", "code": "3H015", "op": ">=", "value": 7.5 }] }]
+  },
+  {
+    "key": "heme_severe_ida",
+    "name": "高度鉄欠乏性貧血",
+    "description": "慢性の鉄欠乏による小球性貧血が高度に進行し、輸血を要する状態。動悸・労作時息切れを呈する。",
+    "category": "血液・腫瘍",
+    "sortOrder": 4,
+    "defaultParams": { "initialTempSlider": 25, "improvementSpeedSlider": 50, "initialSpo2Slider": 90, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["血液製剤/赤血球製剤"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -5, "diastolicBp": -3, "pulse": 20, "spo2": -5, "respRate": 5 },
+    "aiEvaluationGuideline": "症状を伴う高度貧血には赤血球輸血が必要。並行して出血源（消化管出血・過多月経等）の検索と鉄剤補充への言及も評価する。輸血基準を満たすのに経過観察のみの場合は減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "2A030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Hb", "value": 9, "unit": "g/dL" }],
+          "moderate": [{ "label": "Hb", "value": 6.5, "unit": "g/dL" }],
+          "severe": [{ "label": "Hb", "value": 4, "unit": "g/dL" }]
+        }
+      },
+      {
+        "labItemCode": "2A060",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "MCV", "value": 75, "unit": "fL" }],
+          "moderate": [{ "label": "MCV", "value": 65, "unit": "fL" }],
+          "severe": [{ "label": "MCV", "value": 55, "unit": "fL" }]
+        }
+      },
+      {
+        "labItemCode": "3I010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Fe", "value": 30, "unit": "μg/dL" }],
+          "moderate": [{ "label": "Fe", "value": 15, "unit": "μg/dL" }],
+          "severe": [{ "label": "Fe", "value": 5, "unit": "μg/dL" }]
+        }
+      }
+    ]
+  }
+]

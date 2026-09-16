@@ -60,6 +60,40 @@ async function tableAlreadySatisfies(table: string, expectedColumns: string[]): 
   return expectedColumns.every((c) => liveColumns.has(c));
 }
 
+// 2026-09-16の事故: 1つのmigration.sql内に「独立したDDL(例: 新規CREATE TABLE)」と
+// 「RedefineTables(列削減等のテーブル再構築)」が混在する場合、旧ロジックは
+// tableAlreadySatisfies()の判定だけでファイル全体を丸ごとスキップしてしまい、
+// RedefineTablesより前にある独立したCREATE TABLE文まで実行されずに「適用済み」と
+// 記録されてしまった(TreatmentEvaluationDiseaseResultテーブルが本番に作られない事故)。
+// これを防ぐため、ファイルを「RedefineTablesブロック」とそれ以外(plain)のセグメントに分割し、
+// plainセグメントは常に実行、RedefineTablesブロックだけを個別に安全判定する。
+type Segment = { type: "plain" | "redefine"; sql: string };
+
+function splitIntoSegments(sql: string): Segment[] {
+  const segments: Segment[] = [];
+  const redefineBlockRe = /-- RedefineTables[\s\S]*?PRAGMA defer_foreign_keys=OFF;\r?\n?/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = redefineBlockRe.exec(sql))) {
+    if (match.index > lastIndex) segments.push({ type: "plain", sql: sql.slice(lastIndex, match.index) });
+    segments.push({ type: "redefine", sql: match[0] });
+    lastIndex = redefineBlockRe.lastIndex;
+  }
+  if (lastIndex < sql.length) segments.push({ type: "plain", sql: sql.slice(lastIndex) });
+  return segments;
+}
+
+async function executeWithBootstrapGuard(sql: string, context: string): Promise<void> {
+  try {
+    await client.executeMultiple(sql);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const looksAlreadyApplied = ALREADY_APPLIED_PATTERNS.some((p) => p.test(message));
+    if (!looksAlreadyApplied) throw err;
+    console.log(`  -> ${context}: already present on remote (bootstrapping tracking record): ${message}`);
+  }
+}
+
 async function main() {
   await ensureTrackingTable();
   const applied = await getAppliedNames();
@@ -73,29 +107,23 @@ async function main() {
     const sqlPath = path.join(migrationsDir, folder, "migration.sql");
     const sql = readFileSync(sqlPath, "utf-8");
 
-    if (sql.includes("-- RedefineTables")) {
-      const target = extractRedefineTarget(sql);
-      if (target && (await tableAlreadySatisfies(target.table, target.columns))) {
-        console.log(
-          `Skipping ${folder} (RedefineTable target "${target.table}" already has all expected columns; running it would risk dropping newer columns).`
-        );
-        await client.execute({
-          sql: `INSERT INTO "_custom_migrations" ("name") VALUES (?)`,
-          args: [folder],
-        });
-        continue;
+    console.log(`Applying ${folder}...`);
+    for (const segment of splitIntoSegments(sql)) {
+      if (!segment.sql.trim()) continue;
+
+      if (segment.type === "redefine") {
+        const target = extractRedefineTarget(segment.sql);
+        if (target && (await tableAlreadySatisfies(target.table, target.columns))) {
+          console.log(
+            `  -> skipping RedefineTable target "${target.table}" (already has all expected columns; running it would risk dropping newer columns)`
+          );
+          continue;
+        }
       }
+
+      await executeWithBootstrapGuard(segment.sql, segment.type === "redefine" ? "RedefineTables block" : "statement");
     }
 
-    console.log(`Applying ${folder}...`);
-    try {
-      await client.executeMultiple(sql);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const looksAlreadyApplied = ALREADY_APPLIED_PATTERNS.some((p) => p.test(message));
-      if (!looksAlreadyApplied) throw err;
-      console.log(`  -> already present on remote (bootstrapping tracking record): ${message}`);
-    }
     await client.execute({
       sql: `INSERT INTO "_custom_migrations" ("name") VALUES (?)`,
       args: [folder],

@@ -1,0 +1,227 @@
+[
+  {
+    "key": "renal_prerenal_aki",
+    "name": "腎前性急性腎障害（脱水）",
+    "description": "高度脱水による腎血流低下に伴う急性腎障害。輸液による腎前性の是正で速やかに改善しうる。",
+    "category": "腎・電解質",
+    "sortOrder": 1,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 100, "initialSpo2Slider": 75, "severitySlider": 40 },
+    "treatment": { "drugCategories": ["輸液"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -45, "diastolicBp": -18, "pulse": 25, "spo2": -3, "respRate": 3 },
+    "aiEvaluationGuideline": "細胞外液の輸液による腎前性因子の是正が第一選択。利尿薬の投与は腎血流をさらに悪化させるため禁忌に近い判断となりうる。",
+    "labPatterns": [
+      {
+        "labItemCode": "3C015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Cr", "value": 1.5, "unit": "mg/dL" }],
+          "moderate": [{ "label": "Cr", "value": 2.8, "unit": "mg/dL" }],
+          "severe": [{ "label": "Cr", "value": 5, "unit": "mg/dL" }]
+        }
+      },
+      {
+        "labItemCode": "3C025",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "BUN", "value": 30, "unit": "mg/dL" }],
+          "moderate": [{ "label": "BUN", "value": 55, "unit": "mg/dL" }],
+          "severe": [{ "label": "BUN", "value": 90, "unit": "mg/dL" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hypovolemic_shock", "sustainMinutes": 30, "triggers": [{ "type": "vital", "field": "systolicBp", "op": "<=", "value": 80 }] }]
+  },
+  {
+    "key": "renal_hyperkalemia",
+    "name": "高カリウム血症",
+    "description": "腎機能低下・薬剤等による血清カリウム上昇。心電図異常から致死性不整脈に進展しうる。",
+    "category": "腎・電解質",
+    "sortOrder": 2,
+    "defaultParams": { "initialTempSlider": 30, "improvementSpeedSlider": 60, "initialSpo2Slider": 90, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["糖尿病治療薬/インスリン製剤"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -10, "diastolicBp": -5, "pulse": -15, "spo2": -2, "respRate": 2 },
+    "aiEvaluationGuideline": "インスリン・グルコース療法による細胞内シフトが即時対応。原因薬剤（ACE阻害薬・K保持性利尿薬等）の中止と、腎機能低下例では透析の検討も評価する。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "K", "value": 5.8, "unit": "mEq/L" }],
+          "moderate": [{ "label": "K", "value": 6.8, "unit": "mEq/L" }],
+          "severe": [{ "label": "K", "value": 8, "unit": "mEq/L" }]
+        }
+      },
+      { "labItemCode": "PHYS-ECG-001", "kind": "text", "tiers": { "mild": "軽度のT波増高を認める。", "moderate": "テント状T波を認める。", "severe": "QRS幅の延長を伴うテント状T波を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_lethal_hyperkalemia", "sustainMinutes": 15, "triggers": [{ "type": "lab", "code": "3H015", "op": ">=", "value": 7.5 }] }]
+  },
+  {
+    "key": "renal_hyponatremia_siadh",
+    "name": "低ナトリウム血症（SIADH）",
+    "description": "抗利尿ホルモン不適合分泌症候群による希釈性低Na血症。頭痛・悪心から意識障害・けいれんに至る。",
+    "category": "腎・電解質",
+    "sortOrder": 3,
+    "defaultParams": { "initialTempSlider": 25, "improvementSpeedSlider": 40, "initialSpo2Slider": 90, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["利尿薬/バソプレシンV2受容体拮抗薬"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -5, "diastolicBp": -3, "pulse": 5, "spo2": -2, "respRate": 2 },
+    "aiEvaluationGuideline": "水分制限とバソプレシンV2受容体拮抗薬（トルバプタン等）が標準治療。急激な補正は橋中心髄鞘崩壊症のリスクがあるため、補正速度への言及があれば加点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Na", "value": 128, "unit": "mEq/L" }],
+          "moderate": [{ "label": "Na", "value": 118, "unit": "mEq/L" }],
+          "severe": [{ "label": "Na", "value": 108, "unit": "mEq/L" }]
+        }
+      },
+      {
+        "labItemCode": "3H045",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "浸透圧", "value": 270, "unit": "mOsm/L" }],
+          "moderate": [{ "label": "浸透圧", "value": 250, "unit": "mOsm/L" }],
+          "severe": [{ "label": "浸透圧", "value": 230, "unit": "mOsm/L" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_status_epilepticus", "sustainMinutes": 15, "triggers": [{ "type": "lab", "code": "3H010", "op": "<=", "value": 110 }] }]
+  },
+  {
+    "key": "renal_hypernatremia",
+    "name": "高ナトリウム血症",
+    "description": "高度脱水・尿崩症等による高Na血症。細胞内脱水により意識障害をきたす。",
+    "category": "腎・電解質",
+    "sortOrder": 4,
+    "defaultParams": { "initialTempSlider": 40, "improvementSpeedSlider": 40, "initialSpo2Slider": 85, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["輸液/糖輸液"] },
+    "vitalsPerSeverity": { "temperature": 0.3, "systolicBp": -5, "diastolicBp": -3, "pulse": 10, "spo2": -2, "respRate": 2 },
+    "aiEvaluationGuideline": "5%ブドウ糖液等の自由水補充による緩徐な補正が標準治療。急速補正は脳浮腫を招くため補正速度への言及があれば加点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Na", "value": 150, "unit": "mEq/L" }],
+          "moderate": [{ "label": "Na", "value": 160, "unit": "mEq/L" }],
+          "severe": [{ "label": "Na", "value": 175, "unit": "mEq/L" }]
+        }
+      },
+      {
+        "labItemCode": "3H045",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "浸透圧", "value": 305, "unit": "mOsm/L" }],
+          "moderate": [{ "label": "浸透圧", "value": 325, "unit": "mOsm/L" }],
+          "severe": [{ "label": "浸透圧", "value": 355, "unit": "mOsm/L" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_hyperosmolar_coma", "sustainMinutes": 30, "triggers": [{ "type": "lab", "code": "3H010", "op": ">=", "value": 170 }] }]
+  },
+  {
+    "key": "renal_hypercalcemia",
+    "name": "高カルシウム血症",
+    "description": "悪性腫瘍・原発性副甲状腺機能亢進症等による高Ca血症。多尿・脱水・意識障害を呈し、重症では致死性不整脈のリスクがある。",
+    "category": "腎・電解質",
+    "sortOrder": 5,
+    "defaultParams": { "initialTempSlider": 35, "improvementSpeedSlider": 45, "initialSpo2Slider": 85, "severitySlider": 45 },
+    "treatment": { "drugCategories": ["輸液/電解質輸液(細胞外液補充液)"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -8, "diastolicBp": -4, "pulse": -8, "spo2": -2, "respRate": 0 },
+    "aiEvaluationGuideline": "大量の生理食塩水輸液による尿中Ca排泄促進が初期治療。ビスホスホネート等の追加投与への言及があれば加点。利尿薬（特にサイアザイド系）はCaを上昇させるため禁忌。",
+    "labPatterns": [
+      {
+        "labItemCode": "3H030",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Ca", "value": 11, "unit": "mg/dL" }],
+          "moderate": [{ "label": "Ca", "value": 13, "unit": "mg/dL" }],
+          "severe": [{ "label": "Ca", "value": 16, "unit": "mg/dL" }]
+        }
+      },
+      { "labItemCode": "PHYS-ECG-001", "kind": "text", "tiers": { "mild": "QT短縮を軽度認める。", "moderate": "明らかなQT短縮を認める。", "severe": "著明なQT短縮とともに不整脈の出現を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_cardiac_arrest", "sustainMinutes": 30, "triggers": [{ "type": "lab", "code": "3H030", "op": ">=", "value": 15 }] }]
+  },
+  {
+    "key": "renal_rhabdomyolysis",
+    "name": "横紋筋融解症",
+    "description": "骨格筋の広範な壊死により筋原性酵素・カリウムが逸脱する病態。急性腎障害と致死性不整脈のリスクを伴う。",
+    "category": "腎・電解質",
+    "sortOrder": 6,
+    "defaultParams": { "initialTempSlider": 35, "improvementSpeedSlider": 45, "initialSpo2Slider": 85, "severitySlider": 50 },
+    "treatment": { "drugCategories": ["輸液/電解質輸液(細胞外液補充液)"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": -15, "diastolicBp": -8, "pulse": 15, "spo2": -3, "respRate": 3 },
+    "aiEvaluationGuideline": "大量輸液による腎保護が第一選択。高カリウム血症の合併確認と是正への言及も評価する。輸液が不十分な場合は急性腎障害進行のリスクとして減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3B010",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "CK", "value": 5000, "unit": "U/L" }],
+          "moderate": [{ "label": "CK", "value": 30000, "unit": "U/L" }],
+          "severe": [{ "label": "CK", "value": 100000, "unit": "U/L" }]
+        }
+      },
+      { "labItemCode": "1A100", "kind": "text", "tiers": { "mild": "尿潜血反応が陽性だが、鏡検で赤血球は認めない（ミオグロビン尿を示唆）。", "moderate": "尿潜血反応強陽性、ミオグロビン尿による褐色尿を認める。", "severe": "著明な褐色尿と乏尿を認める。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_lethal_hyperkalemia", "sustainMinutes": 20, "triggers": [{ "type": "lab", "code": "3H015", "op": ">=", "value": 7.5 }] }]
+  },
+  {
+    "key": "renal_esrd_uremia",
+    "name": "末期腎不全（溢水・尿毒症）",
+    "description": "透析導入が必要な末期腎不全。体液貯留による肺水腫と尿毒症症状（悪心・意識障害等）を呈する。",
+    "category": "腎・電解質",
+    "sortOrder": 7,
+    "defaultParams": { "initialTempSlider": 30, "improvementSpeedSlider": 40, "initialSpo2Slider": 55, "severitySlider": 55 },
+    "treatment": { "procedureKeywords": ["血液透析"] },
+    "vitalsPerSeverity": { "temperature": 0, "systolicBp": 20, "diastolicBp": 10, "pulse": 10, "spo2": -25, "respRate": 14 },
+    "aiEvaluationGuideline": "血液透析による除水・溶質除去が根本治療。利尿薬のみでは無尿の末期腎不全には無効であり、透析の指示がなければ大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "3C015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "Cr", "value": 6, "unit": "mg/dL" }],
+          "moderate": [{ "label": "Cr", "value": 9, "unit": "mg/dL" }],
+          "severe": [{ "label": "Cr", "value": 14, "unit": "mg/dL" }]
+        }
+      },
+      {
+        "labItemCode": "3H015",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "K", "value": 5.5, "unit": "mEq/L" }],
+          "moderate": [{ "label": "K", "value": 6.5, "unit": "mEq/L" }],
+          "severe": [{ "label": "K", "value": 7.8, "unit": "mEq/L" }]
+        }
+      }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_lethal_hyperkalemia", "sustainMinutes": 20, "triggers": [{ "type": "lab", "code": "3H015", "op": ">=", "value": 7.5 }] }]
+  },
+  {
+    "key": "renal_pyelonephritis",
+    "name": "急性腎盂腎炎",
+    "description": "上部尿路の細菌感染。発熱・肋骨脊柱角叩打痛（CVA叩打痛）を特徴とする。",
+    "category": "腎・電解質",
+    "sortOrder": 8,
+    "isInfectious": true,
+    "defaultParams": { "initialTempSlider": 65, "improvementSpeedSlider": 50, "initialSpo2Slider": 85, "severitySlider": 50 },
+    "treatment": { "drugCategories": ["抗菌薬"] },
+    "vitalsPerSeverity": { "temperature": 2.5, "systolicBp": -12, "diastolicBp": -6, "pulse": 22, "spo2": -3, "respRate": 6 },
+    "aiEvaluationGuideline": "尿培養に基づく抗菌薬治療が標準。閉塞（結石等）を伴う場合は緊急ドレナージが必要となるため画像評価への言及も評価する。抗菌薬未投与は大幅減点。",
+    "labPatterns": [
+      {
+        "labItemCode": "5C070",
+        "kind": "values",
+        "tiers": {
+          "mild": [{ "label": "CRP", "value": 4, "unit": "mg/dL" }],
+          "moderate": [{ "label": "CRP", "value": 13, "unit": "mg/dL" }],
+          "severe": [{ "label": "CRP", "value": 24, "unit": "mg/dL" }]
+        }
+      },
+      { "labItemCode": "MB-005", "kind": "text", "tiers": { "mild": "有意な菌の発育を軽度認める。", "moderate": "グラム陰性桿菌が有意に発育（同定検査中）。", "severe": "グラム陰性桿菌が高度に発育、膿腎症を疑う画像所見を伴う。" } }
+    ],
+    "crisisTriggers": [{ "targetKey": "crisis_septic_shock", "sustainMinutes": 30, "triggers": [{ "type": "severity", "op": ">=", "value": 90 }] }]
+  }
+]

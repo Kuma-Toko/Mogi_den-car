@@ -37,7 +37,7 @@ import {
 } from "@/lib/physiology-engine";
 import { formatLabValues, type LabValue } from "@/lib/lab-reference-ranges";
 import { treatmentTriggerSchema, vitalCoefficientsSchema } from "@/lib/schemas";
-import { evaluateTreatment, type TargetedTherapyContext } from "@/lib/ai-treatment-evaluation";
+import { evaluateTreatment, type DiseaseEvaluationTarget, type TargetedTherapyContext } from "@/lib/ai-treatment-evaluation";
 import { generateDischargeFeedback } from "@/lib/ai-discharge-feedback";
 import {
   evaluateAntibioticCoverage,
@@ -145,19 +145,12 @@ export async function loadEngineLinkedLabCodes(): Promise<Set<string>> {
 
 // ── 感染症エンジン（原因菌×抗菌薬感受性による培養結果生成） ──────────────────────
 
-// 症例にアタッチされた疾患リンクのうち、最初に「真の原因菌」が設定されているものを返す
-// （通常は感染症系テンプレートが1つだけ該当する想定）。どのリンクにも設定が無ければnull。
-export function findCasePathogenId(diseaseLinks: { pathogenId: string | null }[]): string | null {
-  return diseaseLinks.find((l) => l.pathogenId)?.pathogenId ?? null;
-}
-
-// findCasePathogenIdと対になる検体部位制限。原因菌を持つ疾患リンクのrelevantSpecimenSitesを返す
-// （通常は原因菌を持つリンクが1つだけの想定なので、findCasePathogenIdと同じ行を探す）。
-// null＝制限なし（isSpecimenSiteRelevantが常にtrueを返す）。
-export function findCaseRelevantSpecimenSites(diseaseLinks: { pathogenId: string | null; relevantSpecimenSites: string | null }[]): string[] | null {
-  const link = diseaseLinks.find((l) => l.pathogenId);
-  if (!link?.relevantSpecimenSites) return null;
-  return parseStringArray(link.relevantSpecimenSites);
+// 症例にアタッチされた疾患リンクのうち、「真の原因菌」が設定されている全リンクを返す
+// （症例に複数の感染症病態が同時にあってもよい。各病態は独立に原因菌・抗菌薬カバレッジを持つ）。
+export function findCaseInfectiousDiseaseLinks<T extends { pathogenId: string | null }>(
+  diseaseLinks: T[]
+): (T & { pathogenId: string })[] {
+  return diseaseLinks.filter((l): l is T & { pathogenId: string } => !!l.pathogenId);
 }
 
 export async function loadPathogenProfile(pathogenId: string): Promise<PathogenProfile | null> {
@@ -212,7 +205,7 @@ type TreatmentOrderWithDrug = {
   label: string;
   detail: string | null;
   discontinuedAt: Date | null;
-  drug: { categoryLinks: { categoryId: string; category: { majorCategory: string } }[] } | null;
+  drug: { categoryLinks: { categoryId: string; category: { majorCategory: string; subCategory: string | null } }[] } | null;
 };
 
 // 薬剤影響エンジン向け: 処方・注射オーダーのうちdrugが紐づくものだけを、判定に使う形(categoryIds)へ変換する。
@@ -392,7 +385,9 @@ async function loadTreatmentOrders(caseId: string): Promise<TreatmentOrderWithDr
       label: true,
       detail: true,
       discontinuedAt: true,
-      drug: { select: { categoryLinks: { select: { categoryId: true, category: { select: { majorCategory: true } } } } } },
+      drug: {
+        select: { categoryLinks: { select: { categoryId: true, category: { select: { majorCategory: true, subCategory: true } } } } },
+      },
     },
   });
 }
@@ -427,22 +422,28 @@ async function loadActiveAntibioticCategories(caseId: string): Promise<ActiveAnt
   return result;
 }
 
-// AI治療評価向け: 症例に原因菌が割り当てられていれば、学生への培養結果開示状況とは無関係に、
-// 現在の抗菌薬オーダーの原因菌カバレッジを常に判定して返す。「（選択した抗菌薬が原因菌に）効いていない」
-// ことも治療効果判定の重要な材料であるため、培養未確定の経験的治療フェーズでも常に評価する。
-// 原因菌未割当の症例（＝感染症エンジン未使用）はnullを返し、AIの採点材料に含めない
-// （既存の大分類ベースの二値判定のみで評価される、従来どおりの挙動を維持する）。
-async function loadTargetedTherapyContext(
+// AI治療評価向け: 症例に原因菌が割り当てられた感染症病態それぞれについて、学生への培養結果開示状況とは
+// 無関係に、現在の抗菌薬オーダーの原因菌カバレッジを常に判定して返す。「（選択した抗菌薬が原因菌に）
+// 効いていない」ことも治療効果判定の重要な材料であるため、培養未確定の経験的治療フェーズでも常に評価する。
+// 抗菌薬オーダーは症例全体で共有し（全身投与された抗菌薬は体内の感受性病原体すべてに同時に作用するため）、
+// 感染症病態ごとに独立してその病態の原因菌への感受性を判定する（1病態分のロジックをN病態分ループするだけ）。
+// 原因菌を持つ病態が1つも無ければ空のMapを返し、AIの採点材料に含めない（既存の大分類ベースの二値判定の
+// みで評価される、従来どおりの挙動を維持する）。
+export async function loadTargetedTherapyContexts(
   caseRecord: Pick<CaseForEngine, "id" | "diseaseLinks">
-): Promise<TargetedTherapyContext | null> {
-  const casePathogenId = findCasePathogenId(caseRecord.diseaseLinks);
-  if (!casePathogenId) return null;
-
-  const pathogen = await loadPathogenProfile(casePathogenId);
-  if (!pathogen) return null;
+): Promise<Map<string, TargetedTherapyContext>> {
+  const infectiousLinks = findCaseInfectiousDiseaseLinks(caseRecord.diseaseLinks);
+  if (infectiousLinks.length === 0) return new Map();
 
   const activeCategories = await loadActiveAntibioticCategories(caseRecord.id);
-  return { pathogenName: pathogen.name, coverage: evaluateAntibioticCoverage(pathogen, activeCategories) };
+  const entries = await Promise.all(
+    infectiousLinks.map(async (link) => {
+      const pathogen = await loadPathogenProfile(link.pathogenId);
+      if (!pathogen) return null;
+      return [link.id, { pathogenName: pathogen.name, coverage: evaluateAntibioticCoverage(pathogen, activeCategories) }] as const;
+    })
+  );
+  return new Map(entries.filter((e): e is readonly [string, TargetedTherapyContext] => e !== null));
 }
 
 const PRESCRIPTION_DURATION_DAYS_RE = /^(\d+)日分$/;
@@ -512,13 +513,26 @@ export async function reconcileCaseResults(caseId: string): Promise<void> {
   const dueFinal = pending.filter((o) => o.resultReadyAt && o.resultReadyAt <= clockNow);
   if (duePrelim.length === 0 && dueFinal.length === 0) return;
 
-  const casePathogenId = findCasePathogenId(caseRecord.diseaseLinks);
-  const pathogen = casePathogenId ? await loadPathogenProfile(casePathogenId) : null;
-  const relevantSites = findCaseRelevantSpecimenSites(caseRecord.diseaseLinks);
+  const infectiousLinks = findCaseInfectiousDiseaseLinks(caseRecord.diseaseLinks);
+  const infectiousProfiles = await Promise.all(
+    infectiousLinks.map(async (link) => ({
+      link,
+      pathogen: await loadPathogenProfile(link.pathogenId),
+      relevantSites: link.relevantSpecimenSites ? parseStringArray(link.relevantSpecimenSites) : null,
+    }))
+  );
   // 検体部位が症例にとって妥当な注文だけに原因菌を反映する。部位不一致の注文は「原因菌未割り当て」と
-  // 同じフォールバック経路（LabItemMaster.sampleResult表示）に合流させる。
-  const effectivePathogenFor = (labItem: { specimenSite: string | null } | null) =>
-    isSpecimenSiteRelevant(relevantSites, labItem?.specimenSite ?? null) ? pathogen : null;
+  // 同じフォールバック経路（LabItemMaster.sampleResult表示）に合流させる。複数の感染症病態の
+  // relevantSpecimenSitesが同じ検体部位に同時に一致した場合はisPrimaryを優先し、次にsortOrderが
+  // 小さい方を使う（教員は同時進行する感染症同士で検体部位が重複しないよう設計することを推奨するが、
+  // 重複時も挙動を決定的にするためのタイブレーク）。
+  const effectivePathogenFor = (labItem: { specimenSite: string | null } | null) => {
+    const site = labItem?.specimenSite ?? null;
+    const matches = infectiousProfiles.filter((p) => p.pathogen && isSpecimenSiteRelevant(p.relevantSites, site));
+    if (matches.length === 0) return null;
+    matches.sort((a, b) => Number(b.link.isPrimary) - Number(a.link.isPrimary) || a.link.sortOrder - b.link.sortOrder);
+    return matches[0].pathogen;
+  };
   // 通常検査(非培養)の最終結果解決にのみ必要。培養系は原因菌モデルベースでオーダー履歴を見ないため省略可。
   const needsTreatmentOrders = dueFinal.some((o) => !o.labItem?.isCulture);
   const treatmentOrders = needsTreatmentOrders ? await loadTreatmentOrders(caseId) : [];
@@ -928,11 +942,12 @@ export async function reconcileCasesForStudent(studentId: string): Promise<void>
 }
 
 // ── AI治療評価（治療内容をGeminiに評価させ、時間あたりの重症度変化量として重症度カーブへ反映する） ──
-// 症例に複数疾患がアタッチされていても、AI治療評価は「主病態」（isPrimaryのCaseDiseaseLink）のみを
-// 対象にする。評価のたびに重症度を直接ジャンプさせるのではなく、次の評価まで持続する「変化率」
-// （CaseDiseaseLink.aiSeverityRatePerHour）を設定する。無害なオーダーが何度混ざって評価が再発火しても、
-// 同じ変化率が再アンカーされるだけなので二重に改善/悪化が計上されない（詳細は物理エンジン側の
-// computeAiSeverityRatePerHourコメント参照）。禁忌等の重大な問題（contraindicated）は別枠で、
+// 症例に複数疾患がアタッチされている場合、aiEvaluationGuideline設定済み・エンジン対応の全CaseDiseaseLinkを
+// 対象に、1回のGemini呼び出しでまとめて採点する（病態ごとにAPIを呼ぶとトークン消費が増えるため）。
+// 評価のたびに重症度を直接ジャンプさせるのではなく、次の評価まで持続する「変化率」
+// （CaseDiseaseLink.aiSeverityRatePerHour）を病態ごとに独立して設定する。無害なオーダーが何度混ざって評価が
+// 再発火しても、同じ変化率が再アンカーされるだけなので二重に改善/悪化が計上されない（詳細は物理エンジン側の
+// computeAiSeverityRatePerHourコメント参照）。禁忌等の重大な問題（contraindicated）は病態ごとに別枠で、
 // その場で一気に重症度をジャンプさせる（applyContraindicationJump）。
 
 const TREATMENT_EVALUATION_ORDER_TYPES: OrderType[] = ["MEDICATION", "INJECTION", "PROCEDURE", "GENERAL"];
@@ -941,21 +956,32 @@ function hashOrderIds(orderIds: string[]): string {
   return createHash("sha256").update(orderIds.slice().sort().join(",")).digest("hex");
 }
 
+// 症例内で「aiEvaluationGuideline設定済み＋エンジン対応（loadTemplateConfig成功）」な病態リンクだけを
+// 抽出する。AI治療評価・退院時フィードバックの両方で「どの病態を対象にするか」の判定に使う共通ロジック。
+async function findAiEvaluableDiseaseLinks(
+  diseaseLinks: LinkWithTemplate[]
+): Promise<{ link: LinkWithTemplate; guideline: string; config: TemplateConfig }[]> {
+  const eligible: { link: LinkWithTemplate; guideline: string; config: TemplateConfig }[] = [];
+  for (const link of diseaseLinks) {
+    const guideline = link.template.aiEvaluationGuideline?.trim();
+    if (!guideline) continue;
+    const config = await loadTemplateConfig(link.template.key);
+    if (!config) continue;
+    eligible.push({ link, guideline, config });
+  }
+  return eligible;
+}
+
 // オーダー提出直後（治療系オーダーを含む提出のときのみ）に呼ぶ。ガード条件（急変状態でない・
-// 主病態にルーブリック設定済み・エンジン対応）を満たし、かつ現在の治療系オーダー集合が
+// 採点対象の病態が1つ以上ある）を満たし、かつ現在の治療系オーダー集合が
 // 過去に評価済み(PENDING/COMPLETED)の集合と異なる場合のみPENDING行を作成してそのIDを返す。
 // 実際のAI呼び出しはここでは行わない（呼び出し元がNext.jsのafter()でprocessTreatmentEvaluationを呼ぶ）。
 export async function createPendingTreatmentEvaluationIfNeeded(caseId: string): Promise<string | null> {
   const caseRecord = await loadCaseForEngine(caseId);
   if (!caseRecord || caseRecord.crisisState !== "STABLE") return null;
 
-  const primaryLink = findPrimaryDiseaseLink(caseRecord.diseaseLinks);
-  const template = primaryLink?.template;
-  const guideline = template?.aiEvaluationGuideline?.trim();
-  if (!primaryLink || !template || !guideline) return null;
-
-  const config = await loadTemplateConfig(template.key);
-  if (!config) return null;
+  const eligibleLinks = await findAiEvaluableDiseaseLinks(caseRecord.diseaseLinks);
+  if (eligibleLinks.length === 0) return null;
 
   const orders = await db.order.findMany({
     where: { caseId, orderType: { in: TREATMENT_EVALUATION_ORDER_TYPES } },
@@ -986,15 +1012,13 @@ export async function processTreatmentEvaluation(evaluationId: string): Promise<
   if (!evaluation || evaluation.status !== "PENDING") return;
 
   const caseRecord = await loadCaseForEngine(evaluation.caseId);
-  const primaryLink = caseRecord ? findPrimaryDiseaseLink(caseRecord.diseaseLinks) : null;
-  const template = primaryLink?.template;
-  const guideline = template?.aiEvaluationGuideline?.trim();
-  if (!caseRecord || caseRecord.crisisState !== "STABLE" || !primaryLink || !template || !guideline) {
+  const eligibleLinks = caseRecord ? await findAiEvaluableDiseaseLinks(caseRecord.diseaseLinks) : [];
+  if (!caseRecord || caseRecord.crisisState !== "STABLE" || eligibleLinks.length === 0) {
     await db.treatmentEvaluation.update({
       where: { id: evaluationId },
       data: {
         status: "FAILED",
-        errorMessage: "評価開始前に前提条件（急変未発生・主病態のルーブリック設定）が崩れたため中止しました。",
+        errorMessage: "評価開始前に前提条件（急変未発生・採点対象病態のルーブリック設定）が崩れたため中止しました。",
         completedAt: new Date(),
       },
     });
@@ -1003,65 +1027,82 @@ export async function processTreatmentEvaluation(evaluationId: string): Promise<
 
   try {
     const orderIds = JSON.parse(evaluation.orderIdsSnapshot) as string[];
-    const [orders, problems, latestVital, targetedTherapy] = await Promise.all([
+    const [orders, problems, latestVital, targetedTherapyMap] = await Promise.all([
       db.order.findMany({
         where: { id: { in: orderIds } },
         select: { orderType: true, label: true, detail: true, orderedAt: true },
       }),
       db.problem.findMany({ where: { caseId: evaluation.caseId }, select: { label: true, isPrimary: true } }),
       db.vital.findFirst({ where: { caseId: evaluation.caseId }, orderBy: { recordedAt: "desc" } }),
-      loadTargetedTherapyContext(caseRecord),
+      loadTargetedTherapyContexts(caseRecord),
     ]);
 
-    const result = await evaluateTreatment({
-      caseRecord,
-      templateName: template.name,
-      templateDescription: template.description,
+    const diseases: DiseaseEvaluationTarget[] = eligibleLinks.map(({ link, guideline }) => ({
+      diseaseLinkId: link.id,
+      templateName: link.template.name,
+      templateDescription: link.template.description,
       guideline,
-      problems,
-      orders,
-      latestVital,
-      targetedTherapy,
-    });
+      targetedTherapy: targetedTherapyMap.get(link.id) ?? null,
+    }));
+
+    const { results, rawResponse } = await evaluateTreatment({ caseRecord, diseases, problems, orders, latestVital });
 
     // AI呼び出し中（数秒〜）に状態が変わっていないか（危機発生・死亡）再確認してから重症度へ反映する
     const freshCase = await loadCaseForEngine(evaluation.caseId);
-    const freshPrimaryLink = freshCase ? findPrimaryDiseaseLink(freshCase.diseaseLinks) : null;
-    let resetSeverity: number | null = null;
-    const severityRatePerHour = computeAiSeverityRatePerHour(result.appropriatenessScore);
-    if (freshCase && freshCase.crisisState === "STABLE" && freshPrimaryLink) {
-      const clockNow = getCaseClockNow(freshCase);
-      const config = await loadTemplateConfig(template.key);
-      const treatmentOrders = await loadTreatmentOrders(evaluation.caseId);
-      const currentSeverity = computeCaseSeverityAtTime(freshPrimaryLink, treatmentOrders, config, clockNow);
-      if (currentSeverity !== null) {
-        // 禁忌等が検知された場合のみ、その場で一気に重症度をジャンプさせる。それ以外は現在値をそのまま
-        // 引き継ぐ（ジャンプなし）— 以降はseverityRatePerHourによる連続的な変化に委ねる。
-        resetSeverity = result.contraindicated ? applyContraindicationJump(currentSeverity) : Math.round(currentSeverity);
-        const params = parsePhysiologyParams(freshPrimaryLink.physiologyParams);
-        await db.caseDiseaseLink.update({
-          where: { id: freshPrimaryLink.id },
-          data: {
-            severityBaselineAt: clockNow,
-            aiSeverityRatePerHour: severityRatePerHour,
-            physiologyParams: JSON.stringify({ ...params, severitySlider: resetSeverity }),
-          },
-        });
+    const stillStable = !!freshCase && freshCase.crisisState === "STABLE";
+    const clockNow = stillStable ? getCaseClockNow(freshCase) : null;
+    const treatmentOrders = stillStable ? await loadTreatmentOrders(evaluation.caseId) : null;
+
+    const diseaseResultRows: {
+      diseaseLinkId: string;
+      appropriatenessScore: number;
+      contraindicated: boolean;
+      severityRatePerHour: number | null;
+      resetSeverity: number | null;
+      rationale: string;
+    }[] = [];
+
+    for (const result of results) {
+      let severityRatePerHour: number | null = null;
+      let resetSeverity: number | null = null;
+      const freshLink = stillStable ? freshCase!.diseaseLinks.find((l) => l.id === result.diseaseLinkId) : undefined;
+      if (freshLink) {
+        const eligible = eligibleLinks.find((e) => e.link.id === result.diseaseLinkId);
+        const currentSeverity = eligible
+          ? computeCaseSeverityAtTime(freshLink, treatmentOrders!, eligible.config, clockNow!)
+          : null;
+        if (currentSeverity !== null) {
+          // 禁忌等が検知された場合のみ、その場で一気に重症度をジャンプさせる。それ以外は現在値をそのまま
+          // 引き継ぐ（ジャンプなし）— 以降はseverityRatePerHourによる連続的な変化に委ねる。
+          severityRatePerHour = computeAiSeverityRatePerHour(result.appropriatenessScore);
+          resetSeverity = result.contraindicated ? applyContraindicationJump(currentSeverity) : Math.round(currentSeverity);
+          const params = parsePhysiologyParams(freshLink.physiologyParams);
+          await db.caseDiseaseLink.update({
+            where: { id: freshLink.id },
+            data: {
+              severityBaselineAt: clockNow!,
+              aiSeverityRatePerHour: severityRatePerHour,
+              physiologyParams: JSON.stringify({ ...params, severitySlider: resetSeverity }),
+            },
+          });
+        }
       }
+      diseaseResultRows.push({
+        diseaseLinkId: result.diseaseLinkId,
+        appropriatenessScore: result.appropriatenessScore,
+        contraindicated: result.contraindicated,
+        severityRatePerHour,
+        resetSeverity,
+        rationale: result.rationale,
+      });
     }
 
     await db.treatmentEvaluation.update({
       where: { id: evaluationId },
-      data: {
-        status: "COMPLETED",
-        appropriatenessScore: result.appropriatenessScore,
-        contraindicated: result.contraindicated,
-        severityRatePerHour: resetSeverity !== null ? severityRatePerHour : null,
-        resetSeverity,
-        rationale: result.rationale,
-        rawResponse: result.rawResponse,
-        completedAt: new Date(),
-      },
+      data: { status: "COMPLETED", rawResponse, completedAt: new Date() },
+    });
+    await db.treatmentEvaluationDiseaseResult.createMany({
+      data: diseaseResultRows.map((row) => ({ evaluationId, ...row })),
     });
 
     // AI治療評価の内容（スコア・根拠）は教員・管理者のみに開示する情報のため、学生への通知は送らない
@@ -1083,37 +1124,53 @@ export async function runDischargeFeedback(caseId: string, studentId: string): P
   try {
     const caseRecord = await loadCaseForEngine(caseId);
     if (!caseRecord) throw new Error("症例が見つかりません");
+    if (caseRecord.diseaseLinks.length === 0) throw new Error("病態が登録されていません");
 
-    const primaryLink = findPrimaryDiseaseLink(caseRecord.diseaseLinks);
-    const template = primaryLink?.template;
-    if (!template) throw new Error("主病態のテンプレートが見つかりません");
-
-    const [orders, problems, pastEvaluations, latestVital, targetedTherapy] = await Promise.all([
+    const [orders, problems, pastEvaluationRows, latestVital, targetedTherapyMap] = await Promise.all([
       db.order.findMany({
         where: { caseId, orderType: { in: TREATMENT_EVALUATION_ORDER_TYPES } },
         select: { orderType: true, label: true, detail: true, orderedAt: true },
       }),
       db.problem.findMany({ where: { caseId }, select: { label: true, isPrimary: true } }),
-      db.treatmentEvaluation.findMany({
-        where: { caseId, status: "COMPLETED" },
-        orderBy: { completedAt: "asc" },
-        select: { appropriatenessScore: true, contraindicated: true, rationale: true, completedAt: true },
+      db.treatmentEvaluationDiseaseResult.findMany({
+        where: { evaluation: { caseId, status: "COMPLETED" } },
+        orderBy: { evaluation: { completedAt: "asc" } },
+        select: {
+          appropriatenessScore: true,
+          contraindicated: true,
+          rationale: true,
+          evaluation: { select: { completedAt: true } },
+          diseaseLink: { select: { template: { select: { name: true } } } },
+        },
       }),
       db.vital.findFirst({ where: { caseId }, orderBy: { recordedAt: "desc" } }),
-      loadTargetedTherapyContext(caseRecord),
+      loadTargetedTherapyContexts(caseRecord),
     ]);
+
+    const diseases = caseRecord.diseaseLinks.map((link) => ({
+      diseaseLinkId: link.id,
+      templateName: link.template.name,
+      templateDescription: link.template.description,
+      guideline: link.template.aiEvaluationGuideline?.trim() || null,
+      targetedTherapy: targetedTherapyMap.get(link.id) ?? null,
+    }));
+
+    const pastEvaluations = pastEvaluationRows.map((r) => ({
+      diseaseName: r.diseaseLink.template.name,
+      appropriatenessScore: r.appropriatenessScore,
+      contraindicated: r.contraindicated,
+      rationale: r.rationale,
+      completedAt: r.evaluation.completedAt,
+    }));
 
     const result = await generateDischargeFeedback({
       caseRecord,
-      templateName: template.name,
-      templateDescription: template.description,
-      guideline: template.aiEvaluationGuideline?.trim() || null,
+      diseases,
       crisisState: caseRecord.crisisState,
       problems,
       orders,
       pastEvaluations,
       latestVital,
-      targetedTherapy,
     });
 
     await db.caseAssignment.update({

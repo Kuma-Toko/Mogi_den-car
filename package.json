@@ -20,8 +20,12 @@
     "db:export-engine-config": "tsx prisma/export-engine-config.ts",
     "db:apply-engine-config": "tsx prisma/apply-engine-config.ts",
     "db:verify-engine-config": "tsx prisma/verify-engine-config.ts",
+    "db:validate-pathology": "tsx prisma/validate-pathology-catalog.ts",
+    "db:reset-pathology": "tsx prisma/reset-pathology.ts",
+    "db:seed-demo-cases": "tsx prisma/seed-demo-cases.ts",
     "db:diagnose-turso": "tsx prisma/diagnose-turso.ts",
     "db:repair-drugmaster-schema": "tsx prisma/repair-drugmaster-schema.ts",
+    "db:repair-treatment-evaluation-schema": "tsx prisma/repair-treatment-evaluation-schema.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {
