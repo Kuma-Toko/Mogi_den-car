@@ -61,12 +61,17 @@ export function CaseForm({
   templates,
   pathogens,
   mode = "create",
+  variant = "case",
   action,
   initial,
 }: {
   templates: Template[];
   pathogens: Pathogen[];
   mode?: "create" | "edit";
+  // "template"のとき、症例テンプレート（教員が事前に作り込んで学生分を一括生成する雛形）用の見た目にする。
+  // 担当学生・担当形態は生成時に決まるためその欄を隠し、保存ボタンも「テンプレートを保存」単独にする。
+  // それ以外の入力項目（患者基本情報・病態モデル・台本など）は通常の症例作成フォームと完全に共有する。
+  variant?: "case" | "template";
   action: (formData: FormData) => void | Promise<void>;
   initial?: CaseFormInitial;
 }) {
@@ -465,7 +470,7 @@ ${context}
         </div>
       </div>
 
-      <div className="split">
+      <div className={variant === "template" ? undefined : "split"}>
         <div className="card">
           <div className="card-h">時間進行・結果反映設定</div>
           <div className="card-b">
@@ -496,38 +501,44 @@ ${context}
             </div>
           </div>
         </div>
-        <div className="card">
-          <div className="card-h">複数学生の共有設定</div>
-          <div className="card-b">
-            <div className="field" style={{ marginBottom: 12 }}>
-              <label>担当形態</label>
-              <div className="radio2">
-                <div className={sharingMode === "SOLO" ? "on" : ""} onClick={() => setSharingMode("SOLO")}>
-                  単一学生専用
+        {variant === "case" && (
+          <div className="card">
+            <div className="card-h">複数学生の共有設定</div>
+            <div className="card-b">
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label>担当形態</label>
+                <div className="radio2">
+                  <div className={sharingMode === "SOLO" ? "on" : ""} onClick={() => setSharingMode("SOLO")}>
+                    単一学生専用
+                  </div>
+                  <div className={sharingMode === "TEAM" ? "on" : ""} onClick={() => setSharingMode("TEAM")}>
+                    チームで共有
+                  </div>
                 </div>
-                <div className={sharingMode === "TEAM" ? "on" : ""} onClick={() => setSharingMode("TEAM")}>
-                  チームで共有
-                </div>
+                <input type="hidden" name="sharingMode" value={sharingMode} />
               </div>
-              <input type="hidden" name="sharingMode" value={sharingMode} />
-            </div>
-            <div className="field">
-              <label htmlFor="assigneeLoginIds">
-                担当学生のログインID（カンマ区切り・任意{mode === "create" ? "、公開時のみ反映" : ""}）
-              </label>
-              <input
-                id="assigneeLoginIds"
-                name="assigneeLoginIds"
-                defaultValue={initial?.assigneeLoginIds}
-                placeholder="例: student1, student2"
-              />
+              <div className="field">
+                <label htmlFor="assigneeLoginIds">
+                  担当学生のログインID（カンマ区切り・任意{mode === "create" ? "、公開時のみ反映" : ""}）
+                </label>
+                <input
+                  id="assigneeLoginIds"
+                  name="assigneeLoginIds"
+                  defaultValue={initial?.assigneeLoginIds}
+                  placeholder="例: student1, student2"
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div style={{ textAlign: "right", marginTop: 14 }}>
-        {canPublish ? (
+        {variant === "template" ? (
+          <button type="submit" name="intent" value="template" className="btn primary">
+            テンプレートを保存
+          </button>
+        ) : canPublish ? (
           <>
             <button type="submit" name="intent" value="draft" className="btn ghost">
               下書き保存

@@ -33,6 +33,7 @@ export default async function PatientsPage({
 
   const baseWhere = {
     status: { not: "DRAFT" as const },
+    isTemplate: false,
     assignments: { some: { studentId: user.id, dischargedAt: null } },
   };
   const where = query

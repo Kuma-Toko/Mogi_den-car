@@ -21,6 +21,7 @@ const NAV_BY_ROLE: Record<Role, { sub: string; items: NavItem[] }> = {
     items: [
       { href: "/teacher/dashboard", label: "重症度モニタ" },
       { href: "/teacher/cases", label: "症例一覧・作成" },
+      { href: "/teacher/case-templates", label: "症例テンプレート" },
     ],
   },
   ADMIN: {
@@ -28,6 +29,7 @@ const NAV_BY_ROLE: Record<Role, { sub: string; items: NavItem[] }> = {
     items: [
       { href: "/teacher/dashboard", label: "重症度モニタ" },
       { href: "/teacher/cases", label: "症例一覧・作成" },
+      { href: "/teacher/case-templates", label: "症例テンプレート" },
       { href: "/admin/drugs", label: "薬剤マスター" },
       { href: "/admin/lab-items", label: "検査項目マスター" },
       { href: "/admin/templates", label: "病態テンプレート" },

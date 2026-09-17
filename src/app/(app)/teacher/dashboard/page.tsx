@@ -43,6 +43,7 @@ export default async function TeacherDashboardPage({
 
   const caseWhere = {
     status: { in: ["ACTIVE", "SIMULATING"] as CaseStatus[] },
+    isTemplate: false,
     ...(user.role === "ADMIN" ? {} : { createdByUserId: user.id }),
   };
 

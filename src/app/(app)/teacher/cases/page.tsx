@@ -6,6 +6,7 @@ import { caseTypeLabel } from "@/lib/labels";
 import { formatJaDateTime, formatJaDateTimeShort } from "@/lib/format";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { deleteCase } from "./actions";
+import { createTemplateFromCase } from "../case-templates/actions";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "下書き",
@@ -26,7 +27,7 @@ export default async function TeacherCasesPage() {
   if (user.role === "STUDENT") redirect("/patients");
 
   const cases = await db.case.findMany({
-    where: user.role === "ADMIN" ? {} : { createdByUserId: user.id },
+    where: { isTemplate: false, ...(user.role === "ADMIN" ? {} : { createdByUserId: user.id }) },
     include: { assignments: true },
     orderBy: { createdAt: "desc" },
   });
@@ -81,6 +82,11 @@ export default async function TeacherCasesPage() {
                           <Link href={`/teacher/cases/${c.id}/edit`} className="btn ghost" style={{ fontSize: 11 }}>
                             編集
                           </Link>
+                          <form action={createTemplateFromCase.bind(null, c.id)}>
+                            <button type="submit" className="btn ghost" style={{ fontSize: 11 }}>
+                              テンプレート化
+                            </button>
+                          </form>
                           <form>
                             <ConfirmButton
                               formAction={deleteCase.bind(null, c.id)}

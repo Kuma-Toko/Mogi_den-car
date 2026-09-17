@@ -14,7 +14,7 @@ export function SimTimeControl({
   caseRecord,
 }: {
   caseId: string;
-  caseRecord: Pick<Case, "timeProgressMode" | "simNowAt" | "createdAt">;
+  caseRecord: Pick<Case, "timeProgressMode" | "simNowAt" | "createdAt" | "publishedAt">;
 }) {
   if (caseRecord.timeProgressMode !== "MANUAL") return null;
 

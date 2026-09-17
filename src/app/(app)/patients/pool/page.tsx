@@ -33,6 +33,7 @@ export default async function CasePoolPage({
   const baseWhere = {
     status: { in: ["ACTIVE", "SIMULATING"] as CaseStatus[] },
     caseType: { in: ["ROUTINE_COMMON", "SIMULATION"] as CaseType[] },
+    isTemplate: false,
     assignments: { none: { studentId: user.id } },
   };
   const where = query
