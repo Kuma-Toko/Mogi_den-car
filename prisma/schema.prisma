@@ -160,6 +160,11 @@ model Case {
   updatedAt       DateTime  @updatedAt
   publishedAt     DateTime?
 
+  isTemplate       Boolean @default(false) // 症例テンプレート本体（学生には配らない雛形）。一覧・プール・ダッシュボードから除外する
+  templateSourceId String? // このテンプレートから生成された症例の場合、生成元テンプレートのCase.id
+  sourceTemplate   Case?   @relation("CaseTemplateSource", fields: [templateSourceId], references: [id], onDelete: SetNull)
+  generatedCases   Case[]  @relation("CaseTemplateSource")
+
   diseaseLinks         CaseDiseaseLink[]
   assignments          CaseAssignment[]
   problems             Problem[]
@@ -173,6 +178,8 @@ model Case {
 
   @@index([createdByUserId])
   @@index([status])
+  @@index([isTemplate])
+  @@index([templateSourceId])
 }
 
 model CaseAssignment {

@@ -190,6 +190,7 @@ type CaseForEngine = Pick<
   | "patientAge"
   | "patientGender"
   | "createdAt"
+  | "publishedAt"
   | "timeProgressMode"
   | "simNowAt"
   | "crisisMode"
@@ -586,7 +587,9 @@ export async function reconcileCaseVitals(caseId: string): Promise<void> {
 
   const clockNow = getCaseClockNow(caseRecord);
   const lastVital = await db.vital.findFirst({ where: { caseId }, orderBy: { recordedAt: "desc" } });
-  const anchor = lastVital?.recordedAt ?? caseRecord.createdAt;
+  // 下書きで放置していた期間まで遡ってバイタルを埋めてしまわないよう、初回記録の起点は
+  // 症例作成時刻ではなく公開時刻を優先する（下書きに公開日時が無い＝createdAtへフォールバック）。
+  const anchor = lastVital?.recordedAt ?? caseRecord.publishedAt ?? caseRecord.createdAt;
 
   const treatmentOrders = await loadTreatmentOrders(caseId);
   const drugEffectRules = await loadDrugEffectRules();

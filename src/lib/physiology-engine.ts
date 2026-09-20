@@ -106,9 +106,13 @@ export function parsePhysiologyParams(raw: string | null | undefined): Physiolog
 }
 
 // MANUAL症例は学習者が手動で進める仮想時計、REALTIME症例は実時計を「現在時刻」として使う
-export function getCaseClockNow(caseRecord: Pick<Case, "timeProgressMode" | "simNowAt" | "createdAt">): Date {
+export function getCaseClockNow(
+  caseRecord: Pick<Case, "timeProgressMode" | "simNowAt" | "createdAt" | "publishedAt">
+): Date {
   if (caseRecord.timeProgressMode === "MANUAL") {
-    return caseRecord.simNowAt ?? caseRecord.createdAt;
+    // 下書きの間に経過した時間を仮想時計の起点に含めないよう、公開時刻を優先する
+    // （下書きに公開日時が無い＝createdAtへフォールバック）。
+    return caseRecord.simNowAt ?? caseRecord.publishedAt ?? caseRecord.createdAt;
   }
   return new Date();
 }

@@ -5,125 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import type { Case, CaseType, CrisisMode } from "@prisma/client";
-import type { PhysiologyParams } from "@/lib/physiology";
-import { caseTypeSchema, clampPatientAge, clampSlider0to100, patientGenderSchema } from "@/lib/schemas";
-
-const CRISIS_MODES: CrisisMode[] = ["OFF", "REVERSIBLE", "LETHAL"];
-
-function randomDigits(n: number): string {
-  return Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join("");
-}
-
-async function generateCaseCode(caseType: CaseType): Promise<string> {
-  const prefix = caseType === "SIMULATION" ? "SIM" : "P";
-  const digits = caseType === "SIMULATION" ? 2 : 4;
-  for (let attempt = 0; attempt < 20; attempt++) {
-    const code = `${prefix}-${randomDigits(digits)}`;
-    const exists = await db.case.findUnique({ where: { caseCode: code } });
-    if (!exists) return code;
-  }
-  return `${prefix}-${Date.now()}`;
-}
-
-function timeProgressModeFor(caseType: CaseType) {
-  return caseType === "SIMULATION" ? "MANUAL" : "REALTIME";
-}
-
-// 症例作成・編集フォームの共通フィールドをパースする。
-function readCaseFields(formData: FormData) {
-  const title = String(formData.get("title") ?? "").trim();
-  // Prisma/SQLiteのenumはCHECK制約を生成しないため、whitelist無しにキャストすると任意の文字列が
-  // 永続化されうる（後続のRecord<CaseType, …>系ラベル参照が全てundefinedになる）。
-  const caseTypeParsed = caseTypeSchema.safeParse(formData.get("caseType"));
-  const caseType: CaseType = caseTypeParsed.success ? caseTypeParsed.data : "SIMULATION";
-  const patientName = String(formData.get("patientName") ?? "").trim();
-  // NaN・負数・小数・異常値が生理モデルの年齢帯マッチングへそのまま渡ると意図しない基準値が選ばれるため、
-  // 0〜120歳の整数へクランプする（"Number(x) || 0"だとNaNが黙って0歳＝乳児帯になっていた）。
-  const patientAge = clampPatientAge(Number(formData.get("patientAge")));
-  const patientGenderParsed = patientGenderSchema.safeParse(String(formData.get("patientGender") ?? ""));
-  const patientGender = patientGenderParsed.success ? patientGenderParsed.data : "男性";
-  const ward = String(formData.get("ward") ?? "").trim() || null;
-  const bed = String(formData.get("bed") ?? "").trim() || null;
-  const visibilityScope = String(formData.get("visibilityScope") ?? "").trim() || null;
-  const historyScript = String(formData.get("historyScript") ?? "").trim() || null;
-  const examScript = String(formData.get("examScript") ?? "").trim() || null;
-  const problemsRaw = String(formData.get("problems") ?? "");
-  const diseaseTemplateIds = formData
-    .getAll("diseaseTemplateIds")
-    .map((v) => String(v))
-    .filter(Boolean);
-  const primaryTemplateIdRaw = String(formData.get("primaryTemplateId") ?? "") || null;
-  const primaryTemplateId =
-    primaryTemplateIdRaw && diseaseTemplateIds.includes(primaryTemplateIdRaw) ? primaryTemplateIdRaw : (diseaseTemplateIds[0] ?? null);
-  const resultTiming = String(formData.get("resultTiming") ?? "IMMEDIATE");
-  const crisisModeRaw = String(formData.get("crisisMode") ?? "LETHAL");
-  const crisisMode = CRISIS_MODES.includes(crisisModeRaw as CrisisMode) ? (crisisModeRaw as CrisisMode) : "LETHAL";
-  const sharingMode = String(formData.get("sharingMode") ?? "SOLO");
-  const assigneeLoginIds = String(formData.get("assigneeLoginIds") ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const problemLabels = problemsRaw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const physiologyParamsByTemplate: Record<string, PhysiologyParams> = {};
-  const pathogenIdByTemplate: Record<string, string | null> = {};
-  const relevantSpecimenSitesByTemplate: Record<string, string[] | null> = {};
-  for (const templateId of diseaseTemplateIds) {
-    // "Number(x) ?? 50"は非数値文字列に対してNaNを返す（??はnullish coalescingでNaNを素通りさせる）ため、
-    // JSON.stringify(NaN)がnullになって重症度カーブ全体がNaN化しうる。0〜100へ必ず数値クランプする。
-    physiologyParamsByTemplate[templateId] = {
-      initialTempSlider: clampSlider0to100(Number(formData.get(`tpl_${templateId}_initialTempSlider`))),
-      improvementSpeedSlider: clampSlider0to100(Number(formData.get(`tpl_${templateId}_improvementSpeedSlider`))),
-      initialSpo2Slider: clampSlider0to100(Number(formData.get(`tpl_${templateId}_initialSpo2Slider`))),
-      severitySlider: clampSlider0to100(Number(formData.get(`tpl_${templateId}_severitySlider`))),
-    };
-    pathogenIdByTemplate[templateId] = String(formData.get(`tpl_${templateId}_pathogenId`) ?? "").trim() || null;
-    // 検体部位制限: チェックボックスがONのときだけ配列（空配列もありうる）、OFFならnull（=制限なし、既存挙動）。
-    const specimenSiteRestricted = formData.get(`tpl_${templateId}_specimenSiteRestricted`) != null;
-    relevantSpecimenSitesByTemplate[templateId] = specimenSiteRestricted
-      ? formData.getAll(`tpl_${templateId}_relevantSpecimenSites`).map((v) => String(v))
-      : null;
-  }
-
-  return {
-    title,
-    caseType,
-    patientName,
-    patientAge,
-    patientGender,
-    ward,
-    bed,
-    visibilityScope,
-    historyScript,
-    examScript,
-    problemLabels,
-    diseaseTemplateIds,
-    primaryTemplateId,
-    resultTiming,
-    crisisMode,
-    sharingMode,
-    assigneeLoginIds,
-    physiologyParamsByTemplate,
-    pathogenIdByTemplate,
-    relevantSpecimenSitesByTemplate,
-  };
-}
-
-// 教員は自分が作成した症例のみ、管理者は全症例を編集・削除できる。
-async function requireOwnedCase(caseId: string): Promise<{ user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>; caseRecord: Case }> {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  if (user.role === "STUDENT") redirect("/patients");
-
-  const caseRecord = await db.case.findUnique({ where: { id: caseId } });
-  if (!caseRecord) redirect("/teacher/cases");
-  if (user.role === "TEACHER" && caseRecord.createdByUserId !== user.id) redirect("/teacher/cases");
-
-  return { user, caseRecord };
-}
+import { generateCaseCode, readCaseFields, requireOwnedCase, timeProgressModeFor } from "./case-fields";
 
 export async function createCase(formData: FormData) {
   const user = await getCurrentUser();
@@ -263,6 +145,9 @@ export async function updateCase(caseId: string, formData: FormData) {
   if (!title || !patientName) return;
 
   const isPublish = intent === "publish" && caseRecord.status === "DRAFT";
+  // 下書きで放置していた期間が未治療ドリフトとしてそのまま重症度カーブへ積算されてしまうのを防ぐため、
+  // 公開時刻をここで確定し、疾患リンクのseverityBaselineAtをこの時刻へ揃える（下のupsertループの後）。
+  const publishedAt = new Date();
 
   const students =
     assigneeLoginIds.length > 0
@@ -287,7 +172,7 @@ export async function updateCase(caseId: string, formData: FormData) {
         examScript,
         crisisMode,
         ...(isPublish
-          ? { status: caseRecord.caseType === "SIMULATION" ? "SIMULATING" : "ACTIVE", publishedAt: new Date() }
+          ? { status: caseRecord.caseType === "SIMULATION" ? "SIMULATING" : "ACTIVE", publishedAt }
           : {}),
       },
     });
@@ -315,6 +200,14 @@ export async function updateCase(caseId: string, formData: FormData) {
         },
         create: { caseId, templateId, isPrimary, physiologyParams: physiologyParamsJson, pathogenId, relevantSpecimenSites, sortOrder: i },
       });
+    }
+
+    // 公開の瞬間に全疾患リンクの重症度カーブ起点を公開時刻へ揃える（下書き放置期間の未治療ドリフトが
+    // 積算されたまま公開されるのを防ぐ）。upsertループの後に置くことで、新規作成リンクの
+    // @default(now())な値もここで確実に揃う。aiSeverityRatePerHourは教員がサマリタブから手動設定して
+    // いる可能性があるためリセットしない。
+    if (isPublish) {
+      await tx.caseDiseaseLink.updateMany({ where: { caseId }, data: { severityBaselineAt: publishedAt } });
     }
 
     await tx.problem.deleteMany({ where: { caseId } });
